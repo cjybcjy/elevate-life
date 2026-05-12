@@ -6,10 +6,31 @@ import { AmountDisplay } from '../common/AmountDisplay';
 
 export default function AssetAllocationSlide() {
   const [_assets, setAssets] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
 
   useEffect(() => {
-    api.get('/assets').then((res: any) => setAssets(res.data || []));
+    setLoading(true);
+    setError('');
+    api.get('/assets')
+      .then((res: any) => setAssets(res.data || []))
+      .catch((err: any) => {
+        setError('数据加载失败，请稍后重试');
+        console.error(err);
+      })
+      .finally(() => setLoading(false));
   }, []);
+
+  if (loading) return (
+    <div className="slide-container flex items-center justify-center">
+      <div className="text-ledger-muted">加载中...</div>
+    </div>
+  );
+  if (error) return (
+    <div className="slide-container flex items-center justify-center">
+      <div className="text-red-400">{error}</div>
+    </div>
+  );
 
   const ringData = [
     { name: '房产', value: 2000000 },

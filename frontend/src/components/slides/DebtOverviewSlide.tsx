@@ -4,7 +4,31 @@ import DebtFunnelChart from '../charts/DebtFunnelChart';
 
 export default function DebtOverviewSlide() {
   const [wacr, setWacr] = useState(0);
-  useEffect(() => { api.get('/forecast/wacr').then((res: any) => setWacr(res.data?.wacr || 0)); }, []);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    setLoading(true);
+    setError('');
+    api.get('/forecast/wacr')
+      .then((res: any) => setWacr(res.data?.wacr || 0))
+      .catch((err: any) => {
+        setError('数据加载失败，请稍后重试');
+        console.error(err);
+      })
+      .finally(() => setLoading(false));
+  }, []);
+
+  if (loading) return (
+    <div className="slide-container flex items-center justify-center">
+      <div className="text-ledger-muted">加载中...</div>
+    </div>
+  );
+  if (error) return (
+    <div className="slide-container flex items-center justify-center">
+      <div className="text-red-400">{error}</div>
+    </div>
+  );
 
   const funnelData = [
     { name: '信用贷', value: 50000, rate: 7.8 },

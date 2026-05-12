@@ -5,13 +5,34 @@ import CashflowForecastChart from '../charts/CashflowForecastChart';
 export default function ForecastSlide() {
   const [forecast, setForecast] = useState<any>(null);
   const [params, setParams] = useState({ incomeAdjustment: 0 });
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
 
   useEffect(() => {
+    setLoading(true);
+    setError('');
     api.post('/forecast/cashflow', {
       monthlyIncome: 30000, monthlyExpense: 20000, months: 12,
       incomeAdjustment: params.incomeAdjustment,
-    }).then((res: any) => setForecast(res.data));
+    })
+      .then((res: any) => setForecast(res.data))
+      .catch((err: any) => {
+        setError('数据加载失败，请稍后重试');
+        console.error(err);
+      })
+      .finally(() => setLoading(false));
   }, [params]);
+
+  if (loading) return (
+    <div className="slide-container flex items-center justify-center">
+      <div className="text-ledger-muted">加载中...</div>
+    </div>
+  );
+  if (error) return (
+    <div className="slide-container flex items-center justify-center">
+      <div className="text-red-400">{error}</div>
+    </div>
+  );
 
   const months = forecast?.months?.map((m: any) => m.month) || [];
   const surplus = forecast?.months?.map((m: any) => parseFloat(m.projectedSurplus)) || [];

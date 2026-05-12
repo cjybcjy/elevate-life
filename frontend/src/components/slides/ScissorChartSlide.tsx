@@ -4,10 +4,32 @@ import ScissorChart from '../charts/ScissorChart';
 
 export default function ScissorChartSlide() {
   const [summary, setSummary] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+
   useEffect(() => {
+    setLoading(true);
+    setError('');
     const now = new Date();
-    api.get(`/transactions/summary?year=${now.getFullYear()}&month=${now.getMonth() + 1}`).then((res: any) => setSummary(res.data));
+    api.get(`/transactions/summary?year=${now.getFullYear()}&month=${now.getMonth() + 1}`)
+      .then((res: any) => setSummary(res.data))
+      .catch((err: any) => {
+        setError('数据加载失败，请稍后重试');
+        console.error(err);
+      })
+      .finally(() => setLoading(false));
   }, []);
+
+  if (loading) return (
+    <div className="slide-container flex items-center justify-center">
+      <div className="text-ledger-muted">加载中...</div>
+    </div>
+  );
+  if (error) return (
+    <div className="slide-container flex items-center justify-center">
+      <div className="text-red-400">{error}</div>
+    </div>
+  );
 
   const months = ['1月', '2月', '3月', '4月', '5月', '6月', '7月', '8月', '9月', '10月', '11月', '12月'];
   const incomeData = Array(12).fill(30000);

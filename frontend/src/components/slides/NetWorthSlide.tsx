@@ -6,16 +6,37 @@ import MiniTrendChart from '../charts/MiniTrendChart';
 
 export default function NetWorthSlide({ slideIndex: _slideIndex }: { slideIndex: number }) {
   const [summary, setSummary] = useState({ totalAssets: 0, totalLiabilities: 0, netWorth: 0 });
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
 
   useEffect(() => {
-    api.get('/assets/summary').then((res: any) => {
-      setSummary({
-        totalAssets: parseFloat(res.data.totalAssets) || 0,
-        totalLiabilities: parseFloat(res.data.totalLiabilities) || 0,
-        netWorth: parseFloat(res.data.netWorth) || 0,
-      });
-    });
+    setLoading(true);
+    setError('');
+    api.get('/assets/summary')
+      .then((res: any) => {
+        setSummary({
+          totalAssets: parseFloat(res.data.totalAssets) || 0,
+          totalLiabilities: parseFloat(res.data.totalLiabilities) || 0,
+          netWorth: parseFloat(res.data.netWorth) || 0,
+        });
+      })
+      .catch((err: any) => {
+        setError('数据加载失败，请稍后重试');
+        console.error(err);
+      })
+      .finally(() => setLoading(false));
   }, []);
+
+  if (loading) return (
+    <div className="slide-container flex items-center justify-center">
+      <div className="text-ledger-muted">加载中...</div>
+    </div>
+  );
+  if (error) return (
+    <div className="slide-container flex items-center justify-center">
+      <div className="text-red-400">{error}</div>
+    </div>
+  );
 
   return (
     <div className="slide-container">
