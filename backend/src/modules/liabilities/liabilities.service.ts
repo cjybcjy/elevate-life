@@ -72,7 +72,7 @@ export class LiabilitiesService {
 
   private async generateSchedule(liability: Liability): Promise<void> {
     await this.milestoneRepo.delete({ liabilityId: liability.id });
-    const principalStr = liability.isEncrypted ? this.encryptionService.decrypt(liability.principal) : liability.principal;
+    const principalStr = liability.isEncrypted ? this.encryptionService.decrypt(liability.principal.slice(4)) : liability.principal;
     const principal = new Decimal(principalStr);
     const rate = new Decimal(liability.interestRate);
     let schedule: any[];
