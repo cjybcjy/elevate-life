@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
+import axios from 'axios'
 import api from '../services/api'
 
 function LoginPage() {
@@ -19,8 +20,14 @@ function LoginPage() {
       const { accessToken } = response.data
       localStorage.setItem('access_token', accessToken)
       navigate('/net-worth')
-    } catch (err: any) {
-      setError(err.response?.data?.message || 'Login failed')
+    } catch (err: unknown) {
+      let message = 'Login failed'
+      if (axios.isAxiosError(err)) {
+        message = err.response?.data?.message || err.message || message
+      } else if (err instanceof Error) {
+        message = err.message
+      }
+      setError(message)
     } finally {
       setLoading(false)
     }
@@ -32,15 +39,16 @@ function LoginPage() {
         <h1 className="mb-6 text-2xl font-bold text-ledger-text">Login</h1>
 
         {error && (
-          <div className="mb-4 p-3 rounded bg-red-900/30 text-red-400 text-sm">
+          <div role="alert" className="mb-4 p-3 rounded bg-red-900/30 text-red-400 text-sm">
             {error}
           </div>
         )}
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="block mb-1 text-sm text-ledger-muted">Username</label>
+            <label htmlFor="username" className="block mb-1 text-sm text-ledger-muted">Username</label>
             <input
+              id="username"
               type="text"
               value={username}
               onChange={(e) => setUsername(e.target.value)}
@@ -50,9 +58,11 @@ function LoginPage() {
           </div>
 
           <div>
-            <label className="block mb-1 text-sm text-ledger-muted">Password</label>
+            <label htmlFor="password" className="block mb-1 text-sm text-ledger-muted">Password</label>
             <input
+              id="password"
               type="password"
+              autoComplete="current-password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required
