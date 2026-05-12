@@ -1,4 +1,12 @@
 import { Module } from '@nestjs/common';
+import { TypeOrmModule } from '@nestjs/typeorm';
+import { GoldPrice } from './gold.entity';
+import { GoldService } from './gold.service';
+import { GoldController } from './gold.controller';
 
-@Module({})
+@Module({
+  imports: [TypeOrmModule.forFeature([GoldPrice])],
+  providers: [GoldService],
+  controllers: [GoldController],
+})
 export class GoldModule {}
