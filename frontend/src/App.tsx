@@ -6,10 +6,11 @@ import AssetAllocationSlide from './components/slides/AssetAllocationSlide'
 import DebtOverviewSlide from './components/slides/DebtOverviewSlide'
 import ScissorChartSlide from './components/slides/ScissorChartSlide'
 import ForecastSlide from './components/slides/ForecastSlide'
+import LoginPage from './pages/LoginPage'
+import RegisterPage from './pages/RegisterPage'
 
-function App() {
+function ProtectedLayout() {
   useKeyboardNavigation()
-
   return (
     <div className="flex flex-col h-screen bg-ledger-bg">
       <main className="flex-1 overflow-hidden">
@@ -24,6 +25,21 @@ function App() {
       </main>
       <DockNavigation />
     </div>
+  )
+}
+
+function App() {
+  const isAuthenticated = !!localStorage.getItem('access_token')
+
+  return (
+    <Routes>
+      <Route path="/login" element={<LoginPage />} />
+      <Route path="/register" element={<RegisterPage />} />
+      <Route
+        path="/*"
+        element={isAuthenticated ? <ProtectedLayout /> : <Navigate to="/login" replace />}
+      />
+    </Routes>
   )
 }
 
