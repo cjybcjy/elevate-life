@@ -1,11 +1,11 @@
 import { Routes, Route, Navigate } from 'react-router-dom'
 import { useKeyboardNavigation } from './hooks/useKeyboardNavigation'
 import { DockNavigation } from './components/layout/DockNavigation'
-import { NetWorthSlide } from './pages/NetWorthSlide'
-import { AssetAllocationSlide } from './pages/AssetAllocationSlide'
-import { DebtOverviewSlide } from './pages/DebtOverviewSlide'
-import { ScissorChartSlide } from './pages/ScissorChartSlide'
-import { ForecastSlide } from './pages/ForecastSlide'
+import NetWorthSlide from './components/slides/NetWorthSlide'
+import AssetAllocationSlide from './components/slides/AssetAllocationSlide'
+import DebtOverviewSlide from './components/slides/DebtOverviewSlide'
+import ScissorChartSlide from './components/slides/ScissorChartSlide'
+import ForecastSlide from './components/slides/ForecastSlide'
 
 function App() {
   useKeyboardNavigation()
@@ -15,7 +15,7 @@ function App() {
       <main className="flex-1 overflow-hidden">
         <Routes>
           <Route path="/" element={<Navigate to="/net-worth" replace />} />
-          <Route path="/net-worth" element={<NetWorthSlide />} />
+          <Route path="/net-worth" element={<NetWorthSlide slideIndex={0} />} />
           <Route path="/asset-allocation" element={<AssetAllocationSlide />} />
           <Route path="/debt-overview" element={<DebtOverviewSlide />} />
           <Route path="/scissor-chart" element={<ScissorChartSlide />} />
