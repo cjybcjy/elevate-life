@@ -1,13 +1,15 @@
-import { IsIn, IsOptional, IsNumber, IsString, IsDateString } from 'class-validator';
+import { IsIn, IsOptional, IsNumber, IsString, IsDateString, IsUUID, Min, MaxLength } from 'class-validator';
 
 export class CreateTransactionDto {
   @IsIn(['income', 'expense'])
+  @MaxLength(10)
   type: 'income' | 'expense';
 
   @IsNumber()
+  @Min(0)
   amount: number;
 
-  @IsString()
+  @IsUUID()
   categoryId: string;
 
   @IsOptional()
@@ -22,14 +24,16 @@ export class CreateTransactionDto {
 export class UpdateTransactionDto {
   @IsOptional()
   @IsIn(['income', 'expense'])
+  @MaxLength(10)
   type?: 'income' | 'expense';
 
   @IsOptional()
   @IsNumber()
+  @Min(0)
   amount?: number;
 
   @IsOptional()
-  @IsString()
+  @IsUUID()
   categoryId?: string;
 
   @IsOptional()
