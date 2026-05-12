@@ -1,12 +1,13 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { Asset } from './assets.entity';
+import { Liability } from '../liabilities/liabilities.entity';
 import { AssetsService } from './assets.service';
 import { AssetsController } from './assets.controller';
 import { EncryptionModule } from '../encryption/encryption.module';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Asset]), EncryptionModule],
+  imports: [TypeOrmModule.forFeature([Asset, Liability]), EncryptionModule],
   providers: [AssetsService],
   controllers: [AssetsController],
 })

@@ -3,12 +3,14 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import Decimal from 'decimal.js';
 import { Asset } from './assets.entity';
+import { Liability } from '../liabilities/liabilities.entity';
 import { EncryptionService } from '../encryption/encryption.service';
 
 @Injectable()
 export class AssetsService {
   constructor(
     @InjectRepository(Asset) private repo: Repository<Asset>,
+    @InjectRepository(Liability) private liabilityRepo: Repository<Liability>,
     private encryptionService: EncryptionService,
   ) {}
 
@@ -49,11 +51,18 @@ export class AssetsService {
 
   async getSummary(userId: string): Promise<{ totalAssets: string; totalLiabilities: string; netWorth: string }> {
     const assets = await this.findByUser(userId);
-    let total = new Decimal(0);
+    let totalAssets = new Decimal(0);
     for (const asset of assets) {
       const decrypted = asset.isEncrypted ? this.encryptionService.decrypt(asset.balance.slice(4)) : asset.balance;
-      total = total.plus(new Decimal(decrypted));
+      totalAssets = totalAssets.plus(new Decimal(decrypted));
     }
-    return { totalAssets: total.toFixed(2), totalLiabilities: '0', netWorth: total.toFixed(2) };
+    const liabilities = await this.liabilityRepo.find({ where: { userId } });
+    let totalLiabilities = new Decimal(0);
+    for (const liability of liabilities) {
+      const decrypted = liability.isEncrypted ? this.encryptionService.decrypt(liability.currentBalance.slice(4)) : liability.currentBalance;
+      totalLiabilities = totalLiabilities.plus(new Decimal(decrypted || '0'));
+    }
+    const netWorth = totalAssets.minus(totalLiabilities);
+    return { totalAssets: totalAssets.toFixed(2), totalLiabilities: totalLiabilities.toFixed(2), netWorth: netWorth.toFixed(2) };
   }
 }
