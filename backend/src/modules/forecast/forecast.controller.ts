@@ -17,13 +17,22 @@ export class ForecastController {
   ) {}
 
   @Get('wacr') async getWACR(@Request() req: any) {
-    const liabilities = await this.liabilityRepo.find({ where: { userId: req.user.userId } });
-    const mapped = liabilities.map((l) => ({
-      balance: new Decimal(l.isEncrypted ? this.encryptionService.decrypt(l.currentBalance.slice(4)) : l.currentBalance || '0'),
-      rate: new Decimal(l.interestRate),
-    }));
-    const result = this.service.calculateWACR(mapped);
-    return { wacr: result.toNumber() };
+    try {
+      const liabilities = await this.liabilityRepo.find({ where: { userId: req.user.userId } });
+      const mapped = liabilities.map((l) => {
+        const balanceStr = (l.isEncrypted
+          ? this.encryptionService.decrypt(l.currentBalance.slice(4))
+          : l.currentBalance) || '0';
+        return {
+          balance: new Decimal(balanceStr),
+          rate: new Decimal(l.interestRate),
+        };
+      });
+      const result = this.service.calculateWACR(mapped);
+      return { wacr: result.toNumber() };
+    } catch (error) {
+      return { wacr: 0 };
+    }
   }
 
   @Post('cashflow') async simulateCashflow(@Request() req: any, @Body() dto: any) {

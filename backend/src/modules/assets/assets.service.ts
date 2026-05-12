@@ -49,18 +49,30 @@ export class AssetsService {
     await this.repo.delete({ id, userId });
   }
 
+  private getDecryptedValue(encryptedValue: string, isEncrypted: boolean): string {
+    if (!encryptedValue) return '0'
+    if (isEncrypted) {
+      return this.encryptionService.decrypt(encryptedValue.slice(4))
+    }
+    return encryptedValue
+  }
+
   async getSummary(userId: string): Promise<{ totalAssets: string; totalLiabilities: string; netWorth: string }> {
     const assets = await this.findByUser(userId);
     let totalAssets = new Decimal(0);
     for (const asset of assets) {
-      const decrypted = asset.isEncrypted ? this.encryptionService.decrypt(asset.balance.slice(4)) : asset.balance;
+      const decrypted = this.getDecryptedValue(asset.balance, asset.isEncrypted);
       totalAssets = totalAssets.plus(new Decimal(decrypted));
     }
-    const liabilities = await this.liabilityRepo.find({ where: { userId } });
     let totalLiabilities = new Decimal(0);
-    for (const liability of liabilities) {
-      const decrypted = liability.isEncrypted ? this.encryptionService.decrypt(liability.currentBalance.slice(4)) : liability.currentBalance;
-      totalLiabilities = totalLiabilities.plus(new Decimal(decrypted || '0'));
+    try {
+      const liabilities = await this.liabilityRepo.find({ where: { userId } });
+      for (const liability of liabilities) {
+        const decrypted = this.getDecryptedValue(liability.currentBalance, liability.isEncrypted);
+        totalLiabilities = totalLiabilities.plus(new Decimal(decrypted));
+      }
+    } catch (error) {
+      totalLiabilities = new Decimal(0);
     }
     const netWorth = totalAssets.minus(totalLiabilities);
     return { totalAssets: totalAssets.toFixed(2), totalLiabilities: totalLiabilities.toFixed(2), netWorth: netWorth.toFixed(2) };
