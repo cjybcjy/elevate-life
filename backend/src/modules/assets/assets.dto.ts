@@ -1,4 +1,4 @@
-import { IsString, IsOptional, IsNumber, IsNumberString, MaxLength } from 'class-validator';
+import { IsString, IsOptional, IsNumberString, MaxLength } from 'class-validator';
 
 export class CreateAssetDto {
   @IsString()
@@ -11,6 +11,15 @@ export class CreateAssetDto {
   @IsOptional()
   @IsNumberString()
   balance?: string;
+
+  @IsOptional()
+  @IsNumberString()
+  quantity?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(20)
+  stockCode?: string;
 
   @IsOptional()
   @IsString()
@@ -41,6 +50,15 @@ export class UpdateAssetDto {
   @IsOptional()
   @IsNumberString()
   balance?: string;
+
+  @IsOptional()
+  @IsNumberString()
+  quantity?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(20)
+  stockCode?: string;
 
   @IsOptional()
   @IsString()

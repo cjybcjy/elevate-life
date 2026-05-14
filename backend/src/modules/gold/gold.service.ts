@@ -7,9 +7,7 @@ import { GoldPrice } from './gold.entity';
 
 interface PriceSource {
   name: string;
-  url: string;
-  headers: Record<string, string>;
-  parse: (data: any) => number | null;
+  fetch: () => Promise<{ price: number; currency: string } | null>;
 }
 
 @Injectable()
@@ -17,36 +15,7 @@ export class GoldService {
   private readonly logger = new Logger(GoldService.name);
   private lastValidPrice: number | null = null;
   private readonly userAgents: string[];
-
-  private readonly priceSources: PriceSource[] = [
-    {
-      name: 'gold-api.com',
-      url: 'https://gold-api.com/price/spot',
-      headers: { Accept: 'application/json' },
-      parse: (data) => {
-        const p = data?.price ?? data?.gold?.usd ?? data?.rate;
-        return typeof p === 'number' ? p : typeof p === 'string' ? parseFloat(p) : null;
-      },
-    },
-    {
-      name: 'goldapi.io',
-      url: 'https://www.goldapi.io/api/XAU/USD',
-      headers: { 'x-access-token': 'goldapi-demo-key' },
-      parse: (data) => {
-        const p = data?.price ?? data?.ask;
-        return typeof p === 'number' ? p : typeof p === 'string' ? parseFloat(p) : null;
-      },
-    },
-    {
-      name: 'metals-api',
-      url: 'https://metals-api.com/api/latest?base=USD&symbols=XAU',
-      headers: {},
-      parse: (data) => {
-        const p = data?.rates?.XAU ? 1 / data.rates.XAU : data?.rates?.['XAU'];
-        return typeof p === 'number' ? p : typeof p === 'string' ? parseFloat(p) : null;
-      },
-    },
-  ];
+  private readonly priceSources: PriceSource[];
 
   constructor(
     @InjectRepository(GoldPrice) private repo: Repository<GoldPrice>,
@@ -57,6 +26,14 @@ export class GoldService {
       'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
       'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:121.0) Gecko/20100101 Firefox/121.0',
       'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.2 Safari/605.1.15',
+      'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36 Edg/119.0.0.0',
+    ];
+
+    // All sources use free public APIs, no key needed
+    this.priceSources = [
+      { name: 'eastmoney_gc', fetch: () => this.fetchEastmoneyGC() },
+      { name: 'sina_xau', fetch: () => this.fetchSinaXAU() },
+      { name: 'sina_gc', fetch: () => this.fetchSinaGC() },
     ];
   }
 
@@ -88,6 +65,76 @@ export class GoldService {
     throw new Error(`Fetch failed after ${retries} retries`);
   }
 
+  /** Eastmoney COMEX Gold (GC00Y) - USD per ounce. f43 is price * 100. */
+  private async fetchEastmoneyGC(): Promise<{ price: number; currency: string } | null> {
+    const url = 'https://push2.eastmoney.com/api/qt/stock/get?secid=101.GC00Y&fields=f43,f58';
+    const response = await this.fetchWithRetry(url, {
+      headers: {
+        'User-Agent': this.pickUserAgent(),
+        'Referer': 'https://quote.eastmoney.com',
+        'Accept': 'application/json, text/plain, */*',
+        'Accept-Language': 'zh-CN,zh;q=0.9',
+      },
+    });
+
+    const data = await response.json();
+    const raw = data?.data?.f43;
+    if (raw === undefined || raw === null) return null;
+
+    const price = raw / 100;
+    if (isNaN(price) || price <= 0) return null;
+    return { price, currency: 'USD' };
+  }
+
+  /** Sina Spot Gold (XAU) - likely USD per ounce. parts[0] is latest price. */
+  private async fetchSinaXAU(): Promise<{ price: number; currency: string } | null> {
+    const url = 'https://hq.sinajs.cn/list=hf_XAU';
+    const response = await this.fetchWithRetry(url, {
+      headers: {
+        'User-Agent': this.pickUserAgent(),
+        'Referer': 'https://finance.sina.com.cn',
+        'Accept': '*/*',
+        'Accept-Language': 'zh-CN,zh;q=0.9,en;q=0.8',
+      },
+    });
+
+    // Sina returns GBK-encoded text; numeric fields are ASCII-safe
+    const text = await response.text();
+    const match = text.match(/var hq_str_hf_XAU="([^"]*)"/);
+    if (!match) return null;
+
+    const parts = match[1].split(',');
+    if (parts.length < 2) return null;
+
+    const price = parseFloat(parts[0]);
+    if (isNaN(price) || price <= 0) return null;
+    return { price, currency: 'USD' };
+  }
+
+  /** Sina COMEX Gold (GC) - likely USD per ounce. parts[0] is latest price. */
+  private async fetchSinaGC(): Promise<{ price: number; currency: string } | null> {
+    const url = 'https://hq.sinajs.cn/list=hf_GC';
+    const response = await this.fetchWithRetry(url, {
+      headers: {
+        'User-Agent': this.pickUserAgent(),
+        'Referer': 'https://finance.sina.com.cn',
+        'Accept': '*/*',
+        'Accept-Language': 'zh-CN,zh;q=0.9,en;q=0.8',
+      },
+    });
+
+    const text = await response.text();
+    const match = text.match(/var hq_str_hf_GC="([^"]*)"/);
+    if (!match) return null;
+
+    const parts = match[1].split(',');
+    if (parts.length < 2) return null;
+
+    const price = parseFloat(parts[0]);
+    if (isNaN(price) || price <= 0) return null;
+    return { price, currency: 'USD' };
+  }
+
   async hasTodayData(): Promise<boolean> {
     const start = new Date();
     start.setHours(0, 0, 0, 0);
@@ -99,7 +146,7 @@ export class GoldService {
     return count > 0;
   }
 
-  @Cron('0 0,12 * * *')
+  @Cron('0 * * * *')
   async fetchGoldPrice(): Promise<void> {
     if (await this.hasTodayData()) {
       this.logger.debug('Today already has gold price data, skipping fetch');
@@ -109,24 +156,20 @@ export class GoldService {
     for (const source of this.priceSources) {
       try {
         await this.sleep(500 + Math.random() * 1500);
-        const response = await this.fetchWithRetry(source.url, {
-          headers: {
-            'User-Agent': this.pickUserAgent(),
-            Accept: 'application/json',
-            ...source.headers,
-          },
-        });
+        const result = await source.fetch();
 
-        if (!response.ok) {
-          this.logger.warn(`Source ${source.name} returned HTTP ${response.status}`);
+        if (!result) {
+          this.logger.warn(`Source ${source.name} returned empty data`);
           continue;
         }
 
-        const data = await response.json();
-        const newPrice = source.parse(data);
+        let newPrice = result.price;
+        if (result.currency === 'USD') {
+          newPrice = this.convertUSDPerOzToCNYPerGram(newPrice);
+        }
 
-        if (newPrice === null || isNaN(newPrice) || newPrice <= 0) {
-          this.logger.warn(`Source ${source.name} returned invalid price`);
+        if (isNaN(newPrice) || newPrice <= 0) {
+          this.logger.warn(`Source ${source.name} returned invalid price: ${newPrice}`);
           continue;
         }
 
@@ -144,7 +187,7 @@ export class GoldService {
             recordedAt: new Date(),
           }),
         );
-        this.logger.log(`Gold price from ${source.name}: ${newPrice}`);
+        this.logger.log(`Gold price from ${source.name}: ${newPrice} CNY/g`);
         return;
       } catch (error: any) {
         this.logger.warn(`Source ${source.name} failed: ${error.message}`);
@@ -174,5 +217,20 @@ export class GoldService {
       where: { assetType: 'gold_au9999', recordedAt: Between(since, new Date()) },
       order: { recordedAt: 'DESC' },
     });
+  }
+
+  /**
+   * Get gold price in CNY per gram.
+   * Sources are already converted to CNY/g during fetch and stored in DB.
+   */
+  async getCurrentPriceCNYPerGram(): Promise<{ price: number; lastSync: Date | null }> {
+    return this.getCurrentPrice();
+  }
+
+  private convertUSDPerOzToCNYPerGram(usdPerOz: number): number {
+    const exchangeRate = this.configService.get<number>('GOLD_EXCHANGE_RATE', 7.2);
+    const gramsPerOz = 31.1035;
+    const cnyPerGram = (usdPerOz * exchangeRate) / gramsPerOz;
+    return Math.round(cnyPerGram * 100) / 100;
   }
 }

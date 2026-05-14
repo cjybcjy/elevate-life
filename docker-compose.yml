@@ -26,8 +26,15 @@ services:
       - DB_PASSWORD=${DB_PASSWORD:-postgres}
       - DB_NAME=ledger
       - ENCRYPTION_KEY=${ENCRYPTION_KEY:-0123456789abcdef0123456789abcdef}
+      - ENCRYPTION_THRESHOLD=${ENCRYPTION_THRESHOLD:-500000}
       - JWT_SECRET=${JWT_SECRET:-demo-jwt-secret-change-me}
+      - JWT_EXPIRATION=${JWT_EXPIRATION:-15m}
+      - REFRESH_TOKEN_EXPIRATION=${REFRESH_TOKEN_EXPIRATION:-7d}
+      - PORT=3000
       - NODE_ENV=development
+      - FRONTEND_URL=http://localhost
+      - GOLD_EXCHANGE_RATE=${GOLD_EXCHANGE_RATE:-7.2}
+      - THROTTLE_LIMIT=${THROTTLE_LIMIT:-100}
     depends_on:
       postgres:
         condition: service_healthy

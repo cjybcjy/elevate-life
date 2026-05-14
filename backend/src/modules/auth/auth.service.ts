@@ -20,7 +20,7 @@ export class AuthService {
     const passwordHash = await bcrypt.hash(dto.password, 12);
     const user = await this.usersService.create(dto.username, passwordHash, dto.displayName);
 
-    const tokens = await this.generateTokens(user.id, user.username);
+    const tokens = this.generateTokens(user.id, user.username);
     return { user: { id: user.id, username: user.username, displayName: user.displayName }, ...tokens };
   }
 
@@ -31,11 +31,26 @@ export class AuthService {
     const valid = await bcrypt.compare(dto.password, user.passwordHash);
     if (!valid) throw new UnauthorizedException('Invalid credentials');
 
-    const tokens = await this.generateTokens(user.id, user.username);
+    const tokens = this.generateTokens(user.id, user.username);
     return { user: { id: user.id, username: user.username, displayName: user.displayName }, ...tokens };
   }
 
-  private async generateTokens(userId: string, username: string) {
+  async refreshTokens(refreshToken: string) {
+    try {
+      const payload = this.jwtService.verify(refreshToken, {
+        secret: this.configService.get('JWT_SECRET'),
+      });
+      const user = await this.usersService.findById(payload.sub);
+      if (!user) throw new UnauthorizedException('User not found');
+
+      const tokens = this.generateTokens(user.id, user.username);
+      return { user: { id: user.id, username: user.username, displayName: user.displayName }, ...tokens };
+    } catch {
+      throw new UnauthorizedException('Invalid refresh token');
+    }
+  }
+
+  private generateTokens(userId: string, username: string) {
     const payload = { sub: userId, username };
     const accessToken = this.jwtService.sign(payload, {
       secret: this.configService.get('JWT_SECRET'),

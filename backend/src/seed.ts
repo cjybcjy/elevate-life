@@ -5,6 +5,7 @@ import { CategoriesService } from './modules/categories/categories.service';
 import { AssetsService } from './modules/assets/assets.service';
 import { LiabilitiesService } from './modules/liabilities/liabilities.service';
 import { TransactionsService } from './modules/transactions/transactions.service';
+import * as bcrypt from 'bcrypt';
 
 async function bootstrap() {
   const app = await NestFactory.createApplicationContext(AppModule);
@@ -20,7 +21,7 @@ async function bootstrap() {
     let user = await usersService.findByUsername('demo');
     if (!user) {
       console.log('[Seed] Creating demo user...');
-      const passwordHash = await require('bcrypt').hash('demo123', 12);
+      const passwordHash = await bcrypt.hash('demo123', 12);
       user = await usersService.create('demo', passwordHash, '演示用户');
       console.log(`[Seed] Demo user created: ${user.id}`);
     } else {
@@ -51,10 +52,10 @@ async function bootstrap() {
 
     console.log('[Seed] Creating assets...');
     const assetData = [
-      { name: '自住房产', category: 'real_estate', balance: 2000000, initialValue: 1800000 },
-      { name: '现金存款', category: 'cash', balance: 900000, initialValue: 900000 },
-      { name: '黄金积存', category: 'gold', balance: 680000, initialValue: 600000 },
-      { name: '股票账户', category: 'stock', balance: 500000, initialValue: 450000 },
+      { name: '自住房产', category: 'real_estate', balance: 2000000 },
+      { name: '现金存款', category: 'cash', balance: 900000 },
+      { name: '黄金积存', category: 'gold', quantity: 200, balance: 680000 },
+      { name: '贵州茅台', category: 'stock', quantity: 50, stockCode: '600519', balance: 500000 },
     ];
     for (const data of assetData) {
       const existing = (await assetsService.findByUser(userId)).find((a) => a.name === data.name);
@@ -128,8 +129,17 @@ async function bootstrap() {
       },
     ];
     for (const data of transactionData) {
-      const tx = await transactionsService.create(userId, data);
-      console.log(`[Seed] Transaction "${data.description}" created: ${tx.id}`);
+      const existing = (await transactionsService.findByUser(userId)).find(
+        (t) => t.description === data.description &&
+          t.occurredAt.getMonth() === data.occurredAt.getMonth() &&
+          t.occurredAt.getFullYear() === data.occurredAt.getFullYear()
+      );
+      if (existing) {
+        console.log(`[Seed] Transaction "${data.description}" already exists`);
+      } else {
+        const tx = await transactionsService.create(userId, data);
+        console.log(`[Seed] Transaction "${data.description}" created: ${tx.id}`);
+      }
     }
 
     console.log('[Seed] Done.');

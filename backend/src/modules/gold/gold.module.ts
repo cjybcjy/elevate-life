@@ -8,5 +8,6 @@ import { GoldController } from './gold.controller';
   imports: [TypeOrmModule.forFeature([GoldPrice])],
   providers: [GoldService],
   controllers: [GoldController],
+  exports: [GoldService],
 })
 export class GoldModule {}

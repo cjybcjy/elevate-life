@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { ScheduleModule } from '@nestjs/schedule';
+import { ThrottlerModule } from '@nestjs/throttler';
 import { AuthModule } from './modules/auth/auth.module';
 import { UsersModule } from './modules/users/users.module';
 import { EncryptionModule } from './modules/encryption/encryption.module';
@@ -11,11 +12,22 @@ import { LiabilitiesModule } from './modules/liabilities/liabilities.module';
 import { TransactionsModule } from './modules/transactions/transactions.module';
 import { GoldModule } from './modules/gold/gold.module';
 import { ForecastModule } from './modules/forecast/forecast.module';
+import { StockModule } from './modules/stock/stock.module';
 
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
     ScheduleModule.forRoot(),
+    ThrottlerModule.forRootAsync({
+      imports: [ConfigModule],
+      inject: [ConfigService],
+      useFactory: (config: ConfigService) => ({
+        throttlers: [{
+          ttl: 60,
+          limit: config.get('THROTTLE_LIMIT', 100),
+        }],
+      }),
+    }),
     TypeOrmModule.forRootAsync({
       imports: [ConfigModule],
       useFactory: (config: ConfigService) => ({
@@ -38,6 +50,7 @@ import { ForecastModule } from './modules/forecast/forecast.module';
     LiabilitiesModule,
     TransactionsModule,
     GoldModule,
+    StockModule,
     ForecastModule,
   ],
 })
