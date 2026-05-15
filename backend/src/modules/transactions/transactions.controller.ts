@@ -15,6 +15,7 @@ export class TransactionsController {
     return this.service.getMonthlySummary(req.user.userId, +year, +month);
   }
   @Post() create(@Request() req: any, @Body() dto: CreateTransactionDto) { return this.service.create(req.user.userId, dto); }
+  @Get(':id') findOne(@Request() req: any, @Param('id') id: string) { return this.service.findById(id, req.user.userId); }
   @Patch(':id') update(@Request() req: any, @Param('id') id: string, @Body() dto: UpdateTransactionDto) { return this.service.update(id, req.user.userId, dto); }
   @Delete(':id') delete(@Request() req: any, @Param('id') id: string) { return this.service.delete(id, req.user.userId); }
 }

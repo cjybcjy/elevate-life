@@ -7,6 +7,10 @@ import { Transaction } from './transactions.entity';
 export class TransactionsService {
   constructor(@InjectRepository(Transaction) private repo: Repository<Transaction>) {}
 
+  async findById(id: string, userId: string): Promise<Transaction | null> {
+    return this.repo.findOne({ where: { id, userId } });
+  }
+
   async findByUser(userId: string, startDate?: Date, endDate?: Date): Promise<Transaction[]> {
     const where: any = { userId };
     if (startDate && endDate) where.occurredAt = Between(startDate, endDate);
