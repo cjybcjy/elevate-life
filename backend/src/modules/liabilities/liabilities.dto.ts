@@ -1,4 +1,4 @@
-import { IsString, IsOptional, IsNumber, IsIn, IsDateString, IsNumberString, Min, Max, MaxLength } from 'class-validator';
+import { IsString, IsOptional, IsNumber, IsIn, IsDateString, IsNumberString, IsUUID, Min, Max, MaxLength } from 'class-validator';
 
 export class CreateLiabilityDto {
   @IsString()
@@ -34,6 +34,10 @@ export class CreateLiabilityDto {
   @IsOptional()
   @IsNumberString()
   monthlyPayment?: string;
+
+  @IsOptional()
+  @IsUUID()
+  linkedAssetId?: string;
 }
 
 export class UpdateLiabilityDto {
@@ -77,4 +81,8 @@ export class UpdateLiabilityDto {
   @IsOptional()
   @IsNumberString()
   monthlyPayment?: string;
+
+  @IsOptional()
+  @IsUUID()
+  linkedAssetId?: string;
 }

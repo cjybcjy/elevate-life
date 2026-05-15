@@ -12,6 +12,8 @@ export class Liability extends BaseEntity {
   @Column({ type: 'date' }) startDate: Date;
   @Column({ length: 20 }) paymentMethod: string;
   @Column({ type: 'text', nullable: true }) monthlyPayment: string;
+  @Column({ nullable: true })
+  linkedAssetId: string | null;
   @Column({ default: false }) isEncrypted: boolean;
   @Column({ type: 'uuid' }) userId: string;
 }
