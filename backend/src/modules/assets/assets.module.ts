@@ -12,5 +12,6 @@ import { StockModule } from '../stock/stock.module';
   imports: [TypeOrmModule.forFeature([Asset, Liability]), EncryptionModule, GoldModule, StockModule],
   providers: [AssetsService],
   controllers: [AssetsController],
+  exports: [AssetsService],
 })
 export class AssetsModule {}

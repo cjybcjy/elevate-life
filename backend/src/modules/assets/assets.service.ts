@@ -145,6 +145,18 @@ export class AssetsService {
     await this.repo.delete({ id, userId });
   }
 
+  async adjustBalance(id: string, userId: string, delta: number): Promise<void> {
+    const asset = await this.repo.findOne({ where: { id, userId } });
+    if (!asset) return;
+    const currentBalance = new Decimal(this.getDecryptedValue(asset.balance, asset.isEncrypted));
+    const newBalance = currentBalance.plus(delta).toFixed(4);
+    const shouldEncrypt = this.encryptionService.shouldEncrypt(newBalance);
+    await this.repo.update({ id, userId }, {
+      balance: shouldEncrypt ? this.encryptionService.encrypt(newBalance) : newBalance,
+      isEncrypted: shouldEncrypt,
+    });
+  }
+
   private getDecryptedValue(encryptedValue: string, isEncrypted: boolean): string {
     if (!encryptedValue) return '0'
     if (isEncrypted) {
