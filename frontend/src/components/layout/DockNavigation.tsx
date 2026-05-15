@@ -54,6 +54,13 @@ export function DockNavigation() {
 
         <div className="flex items-center gap-3">
           <Link
+            to="/management/transactions"
+            className="text-sm text-ledger-muted hover:text-ledger-primary transition-colors"
+          >
+            管理
+          </Link>
+          <span className="text-ledger-muted/30">|</span>
+          <Link
             to="/login"
             onClick={handleLogout}
             className="text-sm text-ledger-muted hover:text-ledger-danger transition-colors"
