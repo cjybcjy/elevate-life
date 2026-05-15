@@ -14,6 +14,8 @@ export class Asset extends BaseEntity {
   @Column({ length: 3, default: 'CNY' }) currency: string;
   @Column({ length: 50, nullable: true }) valuationMethod: string;
   @Column({ length: 20, nullable: true }) liquidityTier: string;
+  @Column({ type: 'text', nullable: true })
+  costBasis: string | null;
   @Column({ default: false }) isEncrypted: boolean;
   @Column({ type: 'uuid' }) userId: string;
 }

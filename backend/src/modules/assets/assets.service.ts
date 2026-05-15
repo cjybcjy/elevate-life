@@ -60,7 +60,7 @@ export class AssetsService {
     stockPrices: Map<string, number>,
   ): Promise<{ currentValue: string; unitPrice: string | null }> {
     // Manual assets (real_estate, cash, fund, vehicle, other): use balance directly
-    if (!['gold', 'stock'].includes(asset.category)) {
+    if (!['gold', 'stock', 'crypto'].includes(asset.category)) {
       const decrypted = this.getDecryptedValue(asset.balance, asset.isEncrypted);
       return { currentValue: decrypted, unitPrice: null };
     }
@@ -99,24 +99,27 @@ export class AssetsService {
   }
 
   async create(userId: string, data: any): Promise<Asset> {
-    // For manual assets, balance is required
-    // For gold/stock, quantity is required, balance is optional (will be auto-calculated)
-    const isAutoValued = ['gold', 'stock'].includes(data.category);
+    const isAutoValued = ['gold', 'stock', 'crypto'].includes(data.category);
 
     let balanceStr: string;
     if (data.balance !== undefined && data.balance !== null && data.balance !== '') {
       balanceStr = new Decimal(data.balance).toFixed(4);
     } else if (isAutoValued && data.quantity) {
-      // Auto-calculate initial balance for gold/stock
       balanceStr = new Decimal(data.quantity).toFixed(4);
     } else {
       balanceStr = '0';
+    }
+
+    let costBasisStr: string | undefined;
+    if (data.costBasis !== undefined && data.costBasis !== null && data.costBasis !== '') {
+      costBasisStr = new Decimal(data.costBasis).toFixed(4);
     }
 
     const shouldEncrypt = this.encryptionService.shouldEncrypt(balanceStr);
     const asset = this.repo.create({
       ...data,
       balance: shouldEncrypt ? this.encryptionService.encrypt(balanceStr) : balanceStr,
+      costBasis: costBasisStr ? (this.encryptionService.shouldEncrypt(costBasisStr) ? this.encryptionService.encrypt(costBasisStr) : costBasisStr) : undefined,
       isEncrypted: shouldEncrypt,
       userId,
     });
@@ -129,6 +132,10 @@ export class AssetsService {
       const balanceStr = new Decimal(data.balance).toFixed(4);
       data.balance = this.encryptionService.shouldEncrypt(balanceStr) ? this.encryptionService.encrypt(balanceStr) : balanceStr;
       data.isEncrypted = this.encryptionService.shouldEncrypt(balanceStr);
+    }
+    if (data.costBasis !== undefined && data.costBasis !== null && data.costBasis !== '') {
+      const costStr = new Decimal(data.costBasis).toFixed(4);
+      data.costBasis = this.encryptionService.shouldEncrypt(costStr) ? this.encryptionService.encrypt(costStr) : costStr;
     }
     await this.repo.update({ id, userId }, data);
     return this.repo.findOneOrFail({ where: { id, userId } });

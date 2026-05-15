@@ -35,6 +35,10 @@ export class CreateAssetDto {
   @IsString()
   @MaxLength(20)
   liquidityTier?: string;
+
+  @IsOptional()
+  @IsNumberString()
+  costBasis?: string;
 }
 
 export class UpdateAssetDto {
@@ -74,4 +78,8 @@ export class UpdateAssetDto {
   @IsString()
   @MaxLength(20)
   liquidityTier?: string;
+
+  @IsOptional()
+  @IsNumberString()
+  costBasis?: string;
 }
