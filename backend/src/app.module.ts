@@ -1,6 +1,6 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
-import { TypeOrmModule } from '@nestjs/typeorm';
+import { TypeOrmModule, TypeOrmModuleOptions } from '@nestjs/typeorm';
 import { ScheduleModule } from '@nestjs/schedule';
 import { ThrottlerModule } from '@nestjs/throttler';
 import { AuthModule } from './modules/auth/auth.module';
@@ -30,16 +30,27 @@ import { StockModule } from './modules/stock/stock.module';
     }),
     TypeOrmModule.forRootAsync({
       imports: [ConfigModule],
-      useFactory: (config: ConfigService) => ({
-        type: 'postgres',
-        host: config.get('DB_HOST', 'localhost'),
-        port: config.get('DB_PORT', 5432),
-        username: config.get('DB_USERNAME', 'postgres'),
-        password: config.get('DB_PASSWORD', 'postgres'),
-        database: config.get('DB_NAME', 'ledger'),
-        entities: [__dirname + '/**/*.entity{.ts,.js}'],
-        synchronize: config.get('NODE_ENV') !== 'production',
-      }),
+      useFactory: (config: ConfigService): TypeOrmModuleOptions => {
+        const dbType = config.get('DB_TYPE', 'sqlite');
+        if (dbType === 'postgres') {
+          return {
+            type: 'postgres',
+            host: config.get('DB_HOST', 'localhost'),
+            port: config.get('DB_PORT', 5432),
+            username: config.get('DB_USERNAME', 'postgres'),
+            password: config.get('DB_PASSWORD', 'postgres'),
+            database: config.get('DB_NAME', 'ledger'),
+            entities: [__dirname + '/**/*.entity{.ts,.js}'],
+            synchronize: config.get('NODE_ENV') !== 'production',
+          } as TypeOrmModuleOptions;
+        }
+        return {
+          type: 'sqlite',
+          database: config.get('DB_NAME', 'ledger.sqlite'),
+          entities: [__dirname + '/**/*.entity{.ts,.js}'],
+          synchronize: true,
+        } as TypeOrmModuleOptions;
+      },
       inject: [ConfigService],
     }),
     AuthModule,
