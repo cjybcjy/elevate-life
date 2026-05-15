@@ -4,6 +4,7 @@ import { Repository } from 'typeorm';
 import Decimal from 'decimal.js';
 import { Liability } from './liabilities.entity';
 import { DebtMilestone } from './debt-milestones.entity';
+import { Transaction } from '../transactions/transactions.entity';
 import { AmortizationService } from './amortization.service';
 import { EncryptionService } from '../encryption/encryption.service';
 

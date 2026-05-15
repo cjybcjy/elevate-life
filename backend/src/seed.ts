@@ -112,6 +112,12 @@ async function bootstrap() {
 
     console.log('[Seed] Creating transactions...');
     const now = new Date();
+
+    // Find assets for account linkage
+    const userAssets = await assetsService.findByUser(userId);
+    const cashAsset = userAssets.find((a: any) => a.name === '现金存款');
+    const stockAsset = userAssets.find((a: any) => a.name === '贵州茅台');
+
     const transactionData = [
       {
         type: 'income' as const,
@@ -119,6 +125,8 @@ async function bootstrap() {
         categoryId: categories['工资收入'].id,
         description: '月工资',
         occurredAt: new Date(now.getFullYear(), now.getMonth(), 5),
+        fromAccountId: null,
+        toAccountId: cashAsset?.id || null,
       },
       {
         type: 'expense' as const,
@@ -126,6 +134,17 @@ async function bootstrap() {
         categoryId: categories['生活支出'].id,
         description: '本月生活支出',
         occurredAt: new Date(now.getFullYear(), now.getMonth(), 10),
+        fromAccountId: cashAsset?.id || null,
+        toAccountId: null,
+      },
+      {
+        type: 'transfer' as const,
+        amount: 50000,
+        categoryId: null,
+        description: '现金转股票账户',
+        occurredAt: new Date(now.getFullYear(), now.getMonth(), 15),
+        fromAccountId: cashAsset?.id || null,
+        toAccountId: stockAsset?.id || null,
       },
     ];
     for (const data of transactionData) {
