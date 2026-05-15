@@ -1,5 +1,5 @@
 import { Routes, Route, Navigate } from 'react-router-dom'
-import { lazy, Suspense } from 'react'
+import { lazy, Suspense, useState } from 'react'
 import { DockNavigation } from './components/layout/DockNavigation'
 import { ErrorBoundary } from './components/ErrorBoundary'
 import NetWorthSlide from './components/slides/NetWorthSlide'
@@ -9,6 +9,7 @@ import ScissorChartSlide from './components/slides/ScissorChartSlide'
 import ForecastSlide from './components/slides/ForecastSlide'
 import LoginPage from './pages/LoginPage'
 import RegisterPage from './pages/RegisterPage'
+import QuickTransactionDrawer from './components/forms/QuickTransactionDrawer'
 
 const ManagementPage = lazy(() => import('./pages/ManagementPage'))
 const AssetManagement = lazy(() => import('./pages/management/AssetManagement'))
@@ -17,12 +18,22 @@ const TransactionManagement = lazy(() => import('./pages/management/TransactionM
 const CategoryManagement = lazy(() => import('./pages/management/CategoryManagement'))
 
 function DashboardPage() {
+  const [txDrawerOpen, setTxDrawerOpen] = useState(false);
+
   return (
     <div className="bg-ledger-bg min-h-screen">
       <ErrorBoundary name="DockNavigation">
         <DockNavigation />
       </ErrorBoundary>
       <main className="pt-16">
+        <div className="max-w-6xl mx-auto px-4 py-4 flex justify-end">
+          <button
+            onClick={() => setTxDrawerOpen(true)}
+            className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-sm transition-colors"
+          >
+            + 记一笔
+          </button>
+        </div>
         <section id="net-worth" className="dashboard-section">
           <ErrorBoundary name="NetWorthSlide">
             <NetWorthSlide />
@@ -49,6 +60,10 @@ function DashboardPage() {
           </ErrorBoundary>
         </section>
       </main>
+      <QuickTransactionDrawer
+        open={txDrawerOpen}
+        onClose={() => setTxDrawerOpen(false)}
+      />
     </div>
   )
 }
