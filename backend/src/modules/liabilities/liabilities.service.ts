@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, ConflictException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import Decimal from 'decimal.js';
@@ -12,6 +12,7 @@ export class LiabilitiesService {
   constructor(
     @InjectRepository(Liability) private liabilityRepo: Repository<Liability>,
     @InjectRepository(DebtMilestone) private milestoneRepo: Repository<DebtMilestone>,
+    @InjectRepository(Transaction) private txRepo: Repository<Transaction>,
     private amortizationService: AmortizationService,
     private encryptionService: EncryptionService,
   ) {}
@@ -60,6 +61,15 @@ export class LiabilitiesService {
   }
 
   async delete(id: string, userId: string): Promise<void> {
+    const count = await this.txRepo.count({
+      where: [
+        { fromAccountId: id, userId },
+        { toAccountId: id, userId },
+      ],
+    });
+    if (count > 0) {
+      throw new ConflictException(`该负债存在 ${count} 笔关联交易，无法删除`);
+    }
     await this.milestoneRepo.delete({ liabilityId: id });
     await this.liabilityRepo.delete({ id, userId });
   }
