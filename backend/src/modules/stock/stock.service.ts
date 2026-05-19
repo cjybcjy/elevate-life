@@ -268,19 +268,104 @@ export class StockService {
 
   async getMultiplePrices(codes: string[]): Promise<Map<string, number>> {
     const results = new Map<string, number>();
-    // Sequential fetching with random delays to avoid triggering anti-bot measures
-    for (const code of codes) {
+    if (codes.length === 0) return results;
+
+    // Try batch Sina first (fastest: one request for all)
+    try {
+      await this.sleep(300 + Math.random() * 500);
+      const batch = await this.fetchSinaBatch(codes);
+      for (const [code, price] of batch) {
+        results.set(code, price);
+      }
+    } catch (error: any) {
+      this.logger.warn(`Sina batch failed: ${error.message}`);
+    }
+
+    // Fallback: individual fetch for missing prices
+    const missing = codes.filter((c) => !results.has(c) || results.get(c) === 0);
+    for (const code of missing) {
       try {
+        await this.sleep(400 + Math.random() * 600);
         const price = await this.getStockPrice(code);
         results.set(code, price);
       } catch {
         results.set(code, 0);
       }
-      // Random delay between 1.5s and 3.5s before next request
-      if (codes.indexOf(code) < codes.length - 1) {
-        await this.sleep(1500 + Math.random() * 2000);
+    }
+    return results;
+  }
+
+  /** Batch fetch from Sina: supports comma-separated codes */
+  private async fetchSinaBatch(codes: string[]): Promise<Map<string, number>> {
+    const normalizedCodes = codes.map((c) => this.normalizeCode(c.trim().toUpperCase()));
+    const codeMarkets = normalizedCodes.map((c) => ({ code: c, market: this.detectMarket(c) }));
+    const query = codeMarkets.map(({ code, market }) => `${this.getPrefix(code, market)}${code}`).join(',');
+    const url = `https://hq.sinajs.cn/list=${query}`;
+
+    const response = await this.fetchWithRetry(url, {
+      headers: {
+        'User-Agent': this.pickUserAgent(),
+        'Referer': 'https://finance.sina.com.cn',
+        'Accept': '*/*',
+        'Accept-Language': 'zh-CN,zh;q=0.9,en;q=0.8',
+        'Accept-Encoding': 'gzip, deflate, br',
+        'Connection': 'keep-alive',
+        'Cache-Control': 'no-cache',
+      },
+    });
+
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+
+    const text = await response.text();
+    const results = new Map<string, number>();
+
+    // Parse each var hq_str_xxx="..." line
+    const regex = /var hq_str_([a-zA-Z0-9_]+)="([^"]*)"/g;
+    let m: RegExpExecArray | null;
+    while ((m = regex.exec(text)) !== null) {
+      const fullKey = m[1]; // e.g. "sh600519" or "hk02015"
+      const raw = m[2];
+      if (!raw) continue;
+
+      // Find original code that matches this key
+      const matched = codeMarkets.find(({ code, market }) => {
+        const prefix = this.getPrefix(code, market);
+        return `${prefix}${code}`.toLowerCase() === fullKey.toLowerCase();
+      });
+      if (!matched) continue;
+
+      const parts = raw.split(',');
+      let price: number | null = null;
+
+      if (matched.market === 'cn') {
+        if (parts.length >= 4) {
+          price = parseFloat(parts[3]);
+          if (isNaN(price) || price <= 0) {
+            price = parseFloat(parts[1]) || parseFloat(parts[2]) || null;
+          }
+        }
+      } else if (matched.market === 'hk') {
+        if (parts.length >= 7) {
+          price = parseFloat(parts[6]);
+          if (isNaN(price) || price <= 0) price = null;
+        }
+      } else if (matched.market === 'us') {
+        for (let i = 2; i < parts.length; i++) {
+          const p = parseFloat(parts[i]);
+          if (!isNaN(p) && p > 0 && p < 100000) { price = p; break; }
+        }
+      }
+
+      if (price !== null && price > 0) {
+        this.cache.set(matched.code, { price, timestamp: Date.now() });
+        // Map back to original (un-normalized) code
+        const originalIdx = normalizedCodes.findIndex((c) => c === matched.code);
+        if (originalIdx >= 0) {
+          results.set(codes[originalIdx], price);
+        }
       }
     }
+
     return results;
   }
 }
