@@ -28,12 +28,13 @@ export class StockService {
 
   async getStockPrice(rawCode: string): Promise<number> {
     const code = rawCode.trim().toUpperCase();
-    const cached = this.cache.get(code);
+    const normalized = this.normalizeCode(code);
+    const cached = this.cache.get(normalized);
     if (cached && Date.now() - cached.timestamp < this.CACHE_TTL) {
       return cached.price;
     }
 
-    const market = this.detectMarket(code);
+    const market = this.detectMarket(normalized);
     this.logger.log(`Fetching price for ${code}, detected market: ${market}`);
 
     try {
@@ -42,8 +43,8 @@ export class StockService {
       // Try Sina first for all markets
       try {
         await this.sleep(800 + Math.random() * 1200);
-        price = await this.fetchSinaPrice(code, market);
-        this.logger.log(`Sina price for ${code}: ${price}`);
+        price = await this.fetchSinaPrice(normalized, market);
+        this.logger.log(`Sina price for ${code} (normalized: ${normalized}): ${price}`);
       } catch (error: any) {
         this.logger.warn(`Sina source failed for ${code}: ${error.message}`);
       }
@@ -53,9 +54,9 @@ export class StockService {
         try {
           await this.sleep(1500 + Math.random() * 1500);
           if (market === 'us') {
-            price = await this.fetchEastmoneyPrice(code, market);
+            price = await this.fetchEastmoneyPrice(normalized, market);
           } else {
-            price = await this.fetchTencentPrice(code, market);
+            price = await this.fetchTencentPrice(normalized, market);
           }
         } catch (error: any) {
           this.logger.warn(`Fallback source failed for ${code}: ${error.message}`);
@@ -63,7 +64,7 @@ export class StockService {
       }
 
       if (price !== null && price > 0) {
-        this.cache.set(code, { price, timestamp: Date.now() });
+        this.cache.set(normalized, { price, timestamp: Date.now() });
         return price;
       }
 
@@ -71,7 +72,7 @@ export class StockService {
     } catch (error: any) {
       this.logger.warn(`Failed to fetch stock price for ${code}: ${error.message}`);
       if (cached) return cached.price;
-      return this.getMockPrice(code);
+      return this.getMockPrice(normalized);
     }
   }
 
@@ -215,6 +216,16 @@ export class StockService {
 
     const price = raw / 100;
     return !isNaN(price) && price > 0 ? price : null;
+  }
+
+  /** Strip common exchange prefixes from user input */
+  private normalizeCode(code: string): string {
+    if (code.startsWith('HK')) return code.slice(2);
+    if (code.startsWith('SH')) return code.slice(2);
+    if (code.startsWith('SZ')) return code.slice(2);
+    if (code.startsWith('BJ')) return code.slice(2);
+    if (code.startsWith('GB_')) return code.slice(3);
+    return code;
   }
 
   /** Detect market from raw stock code */
