@@ -1,5 +1,6 @@
 import { Routes, Route, Navigate } from 'react-router-dom'
 import { lazy, Suspense, useState } from 'react'
+import { useAuth } from './contexts/AuthContext'
 import { DockNavigation } from './components/layout/DockNavigation'
 import { ErrorBoundary } from './components/ErrorBoundary'
 import NetWorthSlide from './components/slides/NetWorthSlide'
@@ -7,6 +8,7 @@ import AssetAllocationSlide from './components/slides/AssetAllocationSlide'
 import DebtOverviewSlide from './components/slides/DebtOverviewSlide'
 import ScissorChartSlide from './components/slides/ScissorChartSlide'
 import ForecastSlide from './components/slides/ForecastSlide'
+import StockSlide from './components/slides/StockSlide'
 import LoginPage from './pages/LoginPage'
 import RegisterPage from './pages/RegisterPage'
 import QuickTransactionDrawer from './components/forms/QuickTransactionDrawer'
@@ -44,6 +46,11 @@ function DashboardPage() {
             <AssetAllocationSlide />
           </ErrorBoundary>
         </section>
+        <section id="stock-holdings" className="dashboard-section">
+          <ErrorBoundary name="StockSlide">
+            <StockSlide />
+          </ErrorBoundary>
+        </section>
         <section id="debt-overview" className="dashboard-section">
           <ErrorBoundary name="DebtOverviewSlide">
             <DebtOverviewSlide />
@@ -69,7 +76,7 @@ function DashboardPage() {
 }
 
 function App() {
-  const isAuthenticated = !!localStorage.getItem('access_token')
+  const { isAuthenticated } = useAuth()
 
   return (
     <Routes>

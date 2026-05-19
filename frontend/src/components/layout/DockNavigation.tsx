@@ -1,8 +1,10 @@
 import { useLocation, Link } from 'react-router-dom';
+import { useAuth } from '../../contexts/AuthContext';
 
 const sections = [
   { path: '/net-worth', label: '净资产', hash: 'net-worth' },
   { path: '/asset-allocation', label: '资产配置', hash: 'asset-allocation' },
+  { path: '/stock-holdings', label: '股票持仓', hash: 'stock-holdings' },
   { path: '/debt-overview', label: '负债总览', hash: 'debt-overview' },
   { path: '/scissor-chart', label: '收支剪刀图', hash: 'scissor-chart' },
   { path: '/forecast', label: '现金流预测', hash: 'forecast' },
@@ -10,6 +12,7 @@ const sections = [
 
 export function DockNavigation() {
   const location = useLocation();
+  const { logout } = useAuth();
 
   const handleScrollTo = (hash: string) => {
     const element = document.getElementById(hash);
@@ -19,7 +22,7 @@ export function DockNavigation() {
   };
 
   const handleLogout = () => {
-    localStorage.removeItem('access_token');
+    logout();
     window.location.href = '/login';
   };
 
