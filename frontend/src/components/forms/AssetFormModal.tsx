@@ -8,6 +8,7 @@ interface Asset {
   balance: string;
   quantity: number | null;
   stockCode: string | null;
+  market: string | null;
   currency: string;
   liquidityTier: string | null;
   costBasis: string | null;
@@ -22,7 +23,8 @@ interface AssetFormModalProps {
 const categoryOptions = [
   { value: 'cash', label: '现金' },
   { value: 'real_estate', label: '房产' },
-  { value: 'gold', label: '黄金' },
+  { value: 'gold_physical', label: '实物黄金' },
+  { value: 'gold_paper', label: '纸黄金' },
   { value: 'stock', label: '股票' },
   { value: 'fund', label: '基金' },
   { value: 'bond', label: '债券' },
@@ -31,7 +33,7 @@ const categoryOptions = [
   { value: 'other', label: '其他' },
 ];
 
-const floatingCategories = ['gold', 'stock', 'fund', 'bond', 'crypto'];
+const floatingCategories = ['gold_physical', 'gold_paper', 'stock', 'crypto'];
 
 export default function AssetFormModal({ asset, onClose, onSaved }: AssetFormModalProps) {
   const [name, setName] = useState('');
@@ -41,8 +43,10 @@ export default function AssetFormModal({ asset, onClose, onSaved }: AssetFormMod
   const [stockCode, setStockCode] = useState('');
   const [costBasis, setCostBasis] = useState('');
   const [saving, setSaving] = useState(false);
+  const [validationError, setValidationError] = useState('');
 
   const isFloating = floatingCategories.includes(category);
+  const isGold = category === 'gold_physical' || category === 'gold_paper';
 
   useEffect(() => {
     if (asset) {
@@ -63,16 +67,27 @@ export default function AssetFormModal({ asset, onClose, onSaved }: AssetFormMod
   }, [asset]);
 
   const handleSave = async () => {
-    if (!name.trim()) return;
-    if (!balance && !quantity) return;
+    setValidationError('');
+    if (!name.trim()) {
+      setValidationError('请输入资产名称');
+      return;
+    }
+    if (isGold && !quantity) {
+      setValidationError('请输入黄金数量（克）');
+      return;
+    }
+    if (!isGold && !balance) {
+      setValidationError('请输入当前金额');
+      return;
+    }
 
     setSaving(true);
     try {
       const payload: any = {
         name: name.trim(),
         category,
-        balance: balance || undefined,
-        quantity: quantity ? Number(quantity) : undefined,
+        balance: isGold ? undefined : (balance || undefined),
+        quantity: quantity || undefined,
         stockCode: stockCode || undefined,
         costBasis: costBasis || undefined,
       };
@@ -118,13 +133,21 @@ export default function AssetFormModal({ asset, onClose, onSaved }: AssetFormMod
             </select>
           </div>
 
-          <div>
-            <label className={labelClass}>{isFloating ? '当前金额 / 市值' : '当前金额'} *</label>
-            <div className="relative">
-              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-ledger-muted text-sm">¥</span>
-              <input type="number" value={balance} onChange={(e) => setBalance(e.target.value)} className={`${inputClass} pl-7`} placeholder="0.00" />
+          {!isGold && (
+            <div>
+              <label className={labelClass}>{isFloating ? '当前金额 / 市值' : '当前金额'} *</label>
+              <div className="relative">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-ledger-muted text-sm">¥</span>
+                <input type="number" value={balance} onChange={(e) => setBalance(e.target.value)} className={`${inputClass} pl-7`} placeholder="0.00" />
+              </div>
             </div>
-          </div>
+          )}
+
+          {isGold && (
+            <div className="text-sm text-ledger-muted bg-ledger-bg rounded-lg px-3 py-2.5 border border-ledger-primary/20">
+              <span className="text-yellow-500">⚡</span> 市值自动根据实时金价 × 数量计算，每晚 21:00 更新金价
+            </div>
+          )}
 
           {isFloating && (
             <>
@@ -146,6 +169,12 @@ export default function AssetFormModal({ asset, onClose, onSaved }: AssetFormMod
             <div>
               <label className={labelClass}>股票代码</label>
               <input type="text" value={stockCode} onChange={(e) => setStockCode(e.target.value)} className={inputClass} placeholder="例如：000001" />
+            </div>
+          )}
+
+          {validationError && (
+            <div className="text-red-400 text-sm bg-red-900/20 rounded-lg px-3 py-2">
+              {validationError}
             </div>
           )}
 
