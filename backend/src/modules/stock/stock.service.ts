@@ -40,7 +40,7 @@ export class StockService {
 
       // Try Sina first for all markets
       try {
-        await this.sleep(200 + Math.random() * 500);
+        await this.sleep(800 + Math.random() * 1200);
         price = await this.fetchSinaPrice(code, market);
       } catch (error: any) {
         this.logger.warn(`Sina source failed for ${code}: ${error.message}`);
@@ -49,7 +49,7 @@ export class StockService {
       // Fallback: Tencent for CN/HK, Eastmoney for all
       if (price === null) {
         try {
-          await this.sleep(500 + Math.random() * 800);
+          await this.sleep(1500 + Math.random() * 1500);
           if (market === 'us') {
             price = await this.fetchEastmoneyPrice(code, market);
           } else {
@@ -81,20 +81,41 @@ export class StockService {
     return new Promise((resolve) => setTimeout(resolve, ms));
   }
 
+  private async fetchWithRetry(url: string, options: RequestInit, retries = 3): Promise<Response> {
+    for (let i = 0; i <= retries; i++) {
+      try {
+        const response = await fetch(url, { ...options, signal: AbortSignal.timeout(20000) });
+        if (response.ok) return response;
+        if (response.status === 429 || response.status >= 500) {
+          this.logger.warn(`Retry ${i + 1}/${retries} for ${url}: HTTP ${response.status}`);
+          await this.sleep(3000 * Math.pow(2, i) + Math.random() * 2000);
+          continue;
+        }
+        return response;
+      } catch (err: any) {
+        if (i === retries) throw err;
+        this.logger.warn(`Retry ${i + 1}/${retries} for ${url}: ${err.message}`);
+        await this.sleep(3000 * Math.pow(2, i) + Math.random() * 2000);
+      }
+    }
+    throw new Error(`Fetch failed after ${retries} retries`);
+  }
+
   /** Sina Finance: supports CN (sh/sz/bj), HK (hk), US (gb_) */
   private async fetchSinaPrice(code: string, market: string): Promise<number | null> {
     const prefix = this.getPrefix(code, market);
     const url = `https://hq.sinajs.cn/list=${prefix}${code}`;
 
-    const response = await fetch(url, {
+    const response = await this.fetchWithRetry(url, {
       headers: {
         'User-Agent': this.pickUserAgent(),
         'Referer': 'https://finance.sina.com.cn',
         'Accept': '*/*',
         'Accept-Language': 'zh-CN,zh;q=0.9,en;q=0.8',
+        'Accept-Encoding': 'gzip, deflate, br',
+        'Connection': 'keep-alive',
         'Cache-Control': 'no-cache',
       },
-      signal: AbortSignal.timeout(10000),
     });
 
     if (!response.ok) throw new Error(`HTTP ${response.status}`);
@@ -138,14 +159,15 @@ export class StockService {
     const prefix = this.getPrefix(code, market);
     const url = `https://qt.gtimg.cn/q=${prefix}${code}`;
 
-    const response = await fetch(url, {
+    const response = await this.fetchWithRetry(url, {
       headers: {
         'User-Agent': this.pickUserAgent(),
         'Referer': 'https://finance.qq.com',
         'Accept': '*/*',
         'Accept-Language': 'zh-CN,zh;q=0.9,en;q=0.8',
+        'Accept-Encoding': 'gzip, deflate, br',
+        'Connection': 'keep-alive',
       },
-      signal: AbortSignal.timeout(10000),
     });
 
     if (!response.ok) throw new Error(`HTTP ${response.status}`);
@@ -166,14 +188,15 @@ export class StockService {
     const secid = this.getEastmoneySecid(code, market);
     const url = `https://push2.eastmoney.com/api/qt/stock/get?secid=${secid}&fields=f43`;
 
-    const response = await fetch(url, {
+    const response = await this.fetchWithRetry(url, {
       headers: {
         'User-Agent': this.pickUserAgent(),
         'Referer': 'https://quote.eastmoney.com',
         'Accept': 'application/json, text/plain, */*',
         'Accept-Language': 'zh-CN,zh;q=0.9',
+        'Accept-Encoding': 'gzip, deflate, br',
+        'Connection': 'keep-alive',
       },
-      signal: AbortSignal.timeout(10000),
     });
 
     if (!response.ok) throw new Error(`HTTP ${response.status}`);
@@ -226,16 +249,19 @@ export class StockService {
 
   async getMultiplePrices(codes: string[]): Promise<Map<string, number>> {
     const results = new Map<string, number>();
-    await Promise.all(
-      codes.map(async (code) => {
-        try {
-          const price = await this.getStockPrice(code);
-          results.set(code, price);
-        } catch {
-          results.set(code, 0);
-        }
-      })
-    );
+    // Sequential fetching with random delays to avoid triggering anti-bot measures
+    for (const code of codes) {
+      try {
+        const price = await this.getStockPrice(code);
+        results.set(code, price);
+      } catch {
+        results.set(code, 0);
+      }
+      // Random delay between 1.5s and 3.5s before next request
+      if (codes.indexOf(code) < codes.length - 1) {
+        await this.sleep(1500 + Math.random() * 2000);
+      }
+    }
     return results;
   }
 }
