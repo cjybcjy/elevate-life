@@ -135,10 +135,10 @@ export class StockService {
       return fallback > 0 ? fallback : null;
     }
 
-    // HK: name,open,high,low,current,prevClose,volume,amount,change,changePct,...
+    // HK: name,nameCN,open,high,low,prevClose,current,change,changePct,bid,ask,volume,amount,...
     if (market === 'hk') {
-      if (parts.length < 5) return null;
-      const price = parseFloat(parts[4]);
+      if (parts.length < 7) return null;
+      const price = parseFloat(parts[6]);
       return !isNaN(price) && price > 0 ? price : null;
     }
 
@@ -220,7 +220,7 @@ export class StockService {
 
   /** Build exchange prefix for Sina/Tencent APIs */
   private getPrefix(code: string, market: string): string {
-    if (market === 'hk') return `hk${code.replace(/^0+/, '')}`;
+    if (market === 'hk') return `hk${code}`;
     if (market === 'us') return 'gb_';
     if (code.startsWith('6')) return 'sh';
     if (code.startsWith('0') || code.startsWith('3') || code.startsWith('2')) return 'sz';
