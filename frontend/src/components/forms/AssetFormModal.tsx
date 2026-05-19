@@ -42,11 +42,13 @@ export default function AssetFormModal({ asset, onClose, onSaved }: AssetFormMod
   const [quantity, setQuantity] = useState('');
   const [stockCode, setStockCode] = useState('');
   const [costBasis, setCostBasis] = useState('');
+  const [market, setMarket] = useState('cn');
   const [saving, setSaving] = useState(false);
   const [validationError, setValidationError] = useState('');
 
   const isFloating = floatingCategories.includes(category);
   const isGold = category === 'gold_physical' || category === 'gold_paper';
+  const isStock = category === 'stock';
 
   useEffect(() => {
     if (asset) {
@@ -55,6 +57,7 @@ export default function AssetFormModal({ asset, onClose, onSaved }: AssetFormMod
       setBalance(asset.balance || '');
       setQuantity(asset.quantity?.toString() || '');
       setStockCode(asset.stockCode || '');
+      setMarket(asset.market || 'cn');
       setCostBasis(asset.costBasis || '');
     } else {
       setName('');
@@ -62,6 +65,7 @@ export default function AssetFormModal({ asset, onClose, onSaved }: AssetFormMod
       setBalance('');
       setQuantity('');
       setStockCode('');
+      setMarket('cn');
       setCostBasis('');
     }
   }, [asset]);
@@ -76,7 +80,15 @@ export default function AssetFormModal({ asset, onClose, onSaved }: AssetFormMod
       setValidationError('请输入黄金数量（克）');
       return;
     }
-    if (!isGold && !balance) {
+    if (isStock && !stockCode) {
+      setValidationError('请输入股票代码');
+      return;
+    }
+    if (isStock && !quantity) {
+      setValidationError('请输入持股数量');
+      return;
+    }
+    if (!isGold && !isStock && !balance) {
       setValidationError('请输入当前金额');
       return;
     }
@@ -86,9 +98,10 @@ export default function AssetFormModal({ asset, onClose, onSaved }: AssetFormMod
       const payload: any = {
         name: name.trim(),
         category,
-        balance: isGold ? undefined : (balance || undefined),
+        balance: isGold || isStock ? undefined : (balance || undefined),
         quantity: quantity || undefined,
         stockCode: stockCode || undefined,
+        market: isStock ? market : undefined,
         costBasis: costBasis || undefined,
       };
 
@@ -133,7 +146,7 @@ export default function AssetFormModal({ asset, onClose, onSaved }: AssetFormMod
             </select>
           </div>
 
-          {!isGold && (
+          {!isGold && !isStock && (
             <div>
               <label className={labelClass}>{isFloating ? '当前金额 / 市值' : '当前金额'} *</label>
               <div className="relative">
@@ -146,6 +159,12 @@ export default function AssetFormModal({ asset, onClose, onSaved }: AssetFormMod
           {isGold && (
             <div className="text-sm text-ledger-muted bg-ledger-bg rounded-lg px-3 py-2.5 border border-ledger-primary/20">
               <span className="text-yellow-500">⚡</span> 市值自动根据实时金价 × 数量计算，每晚 21:00 更新金价
+            </div>
+          )}
+
+          {isStock && (
+            <div className="text-sm text-ledger-muted bg-ledger-bg rounded-lg px-3 py-2.5 border border-ledger-primary/20">
+              <span className="text-blue-400">⚡</span> 市值自动根据实时股价 × 数量计算，刷新页面时更新价格
             </div>
           )}
 
@@ -166,10 +185,20 @@ export default function AssetFormModal({ asset, onClose, onSaved }: AssetFormMod
           )}
 
           {category === 'stock' && (
-            <div>
-              <label className={labelClass}>股票代码</label>
-              <input type="text" value={stockCode} onChange={(e) => setStockCode(e.target.value)} className={inputClass} placeholder="例如：000001" />
-            </div>
+            <>
+              <div>
+                <label className={labelClass}>股票代码</label>
+                <input type="text" value={stockCode} onChange={(e) => setStockCode(e.target.value)} className={inputClass} placeholder="例如：000001" />
+              </div>
+              <div>
+                <label className={labelClass}>市场</label>
+                <select value={market} onChange={(e) => setMarket(e.target.value)} className={inputClass}>
+                  <option value="cn">A股</option>
+                  <option value="hk">港股</option>
+                  <option value="us">美股</option>
+                </select>
+              </div>
+            </>
           )}
 
           {validationError && (

@@ -30,7 +30,7 @@ export class AssetsService {
 
     // Get gold price once for all gold assets
     let goldPrice: number | null = null;
-    const hasGold = assets.some(a => a.category === 'gold');
+    const hasGold = assets.some(a => a.category === 'gold' || a.category === 'gold_physical' || a.category === 'gold_paper');
     if (hasGold) {
       const gp = await this.goldService.getCurrentPriceCNYPerGram();
       goldPrice = gp.price;
@@ -62,13 +62,13 @@ export class AssetsService {
     stockPrices: Map<string, number>,
   ): Promise<{ currentValue: string; unitPrice: string | null }> {
     // Manual assets (real_estate, cash, fund, vehicle, other): use balance directly
-    if (!['gold', 'stock', 'crypto'].includes(asset.category)) {
+    if (!['gold', 'gold_physical', 'gold_paper', 'stock', 'crypto'].includes(asset.category)) {
       const decrypted = this.getDecryptedValue(asset.balance, asset.isEncrypted);
       return { currentValue: decrypted, unitPrice: null };
     }
 
-    // Gold: quantity (grams) * gold price
-    if (asset.category === 'gold') {
+    // Gold (physical & paper): quantity (grams) * gold price
+    if (asset.category === 'gold' || asset.category === 'gold_physical' || asset.category === 'gold_paper') {
       if (asset.quantity && goldPrice && goldPrice > 0) {
         const value = new Decimal(asset.quantity).mul(goldPrice).toFixed(2);
         return { currentValue: value, unitPrice: goldPrice.toFixed(2) };
@@ -101,11 +101,19 @@ export class AssetsService {
   }
 
   async create(userId: string, data: any): Promise<Asset> {
-    const isAutoValued = ['gold', 'stock', 'crypto'].includes(data.category);
+    const isGold = ['gold', 'gold_physical', 'gold_paper'].includes(data.category);
+    const isAutoValued = ['gold', 'gold_physical', 'gold_paper', 'stock', 'crypto'].includes(data.category);
 
     let balanceStr: string;
     if (data.balance !== undefined && data.balance !== null && data.balance !== '') {
       balanceStr = new Decimal(data.balance).toFixed(4);
+    } else if (isGold && data.quantity) {
+      const gp = await this.goldService.getCurrentPriceCNYPerGram();
+      const goldPrice = gp.price || 0;
+      balanceStr = new Decimal(data.quantity).mul(goldPrice).toFixed(4);
+    } else if (data.category === 'stock' && data.quantity && data.stockCode) {
+      const stockPrice = await this.stockService.getStockPrice(data.stockCode);
+      balanceStr = new Decimal(data.quantity).mul(stockPrice).toFixed(4);
     } else if (isAutoValued && data.quantity) {
       balanceStr = new Decimal(data.quantity).toFixed(4);
     } else {
@@ -130,10 +138,28 @@ export class AssetsService {
   }
 
   async update(id: string, userId: string, data: any): Promise<Asset> {
+    const existing = await this.repo.findOne({ where: { id, userId } });
+    const category = data.category || existing?.category;
+    const isGold = ['gold', 'gold_physical', 'gold_paper'].includes(category);
+
     if (data.balance !== undefined && data.balance !== null && data.balance !== '') {
       const balanceStr = new Decimal(data.balance).toFixed(4);
       data.balance = this.encryptionService.shouldEncrypt(balanceStr) ? this.encryptionService.encrypt(balanceStr) : balanceStr;
       data.isEncrypted = this.encryptionService.shouldEncrypt(balanceStr);
+    } else if (isGold && data.quantity !== undefined && data.quantity !== null && data.quantity !== '') {
+      const gp = await this.goldService.getCurrentPriceCNYPerGram();
+      const goldPrice = gp.price || 0;
+      const balanceStr = new Decimal(data.quantity).mul(goldPrice).toFixed(4);
+      data.balance = this.encryptionService.shouldEncrypt(balanceStr) ? this.encryptionService.encrypt(balanceStr) : balanceStr;
+      data.isEncrypted = this.encryptionService.shouldEncrypt(balanceStr);
+    } else if (category === 'stock' && data.quantity !== undefined && data.quantity !== null && data.quantity !== '') {
+      const stockCode = data.stockCode || existing?.stockCode;
+      if (stockCode) {
+        const stockPrice = await this.stockService.getStockPrice(stockCode);
+        const balanceStr = new Decimal(data.quantity).mul(stockPrice).toFixed(4);
+        data.balance = this.encryptionService.shouldEncrypt(balanceStr) ? this.encryptionService.encrypt(balanceStr) : balanceStr;
+        data.isEncrypted = this.encryptionService.shouldEncrypt(balanceStr);
+      }
     }
     if (data.costBasis !== undefined && data.costBasis !== null && data.costBasis !== '') {
       const costStr = new Decimal(data.costBasis).toFixed(4);
