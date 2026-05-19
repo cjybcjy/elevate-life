@@ -9,8 +9,10 @@ export class Asset extends BaseEntity {
   @Column({ type: 'text', nullable: true }) balance: string;
   @Column({ type: 'decimal', precision: 18, scale: 6, nullable: true })
   quantity: number | null;
-  @Column({ length: 20, nullable: true })
+  @Column({ type: 'varchar', length: 20, nullable: true })
   stockCode: string | null;
+  @Column({ type: 'varchar', length: 10, nullable: true })
+  market: string | null;
   @Column({ length: 3, default: 'CNY' }) currency: string;
   @Column({ length: 50, nullable: true }) valuationMethod: string;
   @Column({ length: 20, nullable: true }) liquidityTier: string;
