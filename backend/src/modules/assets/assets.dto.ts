@@ -23,6 +23,11 @@ export class CreateAssetDto {
 
   @IsOptional()
   @IsString()
+  @MaxLength(10)
+  market?: string;
+
+  @IsOptional()
+  @IsString()
   @MaxLength(3)
   currency?: string;
 
@@ -63,6 +68,11 @@ export class UpdateAssetDto {
   @IsString()
   @MaxLength(20)
   stockCode?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(10)
+  market?: string;
 
   @IsOptional()
   @IsString()
