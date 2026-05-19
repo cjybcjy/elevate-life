@@ -34,6 +34,7 @@ export class StockService {
     }
 
     const market = this.detectMarket(code);
+    this.logger.log(`Fetching price for ${code}, detected market: ${market}`);
 
     try {
       let price: number | null = null;
@@ -42,6 +43,7 @@ export class StockService {
       try {
         await this.sleep(800 + Math.random() * 1200);
         price = await this.fetchSinaPrice(code, market);
+        this.logger.log(`Sina price for ${code}: ${price}`);
       } catch (error: any) {
         this.logger.warn(`Sina source failed for ${code}: ${error.message}`);
       }
@@ -105,6 +107,7 @@ export class StockService {
   private async fetchSinaPrice(code: string, market: string): Promise<number | null> {
     const prefix = this.getPrefix(code, market);
     const url = `https://hq.sinajs.cn/list=${prefix}${code}`;
+    this.logger.log(`Sina URL: ${url}`);
 
     const response = await this.fetchWithRetry(url, {
       headers: {
@@ -121,10 +124,15 @@ export class StockService {
     if (!response.ok) throw new Error(`HTTP ${response.status}`);
 
     const text = await response.text();
+    this.logger.log(`Sina raw for ${code}: ${text.slice(0, 200)}`);
     const match = text.match(/var hq_str_[^=]+="([^"]*)"/);
-    if (!match) return null;
+    if (!match) {
+      this.logger.warn(`Sina no match for ${code}`);
+      return null;
+    }
 
     const parts = match[1].split(',');
+    this.logger.log(`Sina parts for ${code}: length=${parts.length}, parts[6]=${parts[6]}`);
 
     // CN: name,open,prev,current,high,low,...
     if (market === 'cn') {
@@ -220,7 +228,7 @@ export class StockService {
 
   /** Build exchange prefix for Sina/Tencent APIs */
   private getPrefix(code: string, market: string): string {
-    if (market === 'hk') return `hk${code}`;
+    if (market === 'hk') return 'hk';
     if (market === 'us') return 'gb_';
     if (code.startsWith('6')) return 'sh';
     if (code.startsWith('0') || code.startsWith('3') || code.startsWith('2')) return 'sz';

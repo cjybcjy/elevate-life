@@ -10,13 +10,16 @@ interface Asset {
   balance: string;
   currentValue: string;
   quantity: number | null;
+  stockCode: string | null;
+  market: string | null;
   costBasis: string | null;
 }
 
 const categoryConfig: Record<string, { label: string; color: string }> = {
   real_estate: { label: '房产', color: '#3b82f6' },
   cash: { label: '现金', color: '#10b981' },
-  gold: { label: '黄金', color: '#f59e0b' },
+  gold_physical: { label: '实物黄金', color: '#f59e0b' },
+  gold_paper: { label: '纸黄金', color: '#eab308' },
   stock: { label: '股票', color: '#ef4444' },
   fund: { label: '基金', color: '#8b5cf6' },
   bond: { label: '债券', color: '#06b6d4' },
@@ -25,7 +28,13 @@ const categoryConfig: Record<string, { label: string; color: string }> = {
   other: { label: '其他', color: '#94a3b8' },
 };
 
-const floatingCategories = ['gold', 'stock', 'fund', 'bond', 'crypto'];
+const marketConfig: Record<string, string> = {
+  cn: 'A股',
+  hk: '港股',
+  us: '美股',
+};
+
+const floatingCategories = ['gold_physical', 'gold_paper', 'stock', 'crypto'];
 
 export default function AssetManagement() {
   const [assets, setAssets] = useState<Asset[]>([]);
@@ -39,7 +48,7 @@ export default function AssetManagement() {
   const loadAssets = () => {
     setLoading(true);
     api.get('/assets')
-      .then((res: any) => setAssets(res.data?.data || []))
+      .then((res: any) => setAssets(res.data || []))
       .catch(console.error)
       .finally(() => setLoading(false));
   };
@@ -133,12 +142,14 @@ export default function AssetManagement() {
                 pnlRate = cost > 0 ? (pnl / cost) * 100 : 0;
               }
 
+              const marketLabel = asset.category === 'stock' && asset.market ? marketConfig[asset.market] || asset.market : null;
+
               return (
                 <tr key={asset.id} className="border-b border-ledger-primary/5 hover:bg-ledger-bg/50 transition-colors">
                   <td className="px-4 py-3 text-ledger-text text-sm">{asset.name}</td>
                   <td className="px-4 py-3">
                     <span className="text-xs px-2 py-0.5 rounded-full text-white/90" style={{ backgroundColor: cfg.color + '40', color: cfg.color }}>
-                      {cfg.label}
+                      {marketLabel ? `${cfg.label}·${marketLabel}` : cfg.label}
                     </span>
                   </td>
                   <td className="px-4 py-3 text-right text-ledger-text text-sm font-medium">{formatAmount(asset.currentValue || asset.balance)}</td>
