@@ -1,8 +1,8 @@
 # Family Ledger Pro - Next.js 全栈一体化架构设计文档
 
-**日期**: 2026-05-19
-**版本**: v2.0
-**状态**: 待实现评审
+**日期**: 2026-05-20
+**版本**: v2.1
+**状态**: 已修复评审缺陷，待最终确认
 
 ---
 
@@ -14,7 +14,7 @@
 - 框架: Next.js 14+ (App Router)
 - 语言: TypeScript
 - 样式: Tailwind CSS
-- 数据库: SQLite (开发) / PostgreSQL (生产)
+- 数据库: PostgreSQL (开发/生产统一，Docker 本地启动)
 - ORM: Prisma
 - 认证: Auth.js (NextAuth v5)
 - 图表: ECharts
@@ -86,7 +86,7 @@ elevate-life/
 │   │   ├── auth.config.ts         # Edge 安全认证配置
 │   │   ├── auth.ts                # 服务端认证逻辑
 │   │   ├── crypto.ts              # AES-256-GCM 加密引擎
-│   │   ├── cron.ts                # 本地开发定时任务
+│   │   ├── key-cache.ts           # 用户派生密钥服务端缓存
 │   │   └── actions/               # Server Actions
 │   │       ├── auth.ts
 │   │       ├── assets.ts
@@ -118,7 +118,7 @@ generator client {
 }
 
 datasource db {
-  provider = "sqlite"
+  provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 
@@ -141,7 +141,7 @@ model Asset {
   userId          String   @map("user_id")
   name            String
   category        String
-  balance         String?
+  balance         String   @default("0")
   currency        String   @default("CNY")
   valuationMethod String?  @map("valuation_method")
   liquidityTier   String?  @map("liquidity_tier")
@@ -162,9 +162,9 @@ model Liability {
   userId         String   @map("user_id")
   name           String
   category       String
-  principal      String?
-  currentBalance String?  @map("current_balance")
-  interestRate   Decimal  @map("interest_rate")
+  principal      String   @default("0")
+  currentBalance String   @default("0") @map("current_balance")
+  interestRate   Decimal  @map("interest_rate") @db.Decimal(6, 4)
   termMonths     Int      @map("term_months")
   startDate      DateTime @map("start_date")
   paymentMethod  String   @map("payment_method")
@@ -199,7 +199,7 @@ model Transaction {
   id            String    @id @default(uuid())
   userId        String    @map("user_id")
   type          String
-  amount        Decimal
+  amount        Decimal  @db.Decimal(18, 4)
   categoryId    String?   @map("category_id")
   fromAccountId String?   @map("from_account_id")
   toAccountId   String?   @map("to_account_id")
@@ -237,7 +237,7 @@ model Category {
 model GoldPrice {
   id             String   @id @default(uuid())
   assetType      String   @default("gold_au9999") @map("asset_type")
-  price          Decimal
+  price          Decimal  @db.Decimal(18, 4)
   dataSource     String?  @map("data_source")
   isInterpolated Boolean  @default(false) @map("is_interpolated")
   recordedAt     DateTime @default(now()) @map("recorded_at")
@@ -249,7 +249,7 @@ model StockPrice {
   id        String   @id @default(uuid())
   code      String
   name      String
-  price     Decimal
+  price     Decimal  @db.Decimal(18, 4)
   market    String
   updatedAt DateTime @updatedAt @map("updated_at")
 }
@@ -257,9 +257,10 @@ model StockPrice {
 
 ### 3.2 关键设计决策
 
-- **SQLite 兼容**：移除 `@db.Decimal` 和 `@db.Date` 修饰符，避免 Prisma 编译报错
-- **加密字段存储**：`balance`、`principal`、`currentBalance` 使用 `String` 类型存储明文或 `enc:...` 加密值
+- **PostgreSQL 统一**：开发/生产均使用 PostgreSQL（Docker 本地启动），确保 `FOR UPDATE` 悲观锁、`@db.Decimal` 精度一致性
+- **加密字段存储**：`balance`、`principal`、`currentBalance` 使用 `String` 类型存储明文或 `enc:...` 加密值，默认值为 `"0"`，禁止 NULL
 - **Transaction 关系**：新增 `liabilityId` 字段专门追踪还贷流水，避免与 `fromAccountId` 的外键冲突
+- **金额精度**：所有金额字段使用 `@db.Decimal(18, 4)`，确保本地与生产环境行为一致
 
 ---
 
@@ -278,7 +279,6 @@ export const authConfig = {
     jwt: async ({ token, user }) => {
       if (user) {
         token.username = user.username;
-        token.derivedKey = user.derivedKey;
       }
       return token;
     },
@@ -286,7 +286,6 @@ export const authConfig = {
       if (session.user) {
         session.user.id = token.sub as string;
         session.user.username = token.username as string;
-        session.user.derivedKey = token.derivedKey as string;
       }
       return session;
     },
@@ -322,20 +321,56 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         if (!user) return null;
         const valid = await bcrypt.compare(credentials.password as string, user.passwordHash);
         if (!valid) return null;
+
+        // 派生密钥存入服务端缓存，绝不放入 JWT Cookie
         const derivedKey = generateDerivedKey(credentials.password as string, user.id);
+        await setUserKey(user.id, derivedKey);
+
         return {
           id: user.id,
           name: user.displayName,
           username: user.username,
-          derivedKey,
         };
       },
     }),
   ],
+  events: {
+    signOut: async ({ token }) => {
+      if (token?.sub) await deleteUserKey(token.sub);
+    },
+  },
 });
 ```
 
-### 4.3 Edge 中间件路由保护
+### 4.3 服务端密钥缓存
+
+```typescript
+// src/lib/key-cache.ts
+// 用户派生密钥服务端缓存（内存 Map，单机部署）
+// 生产环境应替换为 Redis
+const keyStore = new Map<string, { key: string; expiresAt: number }>();
+const KEY_TTL = 7 * 24 * 60 * 60 * 1000; // 7天
+
+export async function setUserKey(userId: string, key: string): Promise<void> {
+  keyStore.set(userId, { key, expiresAt: Date.now() + KEY_TTL });
+}
+
+export async function getUserKey(userId: string): Promise<string | null> {
+  const entry = keyStore.get(userId);
+  if (!entry) return null;
+  if (Date.now() > entry.expiresAt) {
+    keyStore.delete(userId);
+    return null;
+  }
+  return entry.key;
+}
+
+export async function deleteUserKey(userId: string): Promise<void> {
+  keyStore.delete(userId);
+}
+```
+
+### 4.4 Edge 中间件路由保护
 
 ```typescript
 // src/middleware.ts
@@ -370,13 +405,11 @@ import 'next-auth';
 declare module 'next-auth' {
   interface User {
     username: string;
-    derivedKey?: string;
   }
   interface Session {
     user: {
       id: string;
       username: string;
-      derivedKey?: string;
     } & DefaultSession['user'];
   }
 }
@@ -384,7 +417,6 @@ declare module 'next-auth' {
 declare module 'next-auth/jwt' {
   interface JWT {
     username: string;
-    derivedKey?: string;
   }
 }
 ```
@@ -396,8 +428,8 @@ declare module 'next-auth/jwt' {
 ### 5.1 核心设计原则
 
 1. **原子事务**：所有可变操作包裹在 `prisma.$transaction` 中
-2. **并发保护**：事务内读取目标记录后进行更新，利用数据库事务隔离性防止脏读
-3. **全局刷新**：财务变更后调用 `revalidatePath('/', 'layout')` 确保所有页面数据同步
+2. **并发保护**：事务内使用 `FOR UPDATE` 悲观锁锁定目标行，阻止并发覆盖（Lost Update）
+3. **精准刷新**：财务变更后调用 `revalidateTag('user-{userId}')` 仅刷新该用户相关缓存，避免整站失效
 4. **返回值脱敏**：绝不返回含 `enc:...` 的原始数据库实体，返回解密后的纯 JSON
 
 ### 5.2 标准范式 (ledger.ts)
@@ -407,26 +439,34 @@ declare module 'next-auth/jwt' {
 
 import { prisma } from '@/lib/prisma';
 import { auth } from '@/lib/auth';
-import { revalidatePath } from 'next/cache';
+import { getUserKey } from '@/lib/key-cache';
+import { revalidateTag } from 'next/cache';
 import { decryptValue, encryptValue } from '@/lib/crypto';
 import Decimal from 'decimal.js';
 
 export async function createTransaction(data: CreateTransactionInput) {
   const session = await auth();
-  const derivedKey = session?.user?.derivedKey;
   const userId = session?.user?.id;
-  if (!userId || !derivedKey) {
-    return { success: false, error: 'Unauthorized: Session key expired.' };
+  if (!userId) {
+    return { success: false, error: 'Unauthorized' };
+  }
+
+  // 从服务端缓存获取派生密钥（绝不从 JWT Cookie 中读取）
+  const derivedKey = await getUserKey(userId);
+  if (!derivedKey) {
+    return { success: false, error: 'Session key expired. Please re-login.' };
   }
 
   try {
     const result = await prisma.$transaction(async (tx) => {
-      // 支出：扣减来源资产
+      // 支出：悲观锁锁定来源资产行
       if (data.type === 'EXPENSE' && data.fromAccountId) {
-        const asset = await tx.asset.findUnique({
-          where: { id: data.fromAccountId, userId },
-        });
-        if (!asset || !asset.balance) throw new Error('Source asset not found.');
+        const [asset] = await tx.$queryRaw<Asset[]>`
+          SELECT * FROM "Asset"
+          WHERE "id" = ${data.fromAccountId} AND "user_id" = ${userId}
+          FOR UPDATE
+        `;
+        if (!asset) throw new Error('Source asset not found.');
 
         const currentBalance = new Decimal(decryptValue(asset.balance, derivedKey));
         const newBalance = currentBalance.minus(new Decimal(data.amount));
@@ -438,12 +478,14 @@ export async function createTransaction(data: CreateTransactionInput) {
         });
       }
 
-      // 收入：增加目标资产
+      // 收入：悲观锁锁定目标资产行
       if (data.type === 'INCOME' && data.toAccountId) {
-        const asset = await tx.asset.findUnique({
-          where: { id: data.toAccountId, userId },
-        });
-        if (!asset || !asset.balance) throw new Error('Target asset not found.');
+        const [asset] = await tx.$queryRaw<Asset[]>`
+          SELECT * FROM "Asset"
+          WHERE "id" = ${data.toAccountId} AND "user_id" = ${userId}
+          FOR UPDATE
+        `;
+        if (!asset) throw new Error('Target asset not found.');
 
         const currentBalance = new Decimal(decryptValue(asset.balance, derivedKey));
         const newBalance = currentBalance.plus(new Decimal(data.amount));
@@ -454,15 +496,19 @@ export async function createTransaction(data: CreateTransactionInput) {
         });
       }
 
-      // 转账：双向更新
+      // 转账：悲观锁锁定双向资产行
       if (data.type === 'TRANSFER' && data.fromAccountId && data.toAccountId) {
-        const fromAsset = await tx.asset.findUnique({
-          where: { id: data.fromAccountId, userId },
-        });
-        const toAsset = await tx.asset.findUnique({
-          where: { id: data.toAccountId, userId },
-        });
-        if (!fromAsset?.balance || !toAsset?.balance) throw new Error('Asset not found.');
+        const [fromAsset] = await tx.$queryRaw<Asset[]>`
+          SELECT * FROM "Asset"
+          WHERE "id" = ${data.fromAccountId} AND "user_id" = ${userId}
+          FOR UPDATE
+        `;
+        const [toAsset] = await tx.$queryRaw<Asset[]>`
+          SELECT * FROM "Asset"
+          WHERE "id" = ${data.toAccountId} AND "user_id" = ${userId}
+          FOR UPDATE
+        `;
+        if (!fromAsset || !toAsset) throw new Error('Asset not found.');
 
         const fromBalance = new Decimal(decryptValue(fromAsset.balance, derivedKey));
         const toBalance = new Decimal(decryptValue(toAsset.balance, derivedKey));
@@ -480,12 +526,14 @@ export async function createTransaction(data: CreateTransactionInput) {
         });
       }
 
-      // 还贷：扣减负债余额
+      // 还贷：悲观锁锁定负债行
       if (data.liabilityId && data.amount) {
-        const liability = await tx.liability.findUnique({
-          where: { id: data.liabilityId, userId },
-        });
-        if (liability && liability.currentBalance) {
+        const [liability] = await tx.$queryRaw<Liability[]>`
+          SELECT * FROM "Liability"
+          WHERE "id" = ${data.liabilityId} AND "user_id" = ${userId}
+          FOR UPDATE
+        `;
+        if (liability) {
           const currentDebt = new Decimal(decryptValue(liability.currentBalance, derivedKey));
           const newDebt = currentDebt.minus(new Decimal(data.amount));
           await tx.liability.update({
@@ -514,7 +562,8 @@ export async function createTransaction(data: CreateTransactionInput) {
       return { id: txRecord.id };
     });
 
-    revalidatePath('/', 'layout');
+    // 精准刷新：仅使该用户的缓存失效
+    revalidateTag(`user-${userId}`);
     return { success: true, data: result };
   } catch (error: any) {
     return { success: false, error: error.message || 'Transaction failed.' };
@@ -590,29 +639,27 @@ export async function GET(request: Request) {
 }
 ```
 
-### 7.2 开发环境 (HMR 安全)
+### 7.2 开发环境
+
+**禁止在应用内使用 node-cron**。开发环境金价抓取通过以下方式触发：
+
+1. **手动触发**：管理后台提供「刷新金价」按钮，调用 `fetchGoldPrice()` Server Action
+2. **脚本触发**：`npm run cron:gold` 执行独立 Node.js 脚本调用 API Route
 
 ```typescript
-// src/lib/cron.ts
-import { schedule } from 'node-cron';
-import { fetchGoldPrice } from './actions/gold';
-
-const globalForCron = globalThis as unknown as { localCronStarted?: boolean };
-
-if (process.env.NODE_ENV === 'development' && !globalForCron.localCronStarted) {
-  schedule('0 * * * *', () => fetchGoldPrice());
-  globalForCron.localCronStarted = true;
-}
+// scripts/fetch-gold.ts
+import { fetchGoldPrice } from '../src/lib/actions/gold';
+fetchGoldPrice().then(() => process.exit(0));
 ```
 
 ---
 
 ## 8. 数据迁移
 
-1. 备份旧数据库：`cp backend/ledger.sqlite .`
+1. 启动本地 PostgreSQL：`docker-compose up -d postgres`
 2. Prisma 初始化：`npx prisma migrate dev --name init`
-3. Schema 通过 `@map()` 兼容旧表结构，数据零迁移
-4. 保留 seed 脚本初始化演示数据
+3. 保留 seed 脚本初始化演示数据
+4. 旧 SQLite 数据通过 Prisma 脚本迁移到 PostgreSQL（如需要保留历史数据）
 
 ---
 
@@ -622,9 +669,9 @@ if (process.env.NODE_ENV === 'development' && !globalForCron.localCronStarted) {
 |---|---|
 | 传输层 | HTTPS Only |
 | 认证 | JWT (7天会话) + bcrypt (cost factor 12) |
-| 敏感数据 | AES-256-GCM 字段级加密，密钥派生自用户密码 |
+| 敏感数据 | AES-256-GCM 字段级加密，密钥派生自用户密码，仅存服务端缓存 |
 | 数据暴露 | Server Actions 返回值脱敏，密文绝不暴露给前端 |
-| 并发安全 | `prisma.$transaction` 原子操作防止脏读 |
+| 并发安全 | `prisma.$transaction` + `FOR UPDATE` 悲观锁防止 Lost Update |
 | 路由保护 | Edge Middleware 未登录重定向 |
 
 ---
@@ -637,7 +684,17 @@ Server Actions 统一返回 `{ success: boolean, data?: T, error?: string }` 格
 
 ## Self-Review
 
+### v2.1 修复记录（架构评审后）
+
+| 缺陷 | 修复措施 |
+|---|---|
+| 假并发保护（Lost Update） | `findUnique` → `$queryRaw FOR UPDATE` 悲观锁 |
+| derivedKey 在 JWT Cookie 中传输 | 移除 JWT 中的 derivedKey，改为服务端内存缓存（key-cache.ts） |
+| SQLite 过度妥协 | 统一 PostgreSQL（开发环境 Docker），加回 `@db.Decimal`，字段非空 |
+| 全局缓存刷新性能灾难 | `revalidatePath('/', 'layout')` → `revalidateTag('user-{userId}')` |
+| Node-Cron 单点故障 | 彻底移除应用内定时任务，改为外部调度 + 手动触发 |
+
 - [x] 无 TBD/TODO/占位符
-- [x] 内部一致性检查通过（Schema ↔ Actions ↔ Auth 对齐）
+- [x] 内部一致性检查通过（Schema ↔ Actions ↔ Auth ↔ KeyCache 对齐）
 - [x] 范围聚焦：单一代码库 Next.js 全栈迁移
 - [x] 无歧义要求：所有技术选型已明确
