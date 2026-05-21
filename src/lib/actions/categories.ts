@@ -24,7 +24,7 @@ export async function createCategory(data: { name: string; type: string; icon?: 
     const category = await prisma.category.create({
       data: { ...data, userId },
     });
-    revalidateTag(`user-${userId}`);
+    revalidateTag(`user-${userId}`, 'default');
     return { success: true, data: category };
   } catch (error: any) {
     return { success: false, error: error.message };
@@ -38,7 +38,7 @@ export async function deleteCategory(id: string) {
 
   try {
     await prisma.category.deleteMany({ where: { id, userId } });
-    revalidateTag(`user-${userId}`);
+    revalidateTag(`user-${userId}`, 'default');
     return { success: true };
   } catch (error: any) {
     return { success: false, error: error.message };

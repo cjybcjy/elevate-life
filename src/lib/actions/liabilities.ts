@@ -143,7 +143,7 @@ export async function createLiability(data: {
       })),
     });
 
-    revalidateTag(`user-${userId}`);
+    revalidateTag(`user-${userId}`, 'default');
     return { success: true, data: liability };
   } catch (error: any) {
     return { success: false, error: error.message };
@@ -158,7 +158,7 @@ export async function deleteLiability(id: string) {
   try {
     await prisma.debtMilestone.deleteMany({ where: { liabilityId: id } });
     await prisma.liability.deleteMany({ where: { id, userId } });
-    revalidateTag(`user-${userId}`);
+    revalidateTag(`user-${userId}`, 'default');
     return { success: true };
   } catch (error: any) {
     return { success: false, error: error.message };
