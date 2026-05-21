@@ -1,0 +1,163 @@
+[32m[Nest] 3836390  - [39m05/15/2026, 9:37:19 PM [32m    LOG[39m [38;5;3m[NestFactory] [39m[32mStarting Nest application...[39m
+[32m[Nest] 3836390  - [39m05/15/2026, 9:37:19 PM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mAppModule dependencies initialized[39m[38;5;3m +28ms[39m
+[32m[Nest] 3836390  - [39m05/15/2026, 9:37:19 PM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mTypeOrmModule dependencies initialized[39m[38;5;3m +0ms[39m
+[32m[Nest] 3836390  - [39m05/15/2026, 9:37:19 PM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mPassportModule dependencies initialized[39m[38;5;3m +0ms[39m
+[32m[Nest] 3836390  - [39m05/15/2026, 9:37:19 PM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mConfigHostModule dependencies initialized[39m[38;5;3m +1ms[39m
+[32m[Nest] 3836390  - [39m05/15/2026, 9:37:19 PM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mJwtModule dependencies initialized[39m[38;5;3m +0ms[39m
+[32m[Nest] 3836390  - [39m05/15/2026, 9:37:19 PM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mDiscoveryModule dependencies initialized[39m[38;5;3m +0ms[39m
+[32m[Nest] 3836390  - [39m05/15/2026, 9:37:19 PM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mConfigModule dependencies initialized[39m[38;5;3m +62ms[39m
+[32m[Nest] 3836390  - [39m05/15/2026, 9:37:19 PM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mConfigModule dependencies initialized[39m[38;5;3m +0ms[39m
+[32m[Nest] 3836390  - [39m05/15/2026, 9:37:19 PM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mScheduleModule dependencies initialized[39m[38;5;3m +0ms[39m
+[32m[Nest] 3836390  - [39m05/15/2026, 9:37:19 PM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mEncryptionModule dependencies initialized[39m[38;5;3m +9ms[39m
+[32m[Nest] 3836390  - [39m05/15/2026, 9:37:19 PM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mStockModule dependencies initialized[39m[38;5;3m +0ms[39m
+[32m[Nest] 3836390  - [39m05/15/2026, 9:37:19 PM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mThrottlerModule dependencies initialized[39m[38;5;3m +0ms[39m
+[31m[Nest] 3836390  - [39m05/15/2026, 9:37:19 PM [31m  ERROR[39m [38;5;3m[TypeOrmModule] [39m[31mUnable to connect to the database. Retrying (1)...[39m
+DataTypeNotSupportedError: Data type "timestamptz" in "User.createdAt" is not supported by "sqlite" database.
+    at /home/kyrie/workspace/elevate-life/backend/node_modules/src/metadata-builder/EntityMetadataValidator.ts:133:31
+    at Array.forEach (<anonymous>)
+    at EntityMetadataValidator.validate (/home/kyrie/workspace/elevate-life/backend/node_modules/src/metadata-builder/EntityMetadataValidator.ts:128:18)
+    at /home/kyrie/workspace/elevate-life/backend/node_modules/src/metadata-builder/EntityMetadataValidator.ts:43:18
+    at Array.forEach (<anonymous>)
+    at EntityMetadataValidator.validateMany (/home/kyrie/workspace/elevate-life/backend/node_modules/src/metadata-builder/EntityMetadataValidator.ts:42:25)
+    at DataSource.buildMetadatas (/home/kyrie/workspace/elevate-life/backend/node_modules/src/data-source/DataSource.ts:753:33)
+    at async DataSource.initialize (/home/kyrie/workspace/elevate-life/backend/node_modules/src/data-source/DataSource.ts:264:13)
+[31m[Nest] 3836390  - [39m05/15/2026, 9:37:22 PM [31m  ERROR[39m [38;5;3m[TypeOrmModule] [39m[31mUnable to connect to the database. Retrying (2)...[39m
+DataTypeNotSupportedError: Data type "timestamptz" in "User.createdAt" is not supported by "sqlite" database.
+    at /home/kyrie/workspace/elevate-life/backend/node_modules/src/metadata-builder/EntityMetadataValidator.ts:133:31
+    at Array.forEach (<anonymous>)
+    at EntityMetadataValidator.validate (/home/kyrie/workspace/elevate-life/backend/node_modules/src/metadata-builder/EntityMetadataValidator.ts:128:18)
+    at /home/kyrie/workspace/elevate-life/backend/node_modules/src/metadata-builder/EntityMetadataValidator.ts:43:18
+    at Array.forEach (<anonymous>)
+    at EntityMetadataValidator.validateMany (/home/kyrie/workspace/elevate-life/backend/node_modules/src/metadata-builder/EntityMetadataValidator.ts:42:25)
+    at DataSource.buildMetadatas (/home/kyrie/workspace/elevate-life/backend/node_modules/src/data-source/DataSource.ts:753:33)
+    at async DataSource.initialize (/home/kyrie/workspace/elevate-life/backend/node_modules/src/data-source/DataSource.ts:264:13)
+[31m[Nest] 3836390  - [39m05/15/2026, 9:37:25 PM [31m  ERROR[39m [38;5;3m[TypeOrmModule] [39m[31mUnable to connect to the database. Retrying (3)...[39m
+DataTypeNotSupportedError: Data type "timestamptz" in "User.createdAt" is not supported by "sqlite" database.
+    at /home/kyrie/workspace/elevate-life/backend/node_modules/src/metadata-builder/EntityMetadataValidator.ts:133:31
+    at Array.forEach (<anonymous>)
+    at EntityMetadataValidator.validate (/home/kyrie/workspace/elevate-life/backend/node_modules/src/metadata-builder/EntityMetadataValidator.ts:128:18)
+    at /home/kyrie/workspace/elevate-life/backend/node_modules/src/metadata-builder/EntityMetadataValidator.ts:43:18
+    at Array.forEach (<anonymous>)
+    at EntityMetadataValidator.validateMany (/home/kyrie/workspace/elevate-life/backend/node_modules/src/metadata-builder/EntityMetadataValidator.ts:42:25)
+    at DataSource.buildMetadatas (/home/kyrie/workspace/elevate-life/backend/node_modules/src/data-source/DataSource.ts:753:33)
+    at async DataSource.initialize (/home/kyrie/workspace/elevate-life/backend/node_modules/src/data-source/DataSource.ts:264:13)
+[31m[Nest] 3836390  - [39m05/15/2026, 9:37:28 PM [31m  ERROR[39m [38;5;3m[TypeOrmModule] [39m[31mUnable to connect to the database. Retrying (4)...[39m
+DataTypeNotSupportedError: Data type "timestamptz" in "User.createdAt" is not supported by "sqlite" database.
+    at /home/kyrie/workspace/elevate-life/backend/node_modules/src/metadata-builder/EntityMetadataValidator.ts:133:31
+    at Array.forEach (<anonymous>)
+    at EntityMetadataValidator.validate (/home/kyrie/workspace/elevate-life/backend/node_modules/src/metadata-builder/EntityMetadataValidator.ts:128:18)
+    at /home/kyrie/workspace/elevate-life/backend/node_modules/src/metadata-builder/EntityMetadataValidator.ts:43:18
+    at Array.forEach (<anonymous>)
+    at EntityMetadataValidator.validateMany (/home/kyrie/workspace/elevate-life/backend/node_modules/src/metadata-builder/EntityMetadataValidator.ts:42:25)
+    at DataSource.buildMetadatas (/home/kyrie/workspace/elevate-life/backend/node_modules/src/data-source/DataSource.ts:753:33)
+    at async DataSource.initialize (/home/kyrie/workspace/elevate-life/backend/node_modules/src/data-source/DataSource.ts:264:13)
+[31m[Nest] 3836390  - [39m05/15/2026, 9:37:31 PM [31m  ERROR[39m [38;5;3m[TypeOrmModule] [39m[31mUnable to connect to the database. Retrying (5)...[39m
+DataTypeNotSupportedError: Data type "timestamptz" in "User.createdAt" is not supported by "sqlite" database.
+    at /home/kyrie/workspace/elevate-life/backend/node_modules/src/metadata-builder/EntityMetadataValidator.ts:133:31
+    at Array.forEach (<anonymous>)
+    at EntityMetadataValidator.validate (/home/kyrie/workspace/elevate-life/backend/node_modules/src/metadata-builder/EntityMetadataValidator.ts:128:18)
+    at /home/kyrie/workspace/elevate-life/backend/node_modules/src/metadata-builder/EntityMetadataValidator.ts:43:18
+    at Array.forEach (<anonymous>)
+    at EntityMetadataValidator.validateMany (/home/kyrie/workspace/elevate-life/backend/node_modules/src/metadata-builder/EntityMetadataValidator.ts:42:25)
+    at DataSource.buildMetadatas (/home/kyrie/workspace/elevate-life/backend/node_modules/src/data-source/DataSource.ts:753:33)
+    at async DataSource.initialize (/home/kyrie/workspace/elevate-life/backend/node_modules/src/data-source/DataSource.ts:264:13)
+[31m[Nest] 3836390  - [39m05/15/2026, 9:37:34 PM [31m  ERROR[39m [38;5;3m[TypeOrmModule] [39m[31mUnable to connect to the database. Retrying (6)...[39m
+DataTypeNotSupportedError: Data type "timestamptz" in "User.createdAt" is not supported by "sqlite" database.
+    at /home/kyrie/workspace/elevate-life/backend/node_modules/src/metadata-builder/EntityMetadataValidator.ts:133:31
+    at Array.forEach (<anonymous>)
+    at EntityMetadataValidator.validate (/home/kyrie/workspace/elevate-life/backend/node_modules/src/metadata-builder/EntityMetadataValidator.ts:128:18)
+    at /home/kyrie/workspace/elevate-life/backend/node_modules/src/metadata-builder/EntityMetadataValidator.ts:43:18
+    at Array.forEach (<anonymous>)
+    at EntityMetadataValidator.validateMany (/home/kyrie/workspace/elevate-life/backend/node_modules/src/metadata-builder/EntityMetadataValidator.ts:42:25)
+    at DataSource.buildMetadatas (/home/kyrie/workspace/elevate-life/backend/node_modules/src/data-source/DataSource.ts:753:33)
+    at async DataSource.initialize (/home/kyrie/workspace/elevate-life/backend/node_modules/src/data-source/DataSource.ts:264:13)
+[31m[Nest] 3836390  - [39m05/15/2026, 9:37:37 PM [31m  ERROR[39m [38;5;3m[TypeOrmModule] [39m[31mUnable to connect to the database. Retrying (7)...[39m
+DataTypeNotSupportedError: Data type "timestamptz" in "User.createdAt" is not supported by "sqlite" database.
+    at /home/kyrie/workspace/elevate-life/backend/node_modules/src/metadata-builder/EntityMetadataValidator.ts:133:31
+    at Array.forEach (<anonymous>)
+    at EntityMetadataValidator.validate (/home/kyrie/workspace/elevate-life/backend/node_modules/src/metadata-builder/EntityMetadataValidator.ts:128:18)
+    at /home/kyrie/workspace/elevate-life/backend/node_modules/src/metadata-builder/EntityMetadataValidator.ts:43:18
+    at Array.forEach (<anonymous>)
+    at EntityMetadataValidator.validateMany (/home/kyrie/workspace/elevate-life/backend/node_modules/src/metadata-builder/EntityMetadataValidator.ts:42:25)
+    at DataSource.buildMetadatas (/home/kyrie/workspace/elevate-life/backend/node_modules/src/data-source/DataSource.ts:753:33)
+    at async DataSource.initialize (/home/kyrie/workspace/elevate-life/backend/node_modules/src/data-source/DataSource.ts:264:13)
+[31m[Nest] 3836390  - [39m05/15/2026, 9:37:40 PM [31m  ERROR[39m [38;5;3m[TypeOrmModule] [39m[31mUnable to connect to the database. Retrying (8)...[39m
+DataTypeNotSupportedError: Data type "timestamptz" in "User.createdAt" is not supported by "sqlite" database.
+    at /home/kyrie/workspace/elevate-life/backend/node_modules/src/metadata-builder/EntityMetadataValidator.ts:133:31
+    at Array.forEach (<anonymous>)
+    at EntityMetadataValidator.validate (/home/kyrie/workspace/elevate-life/backend/node_modules/src/metadata-builder/EntityMetadataValidator.ts:128:18)
+    at /home/kyrie/workspace/elevate-life/backend/node_modules/src/metadata-builder/EntityMetadataValidator.ts:43:18
+    at Array.forEach (<anonymous>)
+    at EntityMetadataValidator.validateMany (/home/kyrie/workspace/elevate-life/backend/node_modules/src/metadata-builder/EntityMetadataValidator.ts:42:25)
+    at DataSource.buildMetadatas (/home/kyrie/workspace/elevate-life/backend/node_modules/src/data-source/DataSource.ts:753:33)
+    at async DataSource.initialize (/home/kyrie/workspace/elevate-life/backend/node_modules/src/data-source/DataSource.ts:264:13)
+[31m[Nest] 3836390  - [39m05/15/2026, 9:37:43 PM [31m  ERROR[39m [38;5;3m[TypeOrmModule] [39m[31mUnable to connect to the database. Retrying (9)...[39m
+DataTypeNotSupportedError: Data type "timestamptz" in "User.createdAt" is not supported by "sqlite" database.
+    at /home/kyrie/workspace/elevate-life/backend/node_modules/src/metadata-builder/EntityMetadataValidator.ts:133:31
+    at Array.forEach (<anonymous>)
+    at EntityMetadataValidator.validate (/home/kyrie/workspace/elevate-life/backend/node_modules/src/metadata-builder/EntityMetadataValidator.ts:128:18)
+    at /home/kyrie/workspace/elevate-life/backend/node_modules/src/metadata-builder/EntityMetadataValidator.ts:43:18
+    at Array.forEach (<anonymous>)
+    at EntityMetadataValidator.validateMany (/home/kyrie/workspace/elevate-life/backend/node_modules/src/metadata-builder/EntityMetadataValidator.ts:42:25)
+    at DataSource.buildMetadatas (/home/kyrie/workspace/elevate-life/backend/node_modules/src/data-source/DataSource.ts:753:33)
+    at async DataSource.initialize (/home/kyrie/workspace/elevate-life/backend/node_modules/src/data-source/DataSource.ts:264:13)
+[31m[Nest] 3836390  - [39m05/15/2026, 9:37:43 PM [31m  ERROR[39m [38;5;3m[ExceptionHandler] [39mDataTypeNotSupportedError: Data type "timestamptz" in "User.createdAt" is not supported by "sqlite" database.
+    at [90m/home/kyrie/workspace/elevate-life/backend/[39mnode_modules/[4msrc[24m/metadata-builder/EntityMetadataValidator.ts:133:31
+    at Array.forEach (<anonymous>)
+    at EntityMetadataValidator.validate [90m(/home/kyrie/workspace/elevate-life/backend/[39mnode_modules/[4msrc[24m/metadata-builder/EntityMetadataValidator.ts:128:18[90m)[39m
+    at [90m/home/kyrie/workspace/elevate-life/backend/[39mnode_modules/[4msrc[24m/metadata-builder/EntityMetadataValidator.ts:43:18
+    at Array.forEach (<anonymous>)
+    at EntityMetadataValidator.validateMany [90m(/home/kyrie/workspace/elevate-life/backend/[39mnode_modules/[4msrc[24m/metadata-builder/EntityMetadataValidator.ts:42:25[90m)[39m
+    at DataSource.buildMetadatas [90m(/home/kyrie/workspace/elevate-life/backend/[39mnode_modules/[4msrc[24m/data-source/DataSource.ts:753:33[90m)[39m
+    at async DataSource.initialize [90m(/home/kyrie/workspace/elevate-life/backend/[39mnode_modules/[4msrc[24m/data-source/DataSource.ts:264:13[90m)[39m
+[32m[Nest] 4029566  - [39m05/17/2026, 1:12:57 PM [32m    LOG[39m [38;5;3m[NestFactory] [39m[32mStarting Nest application...[39m
+[32m[Nest] 4029566  - [39m05/17/2026, 1:12:57 PM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mAppModule dependencies initialized[39m[38;5;3m +26ms[39m
+[32m[Nest] 4029566  - [39m05/17/2026, 1:12:57 PM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mTypeOrmModule dependencies initialized[39m[38;5;3m +1ms[39m
+[32m[Nest] 4029566  - [39m05/17/2026, 1:12:57 PM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mPassportModule dependencies initialized[39m[38;5;3m +0ms[39m
+[32m[Nest] 4029566  - [39m05/17/2026, 1:12:57 PM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mConfigHostModule dependencies initialized[39m[38;5;3m +0ms[39m
+[32m[Nest] 4029566  - [39m05/17/2026, 1:12:57 PM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mJwtModule dependencies initialized[39m[38;5;3m +0ms[39m
+[32m[Nest] 4029566  - [39m05/17/2026, 1:12:57 PM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mDiscoveryModule dependencies initialized[39m[38;5;3m +1ms[39m
+[32m[Nest] 4029566  - [39m05/17/2026, 1:12:57 PM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mConfigModule dependencies initialized[39m[38;5;3m +63ms[39m
+[32m[Nest] 4029566  - [39m05/17/2026, 1:12:57 PM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mConfigModule dependencies initialized[39m[38;5;3m +0ms[39m
+[32m[Nest] 4029566  - [39m05/17/2026, 1:12:57 PM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mScheduleModule dependencies initialized[39m[38;5;3m +0ms[39m
+[32m[Nest] 4029566  - [39m05/17/2026, 1:12:57 PM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mEncryptionModule dependencies initialized[39m[38;5;3m +7ms[39m
+[32m[Nest] 4029566  - [39m05/17/2026, 1:12:57 PM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mStockModule dependencies initialized[39m[38;5;3m +1ms[39m
+[32m[Nest] 4029566  - [39m05/17/2026, 1:12:57 PM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mThrottlerModule dependencies initialized[39m[38;5;3m +0ms[39m
+[32m[Nest] 4029566  - [39m05/17/2026, 1:12:57 PM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mTypeOrmCoreModule dependencies initialized[39m[38;5;3m +60ms[39m
+[32m[Nest] 4029566  - [39m05/17/2026, 1:12:57 PM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mTypeOrmModule dependencies initialized[39m[38;5;3m +0ms[39m
+[32m[Nest] 4029566  - [39m05/17/2026, 1:12:57 PM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mTypeOrmModule dependencies initialized[39m[38;5;3m +0ms[39m
+[32m[Nest] 4029566  - [39m05/17/2026, 1:12:57 PM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mTypeOrmModule dependencies initialized[39m[38;5;3m +1ms[39m
+[32m[Nest] 4029566  - [39m05/17/2026, 1:12:57 PM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mTypeOrmModule dependencies initialized[39m[38;5;3m +0ms[39m
+[32m[Nest] 4029566  - [39m05/17/2026, 1:12:57 PM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mTypeOrmModule dependencies initialized[39m[38;5;3m +0ms[39m
+[32m[Nest] 4029566  - [39m05/17/2026, 1:12:57 PM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mTypeOrmModule dependencies initialized[39m[38;5;3m +0ms[39m
+[32m[Nest] 4029566  - [39m05/17/2026, 1:12:57 PM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mTypeOrmModule dependencies initialized[39m[38;5;3m +0ms[39m
+[32m[Nest] 4029566  - [39m05/17/2026, 1:12:57 PM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mForecastModule dependencies initialized[39m[38;5;3m +0ms[39m
+[32m[Nest] 4029566  - [39m05/17/2026, 1:12:57 PM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mUsersModule dependencies initialized[39m[38;5;3m +0ms[39m
+[32m[Nest] 4029566  - [39m05/17/2026, 1:12:57 PM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mGoldModule dependencies initialized[39m[38;5;3m +1ms[39m
+[32m[Nest] 4029566  - [39m05/17/2026, 1:12:57 PM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mAuthModule dependencies initialized[39m[38;5;3m +0ms[39m
+[32m[Nest] 4029566  - [39m05/17/2026, 1:12:57 PM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mCategoriesModule dependencies initialized[39m[38;5;3m +1ms[39m
+[32m[Nest] 4029566  - [39m05/17/2026, 1:12:57 PM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mLiabilitiesModule dependencies initialized[39m[38;5;3m +0ms[39m
+[32m[Nest] 4029566  - [39m05/17/2026, 1:12:57 PM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mAssetsModule dependencies initialized[39m[38;5;3m +0ms[39m
+[32m[Nest] 4029566  - [39m05/17/2026, 1:12:57 PM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mTransactionsModule dependencies initialized[39m[38;5;3m +0ms[39m
+[Seed] Checking for existing demo user...
+[Seed] Creating demo user...
+[Seed] Demo user created: dea9fb59-8744-428a-a9ca-a560552fb760
+[Seed] Creating categories...
+[Seed] Category "工资收入" created: 158283a3-256e-46a8-a22e-70da986aaa16
+[Seed] Category "生活支出" created: 3d2f87cd-4f7e-44b6-885f-a7b3c4a6a973
+[Seed] Category "投资收益" created: 413d372c-1e24-4879-968a-ba5ff9c2ae3d
+[Seed] Category "房贷支出" created: 7084c769-4dcd-42b1-b975-c32555dd0e10
+[Seed] Creating assets...
+[Seed] Asset "自住房产" created: a127e5ec-1c74-44ec-99f0-bef13a352e00
+[Seed] Asset "现金存款" created: 0894dd9a-1215-4610-94f1-75690043c568
+[Seed] Asset "黄金积存" created: 0ae3be08-9c80-4911-a4ff-0a7194a26762
+[Seed] Asset "贵州茅台" created: 46246201-ce6c-4d73-9ec5-695ac811ea9f
+[Seed] Creating liabilities...
+[Seed] Liability "住房贷款" created: 1beaeb67-e971-485d-9458-64baeccf0ffd
+[Seed] Liability "汽车贷款" created: b5f6672a-52a7-43c0-bd61-035dabb94536
+[Seed] Liability "信用贷款" created: 7bab87cd-62a5-467f-bd29-5469e244e385
+[Seed] Creating transactions...
+[Seed] Transaction "月工资" created: ad522156-6ce8-421e-b1b3-688932da7655
+[Seed] Transaction "本月生活支出" created: 5e6e726c-47de-44a9-9021-07eeb1e9cc7c
+[Seed] Transaction "现金转股票账户" created: 7ec97df4-126f-4e46-a46c-ff666ab47605
+[Seed] Done.

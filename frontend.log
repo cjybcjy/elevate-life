@@ -1,0 +1,258 @@
+
+> frontend@0.0.0 dev
+> vite
+
+Port 5173 is in use, trying another one...
+
+  VITE v8.0.12  ready in 362 ms
+
+  ➜  Local:   http://localhost:5174/
+  ➜  Network: use --host to expose
+
+> frontend@0.0.0 dev
+> vite
+
+Port 5173 is in use, trying another one...
+Port 5174 is in use, trying another one...
+
+  VITE v8.0.12  ready in 360 ms
+
+  ➜  Local:   http://localhost:5175/
+  ➜  Network: use --host to expose
+npm error Missing script: "dev"
+npm error
+npm error To see a list of scripts, run:
+npm error   npm run
+npm error A complete log of this run can be found in: /home/kyrie/.npm/_logs/2026-05-17T04_57_51_383Z-debug-0.log
+
+> frontend@0.0.0 dev
+> vite --host 0.0.0.0
+
+12:58:04 PM [vite] (client) Re-optimizing dependencies because vite config has changed
+
+  VITE v8.0.12  ready in 431 ms
+
+  ➜  Local:   http://localhost:5173/
+  ➜  Network: http://192.168.71.10:5173/
+  ➜  Network: http://100.107.105.117:5173/
+1:01:46 PM [vite] (client) Pre-transform error: Failed to resolve import "./components/ErrorBoundary" from "src/App.tsx". Does the file exist?
+  Plugin: vite:import-analysis
+  File: /home/kyrie/workspace/elevate-life/frontend/src/App.tsx:4:30
+  2  |  import { lazy, Suspense, useState } from "react";
+  3  |  import { DockNavigation } from "./components/layout/DockNavigation";
+  4  |  import { ErrorBoundary } from "./components/ErrorBoundary";
+     |                                 ^
+  5  |  import NetWorthSlide from "./components/slides/NetWorthSlide";
+  6  |  import AssetAllocationSlide from "./components/slides/AssetAllocationSlide";
+1:01:46 PM [vite] (client) Pre-transform error: Failed to resolve import "./components/ErrorBoundary" from "src/App.tsx". Does the file exist?
+  Plugin: vite:import-analysis
+  File: /home/kyrie/workspace/elevate-life/frontend/src/App.tsx:4:30
+  2  |  import { lazy, Suspense, useState } from "react";
+  3  |  import { DockNavigation } from "./components/layout/DockNavigation";
+  4  |  import { ErrorBoundary } from "./components/ErrorBoundary";
+     |                                 ^
+  5  |  import NetWorthSlide from "./components/slides/NetWorthSlide";
+  6  |  import AssetAllocationSlide from "./components/slides/AssetAllocationSlide";
+1:01:46 PM [vite] (client) Pre-transform error: Failed to resolve import "./components/ErrorBoundary" from "src/App.tsx". Does the file exist?
+  Plugin: vite:import-analysis
+  File: /home/kyrie/workspace/elevate-life/frontend/src/App.tsx:4:30
+  2  |  import { lazy, Suspense, useState } from "react";
+  3  |  import { DockNavigation } from "./components/layout/DockNavigation";
+  4  |  import { ErrorBoundary } from "./components/ErrorBoundary";
+     |                                 ^
+  5  |  import NetWorthSlide from "./components/slides/NetWorthSlide";
+  6  |  import AssetAllocationSlide from "./components/slides/AssetAllocationSlide";
+1:01:46 PM [vite] Internal server error: Failed to resolve import "./components/ErrorBoundary" from "src/App.tsx". Does the file exist?
+  Plugin: vite:import-analysis
+  File: /home/kyrie/workspace/elevate-life/frontend/src/App.tsx:4:30
+  2  |  import { lazy, Suspense, useState } from "react";
+  3  |  import { DockNavigation } from "./components/layout/DockNavigation";
+  4  |  import { ErrorBoundary } from "./components/ErrorBoundary";
+     |                                 ^
+  5  |  import NetWorthSlide from "./components/slides/NetWorthSlide";
+  6  |  import AssetAllocationSlide from "./components/slides/AssetAllocationSlide";
+      at TransformPluginContext._formatLog (file:///home/kyrie/workspace/elevate-life/frontend/node_modules/vite/dist/node/chunks/node.js:30408:39)
+      at TransformPluginContext.error (file:///home/kyrie/workspace/elevate-life/frontend/node_modules/vite/dist/node/chunks/node.js:30405:14)
+      at normalizeUrl (file:///home/kyrie/workspace/elevate-life/frontend/node_modules/vite/dist/node/chunks/node.js:27662:18)
+      at async file:///home/kyrie/workspace/elevate-life/frontend/node_modules/vite/dist/node/chunks/node.js:27725:30
+      at async Promise.all (index 3)
+      at async TransformPluginContext.transform (file:///home/kyrie/workspace/elevate-life/frontend/node_modules/vite/dist/node/chunks/node.js:27693:4)
+      at async EnvironmentPluginContainer.transform (file:///home/kyrie/workspace/elevate-life/frontend/node_modules/vite/dist/node/chunks/node.js:30193:14)
+      at async loadAndTransform (file:///home/kyrie/workspace/elevate-life/frontend/node_modules/vite/dist/node/chunks/node.js:24511:26)
+1:04:05 PM [vite] (client) page reload src/components/ErrorBoundary.tsx.tmp.3788954.8ab0741ffc7e
+1:04:07 PM [vite] (client) [console.error] AxiosError: Network Error
+    at XMLHttpRequest.handleError (http://192.168.71.10:5173/node_modules/.vite/deps/axios.js?v=06ea8725:2106:16)
+1:04:07 PM [vite] (client) [console.error] AxiosError: Network Error
+    at XMLHttpRequest.handleError (http://192.168.71.10:5173/node_modules/.vite/deps/axios.js?v=06ea8725:2106:16)
+1:04:07 PM [vite] (client) [console.error] AxiosError: Network Error
+    at XMLHttpRequest.handleError (http://192.168.71.10:5173/node_modules/.vite/deps/axios.js?v=06ea8725:2106:16)
+1:04:07 PM [vite] (client) [console.error] AxiosError: Network Error
+    at XMLHttpRequest.handleError (http://192.168.71.10:5173/node_modules/.vite/deps/axios.js?v=06ea8725:2106:16)
+1:04:07 PM [vite] (client) [console.error] AxiosError: Network Error
+    at XMLHttpRequest.handleError (http://192.168.71.10:5173/node_modules/.vite/deps/axios.js?v=06ea8725:2106:16)
+1:04:08 PM [vite] (client) [console.error] AxiosError: Network Error
+    at XMLHttpRequest.handleError (http://192.168.71.10:5173/node_modules/.vite/deps/axios.js?v=06ea8725:2106:16)
+1:04:08 PM [vite] (client) [console.error] AxiosError: Network Error
+    at XMLHttpRequest.handleError (http://192.168.71.10:5173/node_modules/.vite/deps/axios.js?v=06ea8725:2106:16)
+1:04:08 PM [vite] (client) [console.error] AxiosError: Network Error
+    at XMLHttpRequest.handleError (http://192.168.71.10:5173/node_modules/.vite/deps/axios.js?v=06ea8725:2106:16)
+1:04:09 PM [vite] (client) [console.error] AxiosError: Network Error
+    at XMLHttpRequest.handleError (http://192.168.71.10:5173/node_modules/.vite/deps/axios.js?v=06ea8725:2106:16)
+1:04:09 PM [vite] (client) [console.error] AxiosError: Network Error
+    at XMLHttpRequest.handleError (http://192.168.71.10:5173/node_modules/.vite/deps/axios.js?v=06ea8725:2106:16)
+1:08:25 PM [vite] (client) [console.error] AxiosError: Request failed with status code 404
+    at settle (http://192.168.71.10:5173/node_modules/.vite/deps/axios.js?v=06ea8725:1725:14)
+    at XMLHttpRequest.onloadend (http://192.168.71.10:5173/node_modules/.vite/deps/axios.js?v=06ea8725:2077:4)
+1:08:25 PM [vite] (client) [console.error] AxiosError: Request failed with status code 404
+    at settle (http://192.168.71.10:5173/node_modules/.vite/deps/axios.js?v=06ea8725:1725:14)
+    at XMLHttpRequest.onloadend (http://192.168.71.10:5173/node_modules/.vite/deps/axios.js?v=06ea8725:2077:4)
+1:08:25 PM [vite] (client) [console.error] AxiosError: Request failed with status code 404
+    at settle (http://192.168.71.10:5173/node_modules/.vite/deps/axios.js?v=06ea8725:1725:14)
+    at XMLHttpRequest.onloadend (http://192.168.71.10:5173/node_modules/.vite/deps/axios.js?v=06ea8725:2077:4)
+1:08:25 PM [vite] (client) [console.error] AxiosError: Request failed with status code 404
+    at settle (http://192.168.71.10:5173/node_modules/.vite/deps/axios.js?v=06ea8725:1725:14)
+    at XMLHttpRequest.onloadend (http://192.168.71.10:5173/node_modules/.vite/deps/axios.js?v=06ea8725:2077:4)
+1:08:25 PM [vite] (client) [console.error] AxiosError: Request failed with status code 404
+    at settle (http://192.168.71.10:5173/node_modules/.vite/deps/axios.js?v=06ea8725:1725:14)
+    at XMLHttpRequest.onloadend (http://192.168.71.10:5173/node_modules/.vite/deps/axios.js?v=06ea8725:2077:4)
+1:08:25 PM [vite] (client) [console.error] AxiosError: Request failed with status code 404
+    at settle (http://192.168.71.10:5173/node_modules/.vite/deps/axios.js?v=06ea8725:1725:14)
+    at XMLHttpRequest.onloadend (http://192.168.71.10:5173/node_modules/.vite/deps/axios.js?v=06ea8725:2077:4)
+1:08:25 PM [vite] (client) [console.error] AxiosError: Request failed with status code 404
+    at settle (http://192.168.71.10:5173/node_modules/.vite/deps/axios.js?v=06ea8725:1725:14)
+    at XMLHttpRequest.onloadend (http://192.168.71.10:5173/node_modules/.vite/deps/axios.js?v=06ea8725:2077:4)
+1:08:25 PM [vite] (client) [console.error] AxiosError: Request failed with status code 404
+    at settle (http://192.168.71.10:5173/node_modules/.vite/deps/axios.js?v=06ea8725:1725:14)
+    at XMLHttpRequest.onloadend (http://192.168.71.10:5173/node_modules/.vite/deps/axios.js?v=06ea8725:2077:4)
+1:08:25 PM [vite] (client) [console.error] AxiosError: Request failed with status code 404
+    at settle (http://192.168.71.10:5173/node_modules/.vite/deps/axios.js?v=06ea8725:1725:14)
+    at XMLHttpRequest.onloadend (http://192.168.71.10:5173/node_modules/.vite/deps/axios.js?v=06ea8725:2077:4)
+1:08:25 PM [vite] (client) [console.error] AxiosError: Request failed with status code 404
+    at settle (http://192.168.71.10:5173/node_modules/.vite/deps/axios.js?v=06ea8725:1725:14)
+    at XMLHttpRequest.onloadend (http://192.168.71.10:5173/node_modules/.vite/deps/axios.js?v=06ea8725:2077:4)
+1:33:59 PM [vite] (client) [console.error] AxiosError: Request failed with status code 401
+    at settle (http://192.168.71.10:5173/node_modules/.vite/deps/axios.js?v=06ea8725:1725:14)
+    at XMLHttpRequest.onloadend (http://192.168.71.10:5173/node_modules/.vite/deps/axios.js?v=06ea8725:2077:4)
+1:33:59 PM [vite] (client) [console.error] AxiosError: Request failed with status code 401
+    at settle (http://192.168.71.10:5173/node_modules/.vite/deps/axios.js?v=06ea8725:1725:14)
+    at XMLHttpRequest.onloadend (http://192.168.71.10:5173/node_modules/.vite/deps/axios.js?v=06ea8725:2077:4)
+1:33:59 PM [vite] (client) [console.error] AxiosError: Request failed with status code 401
+    at settle (http://192.168.71.10:5173/node_modules/.vite/deps/axios.js?v=06ea8725:1725:14)
+    at XMLHttpRequest.onloadend (http://192.168.71.10:5173/node_modules/.vite/deps/axios.js?v=06ea8725:2077:4)
+1:33:59 PM [vite] (client) [console.error] AxiosError: Request failed with status code 401
+    at settle (http://192.168.71.10:5173/node_modules/.vite/deps/axios.js?v=06ea8725:1725:14)
+    at XMLHttpRequest.onloadend (http://192.168.71.10:5173/node_modules/.vite/deps/axios.js?v=06ea8725:2077:4)
+1:33:59 PM [vite] (client) [console.error] AxiosError: Request failed with status code 401
+    at settle (http://192.168.71.10:5173/node_modules/.vite/deps/axios.js?v=06ea8725:1725:14)
+    at XMLHttpRequest.onloadend (http://192.168.71.10:5173/node_modules/.vite/deps/axios.js?v=06ea8725:2077:4)
+1:33:59 PM [vite] (client) [console.error] AxiosError: Request failed with status code 401
+    at settle (http://192.168.71.10:5173/node_modules/.vite/deps/axios.js?v=06ea8725:1725:14)
+    at XMLHttpRequest.onloadend (http://192.168.71.10:5173/node_modules/.vite/deps/axios.js?v=06ea8725:2077:4)
+1:33:59 PM [vite] (client) [console.error] AxiosError: Request failed with status code 401
+    at settle (http://192.168.71.10:5173/node_modules/.vite/deps/axios.js?v=06ea8725:1725:14)
+    at XMLHttpRequest.onloadend (http://192.168.71.10:5173/node_modules/.vite/deps/axios.js?v=06ea8725:2077:4)
+1:33:59 PM [vite] (client) [console.error] AxiosError: Request failed with status code 401
+    at settle (http://192.168.71.10:5173/node_modules/.vite/deps/axios.js?v=06ea8725:1725:14)
+    at XMLHttpRequest.onloadend (http://192.168.71.10:5173/node_modules/.vite/deps/axios.js?v=06ea8725:2077:4)
+1:33:59 PM [vite] (client) [console.error] AxiosError: Request failed with status code 401
+    at settle (http://192.168.71.10:5173/node_modules/.vite/deps/axios.js?v=06ea8725:1725:14)
+    at XMLHttpRequest.onloadend (http://192.168.71.10:5173/node_modules/.vite/deps/axios.js?v=06ea8725:2077:4)
+1:33:59 PM [vite] (client) [console.error] AxiosError: Request failed with status code 401
+    at settle (http://192.168.71.10:5173/node_modules/.vite/deps/axios.js?v=06ea8725:1725:14)
+    at XMLHttpRequest.onloadend (http://192.168.71.10:5173/node_modules/.vite/deps/axios.js?v=06ea8725:2077:4)
+
+> frontend@0.0.0 dev
+> vite
+
+1:40:47 PM [vite] (client) Re-optimizing dependencies because vite config has changed
+
+  VITE v8.0.12  ready in 413 ms
+
+  ➜  Local:   http://localhost:5173/
+  ➜  Network: http://192.168.71.10:5173/
+  ➜  Network: http://100.107.105.117:5173/
+1:42:30 PM [vite] (client) hmr update /src/pages/LoginPage.tsx, /src/index.css
+1:42:30 PM [vite] (client) hmr update /src/pages/RegisterPage.tsx, /src/index.css
+1:49:52 PM [vite] (client) hmr update /src/index.css, /src/components/slides/NetWorthSlide.tsx, /src/components/slides/DebtOverviewSlide.tsx, /src/components/slides/AssetAllocationSlide.tsx, /src/components/slides/ScissorChartSlide.tsx, /src/pages/LoginPage.tsx, /src/components/slides/ForecastSlide.tsx, /src/pages/RegisterPage.tsx, /src/components/forms/QuickTransactionDrawer.tsx
+1:56:53 PM [vite] (client) hmr update /src/index.css, /src/components/slides/NetWorthSlide.tsx, /src/components/slides/DebtOverviewSlide.tsx, /src/components/slides/AssetAllocationSlide.tsx, /src/components/slides/ScissorChartSlide.tsx, /src/pages/LoginPage.tsx, /src/components/slides/ForecastSlide.tsx, /src/pages/RegisterPage.tsx, /src/components/forms/QuickTransactionDrawer.tsx
+1:57:04 PM [vite] (client) hmr update /src/pages/LoginPage.tsx, /src/index.css
+1:57:05 PM [vite] (client) hmr update /src/pages/RegisterPage.tsx, /src/index.css
+2:09:36 PM [vite] (client) hmr update /src/components/forms/QuickTransactionDrawer.tsx, /src/index.css
+2:10:27 PM [vite] (client) hmr update /src/index.css, /src/components/forms/LiabilityFormModal.tsx
+2:10:27 PM [vite] (client) hmr update /src/pages/management/AssetManagement.tsx, /src/index.css
+2:10:27 PM [vite] (client) hmr update /src/pages/management/CategoryManagement.tsx, /src/index.css
+2:10:27 PM [vite] (client) hmr update /src/pages/management/LiabilityManagement.tsx, /src/index.css
+2:10:27 PM [vite] (client) hmr update /src/pages/management/TransactionManagement.tsx, /src/index.css
+2:24:20 PM [vite] (client) hmr update /src/index.css, /src/components/forms/AssetFormModal.tsx
+2:25:01 PM [vite] (client) hmr update /src/index.css, /src/components/forms/AssetFormModal.tsx
+2:25:01 PM [vite] (client) hmr update /src/index.css, /src/components/forms/AssetFormModal.tsx
+2:25:08 PM [vite] (client) hmr update /src/components/slides/AssetAllocationSlide.tsx, /src/index.css
+2:25:08 PM [vite] (client) hmr update /src/pages/management/AssetManagement.tsx, /src/index.css
+2:25:08 PM [vite] (client) hmr update /src/pages/management/AssetManagement.tsx, /src/index.css
+2:25:29 PM [vite] (client) hmr update /src/components/slides/AssetAllocationSlide.tsx, /src/index.css
+3:40:26 PM [vite] (client) hmr update /src/index.css, /src/components/forms/AssetFormModal.tsx
+3:40:35 PM [vite] (client) hmr update /src/pages/management/AssetManagement.tsx, /src/index.css
+3:40:41 PM [vite] (client) hmr update /src/index.css, /src/components/forms/AssetFormModal.tsx
+3:40:47 PM [vite] (client) hmr update /src/index.css, /src/components/forms/AssetFormModal.tsx
+3:41:00 PM [vite] (client) hmr update /src/index.css, /src/components/forms/AssetFormModal.tsx
+3:52:42 PM [vite] (client) hmr update /src/index.css, /src/components/forms/AssetFormModal.tsx
+3:52:57 PM [vite] (client) hmr update /src/index.css, /src/components/forms/AssetFormModal.tsx
+3:53:13 PM [vite] (client) hmr update /src/index.css, /src/components/forms/AssetFormModal.tsx
+4:34:49 PM [vite] (client) page reload src/main.tsx
+4:34:55 PM [vite] (client) hmr update /src/App.tsx, /src/index.css
+4:35:00 PM [vite] (client) hmr update /src/App.tsx, /src/index.css
+4:35:11 PM [vite] (client) hmr update /src/pages/LoginPage.tsx, /src/index.css
+4:35:17 PM [vite] (client) hmr update /src/pages/LoginPage.tsx, /src/index.css
+4:35:30 PM [vite] (client) hmr update /src/pages/RegisterPage.tsx, /src/index.css
+4:35:35 PM [vite] (client) hmr update /src/pages/RegisterPage.tsx, /src/index.css
+4:36:08 PM [vite] (client) hmr update /src/components/layout/DockNavigation.tsx, /src/index.css
+
+> frontend@0.0.0 dev
+> vite
+
+
+  VITE v8.0.12  ready in 372 ms
+
+  ➜  Local:   http://localhost:5173/
+  ➜  Network: http://192.168.71.10:5173/
+  ➜  Network: http://100.107.105.117:5173/
+
+> frontend@0.0.0 dev
+> vite
+
+
+  VITE v8.0.12  ready in 381 ms
+
+  ➜  Local:   http://localhost:5173/
+  ➜  Network: http://192.168.71.10:5173/
+  ➜  Network: http://100.107.105.117:5173/
+
+> frontend@0.0.0 dev
+> vite
+
+
+  VITE v8.0.12  ready in 396 ms
+
+  ➜  Local:   http://localhost:5173/
+  ➜  Network: http://192.168.71.10:5173/
+  ➜  Network: http://100.107.105.117:5173/
+1:57:56 PM [vite] (client) hmr update /src/index.css, /src/components/forms/AssetFormModal.tsx
+1:58:05 PM [vite] (client) hmr update /src/index.css, /src/components/forms/AssetFormModal.tsx
+1:58:17 PM [vite] (client) hmr update /src/index.css, /src/components/forms/AssetFormModal.tsx
+1:58:28 PM [vite] (client) hmr update /src/index.css, /src/components/forms/AssetFormModal.tsx
+1:58:46 PM [vite] (client) hmr update /src/index.css, /src/components/forms/AssetFormModal.tsx
+1:59:02 PM [vite] (client) hmr update /src/index.css, /src/components/forms/AssetFormModal.tsx
+
+> frontend@0.0.0 dev
+> vite
+
+
+  VITE v8.0.12  ready in 727 ms
+
+  ➜  Local:   http://localhost:5173/
+  ➜  Network: http://192.168.71.10:5173/
+  ➜  Network: http://100.107.105.117:5173/
+7:38:58 PM [vite] (client) hmr update /src/pages/management/AssetManagement.tsx, /src/index.css
+7:39:18 PM [vite] (client) hmr update /src/pages/management/AssetManagement.tsx, /src/index.css
+7:39:34 PM [vite] (client) hmr update /src/pages/management/AssetManagement.tsx, /src/index.css
+8:30:33 PM [vite] (client) hmr update /src/index.css, /src/components/slides/NetWorthSlide.tsx, /src/components/slides/AssetAllocationSlide.tsx, /src/components/slides/DebtOverviewSlide.tsx, /src/components/slides/ScissorChartSlide.tsx, /src/components/slides/ForecastSlide.tsx, /src/components/slides/StockSlide.tsx, /src/pages/LoginPage.tsx, /src/pages/RegisterPage.tsx, /src/components/forms/QuickTransactionDrawer.tsx, /src/pages/management/TransactionManagement.tsx, /src/pages/management/AssetManagement.tsx and 3 more
