@@ -1,0 +1,139 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model User {
+  id           String        @id @default(uuid())
+  username     String        @unique
+  passwordHash String        @map("password_hash")
+  displayName  String?       @map("display_name")
+  createdAt    DateTime      @default(now()) @map("created_at")
+  updatedAt    DateTime      @updatedAt @map("updated_at")
+
+  assets       Asset[]
+  liabilities  Liability[]
+  transactions Transaction[]
+  categories   Category[]
+}
+
+model Asset {
+  id              String   @id @default(uuid())
+  userId          String   @map("user_id")
+  name            String
+  category        String
+  balance         String   @default("0")
+  currency        String   @default("CNY")
+  valuationMethod String?  @map("valuation_method")
+  liquidityTier   String?  @map("liquidity_tier")
+  isEncrypted     Boolean  @default(false) @map("is_encrypted")
+  costPrice       String?  @map("cost_price")
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  user             User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  transactionsFrom Transaction[] @relation("fromAsset")
+  transactionsTo   Transaction[] @relation("toAsset")
+
+  @@index([userId, category])
+}
+
+model Liability {
+  id             String   @id @default(uuid())
+  userId         String   @map("user_id")
+  name           String
+  category       String
+  principal      String   @default("0")
+  currentBalance String   @default("0") @map("current_balance")
+  interestRate   Decimal  @map("interest_rate") @db.Decimal(6, 4)
+  termMonths     Int      @map("term_months")
+  startDate      DateTime @map("start_date")
+  paymentMethod  String   @map("payment_method")
+  monthlyPayment String?  @map("monthly_payment")
+  isEncrypted    Boolean  @default(false) @map("is_encrypted")
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  user         User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  milestones   DebtMilestone[]
+  transactions Transaction[]   @relation("liabilityTransactions")
+}
+
+model DebtMilestone {
+  id               String   @id @default(uuid())
+  liabilityId      String   @map("liability_id")
+  monthIndex       Int      @map("month_index")
+  dueDate          DateTime @map("due_date")
+  principalDue     Decimal  @map("principal_due") @db.Decimal(18, 4)
+  interestDue      Decimal  @map("interest_due") @db.Decimal(18, 4)
+  totalDue         Decimal  @map("total_due") @db.Decimal(18, 4)
+  remainingBalance Decimal  @map("remaining_balance") @db.Decimal(18, 4)
+  scenarioType     String   @default("base") @map("scenario_type")
+  createdAt        DateTime @default(now()) @map("created_at")
+
+  liability Liability @relation(fields: [liabilityId], references: [id], onDelete: Cascade)
+
+  @@index([liabilityId, monthIndex])
+}
+
+model Transaction {
+  id            String    @id @default(uuid())
+  userId        String    @map("user_id")
+  type          String
+  amount        Decimal   @db.Decimal(18, 4)
+  categoryId    String?   @map("category_id")
+  fromAccountId String?   @map("from_account_id")
+  toAccountId   String?   @map("to_account_id")
+  liabilityId   String?   @map("liability_id")
+  description   String?
+  occurredAt    DateTime  @map("occurred_at")
+  isEssential   Boolean   @default(false) @map("is_essential")
+  createdAt     DateTime  @default(now()) @map("created_at")
+
+  user       User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  category   Category?  @relation(fields: [categoryId], references: [id])
+  fromAsset  Asset?     @relation("fromAsset", fields: [fromAccountId], references: [id])
+  toAsset    Asset?     @relation("toAsset", fields: [toAccountId], references: [id])
+  liability  Liability? @relation("liabilityTransactions", fields: [liabilityId], references: [id])
+
+  @@index([userId, occurredAt])
+}
+
+model Category {
+  id             String   @id @default(uuid())
+  userId         String   @map("user_id")
+  name           String
+  type           String
+  isEssential    Boolean  @default(false) @map("is_essential")
+  essentialRatio Decimal  @default(1.00) @map("essential_ratio") @db.Decimal(3, 2)
+  icon           String?
+  color          String?
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  transactions Transaction[]
+}
+
+model GoldPrice {
+  id             String   @id @default(uuid())
+  assetType      String   @default("gold_au9999") @map("asset_type")
+  price          Decimal  @db.Decimal(18, 4)
+  dataSource     String?  @map("data_source")
+  isInterpolated Boolean  @default(false) @map("is_interpolated")
+  recordedAt     DateTime @default(now()) @map("recorded_at")
+
+  @@index([assetType, recordedAt])
+}
+
+model StockPrice {
+  id        String   @id @default(uuid())
+  code      String
+  name      String
+  price     Decimal  @db.Decimal(18, 4)
+  market    String
+  updatedAt DateTime @updatedAt @map("updated_at")
+}
