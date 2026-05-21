@@ -35,7 +35,8 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     }),
   ],
   events: {
-    signOut: async ({ token }) => {
+    signOut: async (message) => {
+      const token = 'token' in message ? message.token : null;
       if (token?.sub) await deleteUserKey(token.sub);
     },
   },
