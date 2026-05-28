@@ -1,7 +1,7 @@
-import { fetchGoldPrice } from '../src/lib/actions/gold';
+import { fetchAndStoreGoldPrice } from '../src/lib/actions/gold';
 
 async function main() {
-  const result = await fetchGoldPrice();
+  const result = await fetchAndStoreGoldPrice();
   if (result.success) {
     console.log('Gold price fetched successfully');
     process.exit(0);
