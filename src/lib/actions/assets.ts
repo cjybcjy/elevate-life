@@ -6,7 +6,8 @@ import { getUserKey } from '@/lib/key-cache';
 import { encryptValue, decryptValue } from '@/lib/crypto';
 import { revalidateTag } from 'next/cache';
 import Decimal from 'decimal.js';
-import { isMarketPriced, isStale, upsertMarketPrice } from '@/lib/services/price';
+import { isMarketPriced, isStale, upsertMarketPrice, fetchSinglePrice } from '@/lib/services/price';
+import { fetchGoldPrice } from '@/lib/services/price/sources/gold';
 
 export async function getAssets() {
   const session = await auth();
@@ -32,11 +33,11 @@ export async function getAssets() {
   }
 
   // Fetch all relevant prices from cache
-  const prices = await prisma.marketPrice.findMany({
-    where: codesToFetch.length > 0 ? {
-      OR: codesToFetch.map((c) => ({ code: c.code, market: c.market })),
-    } : undefined,
-  });
+  const prices = codesToFetch.length > 0
+    ? await prisma.marketPrice.findMany({
+        where: { OR: codesToFetch.map((c) => ({ code: c.code, market: c.market })) },
+      })
+    : [];
   const priceMap = new Map<string, { price: number; name: string; updatedAt: Date }>();
   for (const p of prices) {
     priceMap.set(`${p.code}|${p.market}`, { price: Number(p.price), name: p.name, updatedAt: p.updatedAt });
@@ -59,47 +60,64 @@ export async function getAssets() {
   }
 
   const decrypted = assets.map((a) => {
-    const balance = decryptValue(a.balance, derivedKey, userId);
-    const costPrice = a.costPrice ? decryptValue(a.costPrice, derivedKey, userId) : null;
+    try {
+      const balance = decryptValue(a.balance, derivedKey, userId);
+      const costPrice = a.costPrice ? decryptValue(a.costPrice, derivedKey, userId) : null;
 
-    // Compute market value for market-priced assets
-    let currentUnitPrice: number | null = null;
-    let currentValue: string | null = null;
-    let marketValue: string = balance;
+      // Compute market value for market-priced assets
+      let currentUnitPrice: number | null = null;
+      let currentValue: string | null = null;
+      let marketValue: string = balance;
 
-    if (a.category === 'gold_physical' || a.category === 'gold_paper') {
-      const priceData = priceMap.get('AU9999|commodity');
-      if (priceData && a.quantity) {
-        currentUnitPrice = priceData.price;
-        marketValue = new Decimal(a.quantity.toString()).times(priceData.price).toFixed(4);
-        currentValue = marketValue;
+      if (a.category === 'gold_physical' || a.category === 'gold_paper') {
+        const priceData = priceMap.get('AU9999|commodity');
+        if (priceData && a.quantity) {
+          currentUnitPrice = priceData.price;
+          marketValue = new Decimal(a.quantity.toString()).times(priceData.price).toFixed(4);
+          currentValue = marketValue;
+        }
+      } else if ((a.category === 'stock' || a.category === 'fund') && a.stockCode && a.market && a.quantity) {
+        const priceData = priceMap.get(`${a.stockCode}|${a.market}`);
+        if (priceData) {
+          currentUnitPrice = priceData.price;
+          marketValue = new Decimal(a.quantity.toString()).times(priceData.price).toFixed(4);
+          currentValue = marketValue;
+        }
+      } else {
+        // Non-market-priced: balance stays as-is
+        currentValue = balance;
       }
-    } else if ((a.category === 'stock' || a.category === 'fund') && a.stockCode && a.market && a.quantity) {
-      const priceData = priceMap.get(`${a.stockCode}|${a.market}`);
-      if (priceData) {
-        currentUnitPrice = priceData.price;
-        marketValue = new Decimal(a.quantity.toString()).times(priceData.price).toFixed(4);
-        currentValue = marketValue;
-      }
-    } else {
-      // Non-market-priced: balance stays as-is
-      currentValue = balance;
+
+      const quantityNum = a.quantity ? Number(a.quantity) : null;
+      const costUnitPriceNum = a.costUnitPrice ? Number(a.costUnitPrice) : null;
+
+      return {
+        ...a,
+        balance: marketValue,
+        costPrice,
+        quantity: quantityNum,
+        stockCode: a.stockCode,
+        market: a.market,
+        costUnitPrice: costUnitPriceNum,
+        unitPrice: currentUnitPrice,
+        currentValue,
+      };
+    } catch {
+      // Return asset with raw values if decryption fails
+      const quantityNum = a.quantity ? Number(a.quantity) : null;
+      const costUnitPriceNum = a.costUnitPrice ? Number(a.costUnitPrice) : null;
+      return {
+        ...a,
+        balance: '[decryption error]',
+        costPrice: null,
+        quantity: quantityNum,
+        stockCode: a.stockCode,
+        market: a.market,
+        costUnitPrice: costUnitPriceNum,
+        unitPrice: null,
+        currentValue: null,
+      };
     }
-
-    const quantityNum = a.quantity ? Number(a.quantity) : null;
-    const costUnitPriceNum = a.costUnitPrice ? Number(a.costUnitPrice) : null;
-
-    return {
-      ...a,
-      balance: marketValue,
-      costPrice,
-      quantity: quantityNum,
-      stockCode: a.stockCode,
-      market: a.market,
-      costUnitPrice: costUnitPriceNum,
-      unitPrice: currentUnitPrice,
-      currentValue,
-    };
   });
 
   return { success: true, data: decrypted, pricesStale };
@@ -134,11 +152,11 @@ export async function createAsset(data: {
 
       if (data.category === 'gold_physical' || data.category === 'gold_paper') {
         try {
-          const { fetchGoldPrice } = await import('@/lib/services/price/sources/gold');
           const result = await fetchGoldPrice();
           await upsertMarketPrice(result);
           currentPrice = new Decimal(result.price);
-        } catch {
+        } catch (error) {
+          console.error('Failed to fetch gold price:', error);
           const cached = await prisma.marketPrice.findUnique({
             where: { code_market: { code: 'AU9999', market: 'commodity' } },
           });
@@ -147,11 +165,11 @@ export async function createAsset(data: {
         balanceStr = quantityDec.times(currentPrice).toFixed(4);
       } else if ((data.category === 'stock' || data.category === 'fund') && data.stockCode && data.market) {
         try {
-          const { fetchSinglePrice } = await import('@/lib/services/price');
           const result = await fetchSinglePrice(data.stockCode, data.market);
           await upsertMarketPrice(result);
           currentPrice = new Decimal(result.price);
-        } catch {
+        } catch (error) {
+          console.error(`Failed to fetch price for ${data.stockCode} (${data.market}):`, error);
           const cached = await prisma.marketPrice.findUnique({
             where: { code_market: { code: data.stockCode, market: data.market } },
           });
@@ -279,9 +297,6 @@ export async function refreshMyPrices() {
   const session = await auth();
   const userId = session?.user?.id;
   if (!userId) return { success: false, error: 'Unauthorized' };
-
-  const derivedKey = session?.user?.derivedKey || await getUserKey(userId);
-  if (!derivedKey) return { success: false, error: '会话密钥已过期，请退出重新登录' };
 
   const assets = await prisma.asset.findMany({
     where: { userId },
