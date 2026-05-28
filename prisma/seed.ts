@@ -36,16 +36,29 @@ async function main() {
   // Create assets (plain text balances for demo)
   const assets = await prisma.asset.createMany({
     data: [
-      { name: '现金存款', category: 'CASH', balance: '100000.0000', currency: 'CNY', userId: user.id, isEncrypted: false },
-      { name: '股票账户', category: 'STOCK', balance: '500000.0000', currency: 'CNY', costPrice: '450000.0000', userId: user.id, isEncrypted: false },
+      { name: '现金存款', category: 'cash', balance: '100000.0000', currency: 'CNY', userId: user.id, isEncrypted: false },
+      { name: '黄金储备', category: 'gold_physical', balance: '26025.0000', currency: 'CNY', quantity: 50, costUnitPrice: 480, costPrice: '24000.0000', userId: user.id, isEncrypted: false },
+      { name: '贵州茅台', category: 'stock', balance: '260000.0000', currency: 'CNY', quantity: 500, stockCode: '600519', market: 'cn', costUnitPrice: 480, costPrice: '240000.0000', userId: user.id, isEncrypted: false },
     ],
+  });
+
+  // Seed market prices
+  await prisma.marketPrice.upsert({
+    where: { code_market: { code: 'AU9999', market: 'commodity' } },
+    create: { code: 'AU9999', market: 'commodity', name: '黄金9999', price: 520.50, source: 'seed' },
+    update: {},
+  });
+  await prisma.marketPrice.upsert({
+    where: { code_market: { code: '600519', market: 'cn' } },
+    create: { code: '600519', market: 'cn', name: '贵州茅台', price: 520.00, source: 'seed' },
+    update: {},
   });
 
   // Create a liability
   const liability = await prisma.liability.create({
     data: {
       name: '房贷',
-      category: 'MORTGAGE',
+      category: 'mortgage',
       principal: '2000000.0000',
       currentBalance: '1800000.0000',
       interestRate: 0.039,
