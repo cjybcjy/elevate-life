@@ -31,6 +31,10 @@ model Asset {
   liquidityTier   String?  @map("liquidity_tier")
   isEncrypted     Boolean  @default(false) @map("is_encrypted")
   costPrice       String?  @map("cost_price")
+  quantity        Decimal?  @db.Decimal(18, 4)
+  stockCode       String?  @map("stock_code")
+  market          String?
+  costUnitPrice   Decimal?  @db.Decimal(18, 4) @map("cost_unit_price")
   createdAt       DateTime @default(now()) @map("created_at")
   updatedAt       DateTime @updatedAt @map("updated_at")
 
@@ -39,6 +43,7 @@ model Asset {
   transactionsTo   Transaction[] @relation("toAsset")
 
   @@index([userId, category])
+  @@index([stockCode, market])
 }
 
 model Liability {
@@ -118,22 +123,15 @@ model Category {
   transactions Transaction[]
 }
 
-model GoldPrice {
-  id             String   @id @default(uuid())
-  assetType      String   @default("gold_au9999") @map("asset_type")
-  price          Decimal  @db.Decimal(18, 4)
-  dataSource     String?  @map("data_source")
-  isInterpolated Boolean  @default(false) @map("is_interpolated")
-  recordedAt     DateTime @default(now()) @map("recorded_at")
-
-  @@index([assetType, recordedAt])
-}
-
-model StockPrice {
+model MarketPrice {
   id        String   @id @default(uuid())
   code      String
+  market    String
   name      String
   price     Decimal  @db.Decimal(18, 4)
-  market    String
+  source    String?
   updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@unique([code, market])
+  @@index([market])
 }
