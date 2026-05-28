@@ -1,28 +1,21 @@
 'use server';
 import { prisma } from '@/lib/prisma';
+import { fetchGoldPrice } from '@/lib/services/price/sources/gold';
+import { upsertMarketPrice } from '@/lib/services/price';
 
 export async function getCurrentGoldPrice() {
-  const latest = await prisma.goldPrice.findFirst({
-    where: { assetType: 'gold_au9999' },
-    orderBy: { recordedAt: 'desc' },
+  const latest = await prisma.marketPrice.findFirst({
+    where: { code: 'AU9999', market: 'commodity' },
+    orderBy: { updatedAt: 'desc' },
   });
   return { success: true, data: latest };
 }
 
-export async function fetchGoldPrice() {
+export async function fetchAndStoreGoldPrice() {
   try {
-    // Simplified gold price fetching
-    // In production, this would call actual gold price APIs
-    const mockPrice = 450 + Math.random() * 50;
-    await prisma.goldPrice.create({
-      data: {
-        assetType: 'gold_au9999',
-        price: mockPrice,
-        dataSource: 'mock',
-        recordedAt: new Date(),
-      },
-    });
-    return { success: true };
+    const result = await fetchGoldPrice();
+    await upsertMarketPrice(result);
+    return { success: true, data: result };
   } catch (error: any) {
     return { success: false, error: error.message };
   }
