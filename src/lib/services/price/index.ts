@@ -9,6 +9,7 @@ export interface PriceResult {
   name: string;
   price: number;
   market: string;
+  currency: string;
   source: string;
 }
 
@@ -45,11 +46,13 @@ export async function upsertMarketPrice(result: PriceResult): Promise<void> {
       market: result.market,
       name: result.name,
       price: result.price,
+      currency: result.currency,
       source: result.source,
     },
     update: {
       name: result.name,
       price: result.price,
+      currency: result.currency,
       source: result.source,
     },
   });

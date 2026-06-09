@@ -62,8 +62,8 @@ export async function getLiabilities() {
   const userId = session?.user?.id;
   if (!userId) return { success: false, error: 'Unauthorized' };
 
-  const derivedKey = await getUserKey(userId);
-  if (!derivedKey) return { success: false, error: 'Session expired' };
+  const derivedKey = session?.user?.derivedKey || await getUserKey(userId);
+  if (!derivedKey) return { success: false, error: '会话密钥已过期，请退出重新登录' };
 
   const liabilities = await prisma.liability.findMany({
     where: { userId },
@@ -71,10 +71,20 @@ export async function getLiabilities() {
   });
 
   const decrypted = liabilities.map((l) => ({
-    ...l,
+    id: l.id,
+    userId: l.userId,
+    name: l.name,
+    category: l.category,
     principal: decryptValue(l.principal, derivedKey, userId),
     currentBalance: decryptValue(l.currentBalance, derivedKey, userId),
+    interestRate: l.interestRate.toNumber(),
+    termMonths: l.termMonths,
+    startDate: l.startDate,
+    paymentMethod: l.paymentMethod,
     monthlyPayment: l.monthlyPayment ? decryptValue(l.monthlyPayment, derivedKey, userId) : null,
+    isEncrypted: l.isEncrypted,
+    createdAt: l.createdAt,
+    updatedAt: l.updatedAt,
   }));
 
   return { success: true, data: decrypted };
@@ -95,8 +105,8 @@ export async function createLiability(data: {
   const userId = session?.user?.id;
   if (!userId) return { success: false, error: 'Unauthorized' };
 
-  const derivedKey = await getUserKey(userId);
-  if (!derivedKey) return { success: false, error: 'Session expired' };
+  const derivedKey = session?.user?.derivedKey || await getUserKey(userId);
+  if (!derivedKey) return { success: false, error: '会话密钥已过期，请退出重新登录' };
 
   try {
     const principalStr = new Decimal(data.principal).toFixed(4);
@@ -144,7 +154,80 @@ export async function createLiability(data: {
     });
 
     revalidateTag(`user-${userId}`, 'default');
-    return { success: true, data: liability };
+    return {
+      success: true,
+      data: {
+        id: liability.id,
+        userId: liability.userId,
+        name: liability.name,
+        category: liability.category,
+        principal: data.principal,
+        currentBalance: data.currentBalance || data.principal,
+        interestRate: liability.interestRate.toNumber(),
+        termMonths: liability.termMonths,
+        startDate: liability.startDate,
+        paymentMethod: liability.paymentMethod,
+        monthlyPayment: data.monthlyPayment || null,
+        isEncrypted: liability.isEncrypted,
+        createdAt: liability.createdAt,
+        updatedAt: liability.updatedAt,
+      },
+    };
+  } catch (error: any) {
+    return { success: false, error: error.message };
+  }
+}
+
+export async function updateLiability(
+  id: string,
+  data: Partial<{
+    name: string;
+    category: string;
+    principal: string;
+    currentBalance: string;
+    interestRate: string;
+    termMonths: number;
+    startDate: string;
+    paymentMethod: string;
+    monthlyPayment: string;
+  }>
+) {
+  const session = await auth();
+  const userId = session?.user?.id;
+  if (!userId) return { success: false, error: 'Unauthorized' };
+
+  const derivedKey = session?.user?.derivedKey || await getUserKey(userId);
+  if (!derivedKey) return { success: false, error: '会话密钥已过期，请退出重新登录' };
+
+  try {
+    const updateData: any = {};
+    if (data.name !== undefined) updateData.name = data.name;
+    if (data.category !== undefined) updateData.category = data.category;
+    if (data.termMonths !== undefined) updateData.termMonths = data.termMonths;
+    if (data.paymentMethod !== undefined) updateData.paymentMethod = data.paymentMethod;
+    if (data.interestRate !== undefined) updateData.interestRate = new Decimal(data.interestRate);
+    if (data.startDate !== undefined) updateData.startDate = new Date(data.startDate);
+
+    if (data.principal !== undefined) {
+      updateData.principal = encryptValue(new Decimal(data.principal).toFixed(4), derivedKey, userId);
+      updateData.isEncrypted = true;
+    }
+    if (data.currentBalance !== undefined) {
+      updateData.currentBalance = encryptValue(new Decimal(data.currentBalance).toFixed(4), derivedKey, userId);
+      updateData.isEncrypted = true;
+    }
+    if (data.monthlyPayment !== undefined) {
+      updateData.monthlyPayment = encryptValue(new Decimal(data.monthlyPayment).toFixed(4), derivedKey, userId);
+      updateData.isEncrypted = true;
+    }
+
+    const liability = await prisma.liability.update({
+      where: { id, userId },
+      data: updateData,
+    });
+
+    revalidateTag(`user-${userId}`, 'default');
+    return { success: true, data: { ...liability, interestRate: liability.interestRate.toNumber() } };
   } catch (error: any) {
     return { success: false, error: error.message };
   }

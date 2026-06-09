@@ -7,6 +7,7 @@ export const authConfig = {
     jwt: async ({ token, user }) => {
       if (user) {
         token.username = user.username;
+        if (user.derivedKey) token.derivedKey = user.derivedKey;
       }
       return token;
     },
@@ -14,6 +15,7 @@ export const authConfig = {
       if (session.user) {
         session.user.id = token.sub as string;
         session.user.username = token.username as string;
+        session.user.derivedKey = token.derivedKey as string;
       }
       return session;
     },

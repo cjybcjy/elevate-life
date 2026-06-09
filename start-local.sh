@@ -1,5 +1,5 @@
 #!/bin/bash
-# Family Ledger Pro - 本地开发启动脚本（无 Docker）
+# Family Ledger Pro - 本地开发启动脚本
 # 用法: ./start-local.sh
 
 set -e
@@ -22,50 +22,36 @@ fi
 node -v
 echo ""
 
-# 启动后端
-echo "[2/4] 启动后端 (SQLite)..."
-cd backend
+# 安装依赖
+echo "[2/4] 检查依赖..."
 if [ ! -d "node_modules" ]; then
-    echo "  安装后端依赖..."
+    echo "  安装依赖..."
     npm install
 fi
-if [ ! -f "ledger.sqlite" ]; then
-    echo "  SQLite 数据库不存在，首次启动将自动创建"
-fi
-npm run start:dev >> ../backend.log 2>&1 &
-echo "  后端 PID: $!"
-echo $! > ../backend.pid
-echo "  日志: backend.log"
-cd ..
-sleep 3
+echo ""
+
+# 清理缓存并重新生成 Prisma client
+echo "[3/4] 清理缓存并同步数据库..."
+rm -rf .next
+npx prisma generate
+npx prisma db push
+echo ""
 
 # 运行 seed（首次启动）
-echo "[3/4] 初始化演示数据..."
-cd backend
-if [ ! -f "../.seed-done" ]; then
-    echo "  运行 seed..."
-    npx ts-node src/seed.ts >> ../seed.log 2>&1 &
-    touch ../.seed-done
+if [ ! -f ".seed-done" ]; then
+    echo "[seed] 初始化演示数据..."
+    npx prisma db seed >> seed.log 2>&1 &
+    touch .seed-done
     echo "  Seed 日志: seed.log"
-else
-    echo "  演示数据已初始化，跳过"
 fi
-cd ..
 
-# 启动前端
-echo "[4/4] 启动前端..."
-cd frontend
-if [ ! -d "node_modules" ]; then
-    echo "  安装前端依赖..."
-    npm install
-fi
-npm run dev >> ../frontend.log 2>&1 &
-echo "  前端 PID: $!"
-echo $! > ../frontend.pid
-echo "  日志: frontend.log"
-cd ..
+# 启动 Next.js 开发服务器
+echo "[4/4] 启动 Next.js 开发服务器..."
+npm run dev &
+echo "  进程 PID: $!"
+echo $! > dev.pid
 
-sleep 2
+sleep 3
 
 echo ""
 echo "======================================"
@@ -73,16 +59,12 @@ echo "  本地服务已启动!"
 echo "======================================"
 echo ""
 echo "访问地址:"
-echo "  - 前端页面: http://$HOST_IP:5173/"
-echo "  - 前端页面: http://localhost:5173/"
-echo "  - 后端 API: http://$HOST_IP:3000/api"
+echo "  - http://$HOST_IP:3000/"
+echo "  - http://localhost:3000/"
 echo ""
 echo "默认账号:"
 echo "  - 用户名: demo"
 echo "  - 密码: demo123"
-echo ""
-echo "管理功能入口:"
-echo "  登录后点击右上角 [管理] 按钮"
 echo ""
 echo "停止服务:"
 echo "  ./stop-local.sh"

@@ -1,5 +1,7 @@
 'use server';
+
 import { auth } from '@/lib/auth';
+import { prisma } from '@/lib/prisma';
 import Decimal from 'decimal.js';
 
 export async function simulateCashflow(data: {
@@ -52,4 +54,78 @@ export async function simulateCashflow(data: {
   else if (avgSurplusRate.lt(0.2)) warningLevel = 'yellow';
 
   return { success: true, data: { months: result, warningLevel } };
+}
+
+/**
+ * Auto-derive monthly income/expense from recent transaction history.
+ */
+export async function getAutoForecast(months: number = 12) {
+  const session = await auth();
+  const userId = session?.user?.id;
+  if (!userId) return { success: false, error: 'Unauthorized' };
+
+  const now = new Date();
+  const threeMonthsAgo = new Date(now.getFullYear(), now.getMonth() - 3, 1);
+
+  const recentTxs = await prisma.transaction.findMany({
+    where: {
+      userId,
+      occurredAt: { gte: threeMonthsAgo },
+      type: { in: ['INCOME', 'EXPENSE'] },
+    },
+    select: { type: true, amount: true, occurredAt: true },
+  });
+
+  let totalIncome = new Decimal(0);
+  let totalExpense = new Decimal(0);
+  let incomeMonths = 0;
+  let expenseMonths = 0;
+
+  // Calculate monthly averages
+  const monthSet = new Set<string>();
+  for (const tx of recentTxs) {
+    const m = `${tx.occurredAt.getFullYear()}-${tx.occurredAt.getMonth()}`;
+    monthSet.add(m);
+    if (tx.type === 'INCOME') totalIncome = totalIncome.plus(tx.amount);
+    else totalExpense = totalExpense.plus(tx.amount);
+  }
+
+  const activeMonths = Math.max(monthSet.size, 1);
+  const avgIncome = totalIncome.div(activeMonths);
+  const avgExpense = totalExpense.div(activeMonths);
+
+  // Use averages if available, otherwise default to 20000/15000
+  const monthlyIncome = avgIncome.gt(0) ? avgIncome.toFixed(2) : '20000';
+  const monthlyExpense = avgExpense.gt(0) ? avgExpense.toFixed(2) : '15000';
+
+  // Detect recurring transactions (same amount, same category, multiple occurrences)
+  const descCounts = new Map<string, { count: number; amount: Decimal }>();
+  for (const tx of recentTxs) {
+    if (tx.type === 'EXPENSE') {
+      const amt = tx.amount.toString();
+      const key = amt; // group by exact amount
+      const existing = descCounts.get(key);
+      if (existing) {
+        existing.count++;
+      } else {
+        descCounts.set(key, { count: 1, amount: tx.amount });
+      }
+    }
+  }
+
+  const recurring = Array.from(descCounts.entries())
+    .filter(([, v]) => v.count >= 3) // appeared 3+ times in last 3 months
+    .map(([, v]) => ({ amount: v.amount.toFixed(2), occurrences: v.count }))
+    .sort((a, b) => b.occurrences - a.occurrences)
+    .slice(0, 5);
+
+  return {
+    success: true,
+    data: {
+      monthlyIncome,
+      monthlyExpense,
+      activeMonths,
+      recurringExpenses: recurring,
+    },
+  };
 }

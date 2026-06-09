@@ -5,6 +5,7 @@ interface PriceResult {
   name: string;
   price: number;
   market: string;
+  currency: string;
   source: string;
 }
 
@@ -33,6 +34,7 @@ export async function fetchUsStockPrice(code: string): Promise<PriceResult> {
     name,
     price,
     market: 'us',
+    currency: 'USD',
     source: 'sina',
   };
 }

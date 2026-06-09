@@ -12,7 +12,22 @@ export async function getCategories() {
     where: { userId },
     orderBy: [{ type: 'asc' }, { name: 'asc' }],
   });
-  return { success: true, data: categories };
+
+  // Convert Decimal fields to plain numbers for client serialization
+  const data = categories.map((c) => ({
+    id: c.id,
+    userId: c.userId,
+    name: c.name,
+    type: c.type,
+    isEssential: c.isEssential,
+    essentialRatio: c.essentialRatio.toNumber(),
+    icon: c.icon,
+    color: c.color,
+    createdAt: c.createdAt,
+    updatedAt: c.updatedAt,
+  }));
+
+  return { success: true, data };
 }
 
 export async function createCategory(data: { name: string; type: string; icon?: string; color?: string; isEssential?: boolean }) {
@@ -25,7 +40,13 @@ export async function createCategory(data: { name: string; type: string; icon?: 
       data: { ...data, userId },
     });
     revalidateTag(`user-${userId}`, 'default');
-    return { success: true, data: category };
+    return {
+      success: true,
+      data: {
+        ...category,
+        essentialRatio: category.essentialRatio.toNumber(),
+      },
+    };
   } catch (error: any) {
     return { success: false, error: error.message };
   }

@@ -9,6 +9,18 @@ import Decimal from 'decimal.js';
 import { isMarketPriced, isStale, upsertMarketPrice, fetchSinglePrice } from '@/lib/services/price';
 import { fetchGoldPrice } from '@/lib/services/price/sources/gold';
 
+function detectMarket(stockCode?: string): string | undefined {
+  if (!stockCode) return undefined;
+  const code = stockCode.trim();
+  // A-share: 6xxxxx (Shanghai), 0xxxxx/3xxxxx (Shenzhen)
+  if (/^[036]\d{5}$/.test(code)) return 'cn';
+  // HK: 4-5 digit numeric code
+  if (/^\d{4,5}$/.test(code)) return 'hk';
+  // US: alphabetic ticker
+  if (/^[A-Za-z]{1,5}$/.test(code)) return 'us';
+  return undefined;
+}
+
 export async function getAssets() {
   const session = await auth();
   const userId = session?.user?.id;
@@ -38,9 +50,9 @@ export async function getAssets() {
         where: { OR: codesToFetch.map((c) => ({ code: c.code, market: c.market })) },
       })
     : [];
-  const priceMap = new Map<string, { price: number; name: string; updatedAt: Date }>();
+  const priceMap = new Map<string, { price: number; name: string; currency: string; updatedAt: Date }>();
   for (const p of prices) {
-    priceMap.set(`${p.code}|${p.market}`, { price: Number(p.price), name: p.name, updatedAt: p.updatedAt });
+    priceMap.set(`${p.code}|${p.market}`, { price: Number(p.price), name: p.name, currency: p.currency, updatedAt: p.updatedAt });
   }
 
   // Check if any price is stale
@@ -68,6 +80,7 @@ export async function getAssets() {
       let currentUnitPrice: number | null = null;
       let currentValue: string | null = null;
       let marketValue: string = balance;
+      let priceCurrency: string | null = null;
 
       if (a.category === 'gold_physical' || a.category === 'gold_paper') {
         const priceData = priceMap.get('AU9999|commodity');
@@ -75,6 +88,7 @@ export async function getAssets() {
           currentUnitPrice = priceData.price;
           marketValue = new Decimal(a.quantity.toString()).times(priceData.price).toFixed(4);
           currentValue = marketValue;
+          priceCurrency = priceData.currency;
         }
       } else if ((a.category === 'stock' || a.category === 'fund') && a.stockCode && a.market && a.quantity) {
         const priceData = priceMap.get(`${a.stockCode}|${a.market}`);
@@ -82,6 +96,7 @@ export async function getAssets() {
           currentUnitPrice = priceData.price;
           marketValue = new Decimal(a.quantity.toString()).times(priceData.price).toFixed(4);
           currentValue = marketValue;
+          priceCurrency = priceData.currency;
         }
       } else {
         // Non-market-priced: balance stays as-is
@@ -92,8 +107,15 @@ export async function getAssets() {
       const costUnitPriceNum = a.costUnitPrice ? Number(a.costUnitPrice) : null;
 
       return {
-        ...a,
+        id: a.id,
+        userId: a.userId,
+        name: a.name,
+        category: a.category,
         balance: marketValue,
+        currency: a.currency,
+        valuationMethod: a.valuationMethod,
+        liquidityTier: a.liquidityTier,
+        isEncrypted: a.isEncrypted,
         costPrice,
         quantity: quantityNum,
         stockCode: a.stockCode,
@@ -101,14 +123,24 @@ export async function getAssets() {
         costUnitPrice: costUnitPriceNum,
         unitPrice: currentUnitPrice,
         currentValue,
+        priceCurrency,
+        createdAt: a.createdAt,
+        updatedAt: a.updatedAt,
       };
     } catch {
       // Return asset with raw values if decryption fails
       const quantityNum = a.quantity ? Number(a.quantity) : null;
       const costUnitPriceNum = a.costUnitPrice ? Number(a.costUnitPrice) : null;
       return {
-        ...a,
+        id: a.id,
+        userId: a.userId,
+        name: a.name,
+        category: a.category,
         balance: '[decryption error]',
+        currency: a.currency,
+        valuationMethod: a.valuationMethod,
+        liquidityTier: a.liquidityTier,
+        isEncrypted: a.isEncrypted,
         costPrice: null,
         quantity: quantityNum,
         stockCode: a.stockCode,
@@ -116,6 +148,9 @@ export async function getAssets() {
         costUnitPrice: costUnitPriceNum,
         unitPrice: null,
         currentValue: null,
+        priceCurrency: null,
+        createdAt: a.createdAt,
+        updatedAt: a.updatedAt,
       };
     }
   });
@@ -143,9 +178,13 @@ export async function createAsset(data: {
   const derivedKey = session?.user?.derivedKey || await getUserKey(userId);
   if (!derivedKey) return { success: false, error: '会话密钥已过期，请退出重新登录' };
 
+  // Auto-detect market from stock code if not provided
+  const resolvedMarket = data.market || detectMarket(data.stockCode);
+
   try {
     // For market-priced assets, fetch initial price and compute balance
     let balanceStr: string;
+    let fetchedPrice: Decimal | null = null;
     if (isMarketPriced(data.category) && data.quantity) {
       const quantityDec = new Decimal(data.quantity);
       let currentPrice: Decimal;
@@ -163,19 +202,21 @@ export async function createAsset(data: {
           currentPrice = cached ? new Decimal(cached.price.toString()) : new Decimal(0);
         }
         balanceStr = quantityDec.times(currentPrice).toFixed(4);
-      } else if ((data.category === 'stock' || data.category === 'fund') && data.stockCode && data.market) {
+        fetchedPrice = currentPrice;
+      } else if ((data.category === 'stock' || data.category === 'fund') && data.stockCode && resolvedMarket) {
         try {
-          const result = await fetchSinglePrice(data.stockCode, data.market);
+          const result = await fetchSinglePrice(data.stockCode, resolvedMarket);
           await upsertMarketPrice(result);
           currentPrice = new Decimal(result.price);
         } catch (error) {
-          console.error(`Failed to fetch price for ${data.stockCode} (${data.market}):`, error);
+          console.error(`Failed to fetch price for ${data.stockCode} (${resolvedMarket}):`, error);
           const cached = await prisma.marketPrice.findUnique({
-            where: { code_market: { code: data.stockCode, market: data.market } },
+            where: { code_market: { code: data.stockCode, market: resolvedMarket } },
           });
           currentPrice = cached ? new Decimal(cached.price.toString()) : new Decimal(0);
         }
         balanceStr = quantityDec.times(currentPrice).toFixed(4);
+        fetchedPrice = currentPrice;
       } else {
         balanceStr = new Decimal(data.balance || '0').toFixed(4);
       }
@@ -186,9 +227,15 @@ export async function createAsset(data: {
     const encryptedBalance = encryptValue(balanceStr, derivedKey, userId);
 
     // Compute costPrice = quantity × costUnitPrice
+    // Auto-set costUnitPrice only for gold (commodity), not stocks/funds
+    // Stocks have actual purchase prices that differ from market price
+    const isGoldCategory = data.category === 'gold_physical' || data.category === 'gold_paper';
+    const effectiveCostUnitPrice = data.costUnitPrice
+      || (isGoldCategory && fetchedPrice ? fetchedPrice.toString() : undefined);
+
     let computedCostPrice: string | null = null;
-    if (data.quantity && data.costUnitPrice) {
-      computedCostPrice = new Decimal(data.quantity).times(new Decimal(data.costUnitPrice)).toFixed(4);
+    if (data.quantity && effectiveCostUnitPrice) {
+      computedCostPrice = new Decimal(data.quantity).times(new Decimal(effectiveCostUnitPrice)).toFixed(4);
     }
 
     const encryptedCostPrice = computedCostPrice
@@ -209,14 +256,21 @@ export async function createAsset(data: {
         costPrice: encryptedCostPrice,
         quantity: data.quantity ? new Decimal(data.quantity) : undefined,
         stockCode: data.stockCode,
-        market: data.market,
-        costUnitPrice: data.costUnitPrice ? new Decimal(data.costUnitPrice) : undefined,
+        market: resolvedMarket,
+        costUnitPrice: effectiveCostUnitPrice ? new Decimal(effectiveCostUnitPrice) : undefined,
         userId,
       },
     });
 
     revalidateTag(`user-${userId}`, 'default');
-    return { success: true, data: asset };
+    return {
+      success: true,
+      data: {
+        ...asset,
+        quantity: asset.quantity ? Number(asset.quantity) : null,
+        costUnitPrice: asset.costUnitPrice ? Number(asset.costUnitPrice) : null,
+      },
+    };
   } catch (error: any) {
     return { success: false, error: error.message };
   }
@@ -273,7 +327,14 @@ export async function updateAsset(
     });
 
     revalidateTag(`user-${userId}`, 'default');
-    return { success: true, data: asset };
+    return {
+      success: true,
+      data: {
+        ...asset,
+        quantity: asset.quantity ? Number(asset.quantity) : null,
+        costUnitPrice: asset.costUnitPrice ? Number(asset.costUnitPrice) : null,
+      },
+    };
   } catch (error: any) {
     return { success: false, error: error.message };
   }

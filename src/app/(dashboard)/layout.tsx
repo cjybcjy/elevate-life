@@ -13,7 +13,7 @@ export default async function DashboardLayout({
   return (
     <div className="min-h-full flex flex-col bg-ledger-bg">
       <DashboardNav />
-      <main className="flex-1 px-4 py-6 sm:px-6 lg:px-8">{children}</main>
+      <main className="flex-1">{children}</main>
     </div>
   );
 }

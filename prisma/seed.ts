@@ -27,9 +27,14 @@ async function main() {
   const categories = await prisma.category.createMany({
     data: [
       { name: '工资', type: 'INCOME', icon: '💰', color: '#10b981', userId: user.id },
+      { name: '公积金存款', type: 'INCOME', icon: '🏦', color: '#10b981', userId: user.id },
+      { name: '公积金提取', type: 'INCOME', icon: '🏧', color: '#8b5cf6', userId: user.id },
+      { name: '养老保险', type: 'INCOME', icon: '🏛️', color: '#8b5cf6', userId: user.id },
       { name: '餐饮', type: 'EXPENSE', icon: '🍔', color: '#ef4444', isEssential: true, userId: user.id },
       { name: '房租', type: 'EXPENSE', icon: '🏠', color: '#f59e0b', isEssential: true, userId: user.id },
       { name: '交通', type: 'EXPENSE', icon: '🚗', color: '#3b82f6', userId: user.id },
+      { name: '医疗', type: 'EXPENSE', icon: '🏥', color: '#ef4444', userId: user.id },
+      { name: '固定支出', type: 'EXPENSE', icon: '📋', color: '#f59e0b', isEssential: true, userId: user.id },
     ],
   });
 

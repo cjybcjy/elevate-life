@@ -30,6 +30,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           id: user.id,
           name: user.displayName,
           username: user.username,
+          derivedKey,
         };
       },
     }),

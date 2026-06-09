@@ -8,14 +8,18 @@ export async function getCurrentGoldPrice() {
     where: { code: 'AU9999', market: 'commodity' },
     orderBy: { updatedAt: 'desc' },
   });
-  return { success: true, data: latest };
+  if (!latest) return { success: true, data: null };
+  return {
+    success: true,
+    data: { ...latest, price: Number(latest.price), currency: latest.currency },
+  };
 }
 
 export async function fetchAndStoreGoldPrice() {
   try {
     const result = await fetchGoldPrice();
     await upsertMarketPrice(result);
-    return { success: true, data: result };
+    return { success: true, data: { ...result, price: result.price } };
   } catch (error: any) {
     return { success: false, error: error.message };
   }
