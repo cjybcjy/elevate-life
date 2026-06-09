@@ -14,10 +14,14 @@ model User {
   createdAt    DateTime      @default(now()) @map("created_at")
   updatedAt    DateTime      @updatedAt @map("updated_at")
 
-  assets       Asset[]
-  liabilities  Liability[]
-  transactions Transaction[]
-  categories   Category[]
+  assets         Asset[]
+  liabilities    Liability[]
+  transactions   Transaction[]
+  categories     Category[]
+  recurringRules RecurringRule[]
+  categoryRules  CategoryRule[]
+  budgets        Budget[]
+  savingsGoals   SavingsGoal[]
 }
 
 model Asset {
@@ -41,6 +45,7 @@ model Asset {
   user             User          @relation(fields: [userId], references: [id], onDelete: Cascade)
   transactionsFrom Transaction[] @relation("fromAsset")
   transactionsTo   Transaction[] @relation("toAsset")
+  savingsGoals     SavingsGoal[]
 
   @@index([userId, category])
   @@index([stockCode, market])
@@ -90,21 +95,63 @@ model Transaction {
   type          String
   amount        Decimal   @db.Decimal(18, 4)
   categoryId    String?   @map("category_id")
+  budgetId      String?   @map("budget_id")
   fromAccountId String?   @map("from_account_id")
   toAccountId   String?   @map("to_account_id")
   liabilityId   String?   @map("liability_id")
   description   String?
   occurredAt    DateTime  @map("occurred_at")
   isEssential   Boolean   @default(false) @map("is_essential")
+  reconciled    Boolean   @default(false)
+  currency      String    @default("CNY")
   createdAt     DateTime  @default(now()) @map("created_at")
 
   user       User       @relation(fields: [userId], references: [id], onDelete: Cascade)
   category   Category?  @relation(fields: [categoryId], references: [id])
+  budget     Budget?    @relation(fields: [budgetId], references: [id], onDelete: SetNull)
   fromAsset  Asset?     @relation("fromAsset", fields: [fromAccountId], references: [id])
   toAsset    Asset?     @relation("toAsset", fields: [toAccountId], references: [id])
   liability  Liability? @relation("liabilityTransactions", fields: [liabilityId], references: [id])
 
   @@index([userId, occurredAt])
+}
+
+model RecurringRule {
+  id            String   @id @default(uuid())
+  userId        String   @map("user_id")
+  name          String
+  type          String
+  amount        Decimal  @db.Decimal(18, 4)
+  currency      String   @default("CNY")
+  categoryId    String?  @map("category_id")
+  fromAccountId String?  @map("from_account_id")
+  toAccountId   String?  @map("to_account_id")
+  description   String?
+  frequency     String   @default("monthly")
+  interval      Int      @default(1)
+  nextDueDate   DateTime @map("next_due_date")
+  isActive      Boolean  @default(true) @map("is_active")
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  category Category? @relation(fields: [categoryId], references: [id])
+
+  @@index([userId, nextDueDate])
+}
+
+model CategoryRule {
+  id         String   @id @default(uuid())
+  userId     String   @map("user_id")
+  keyword    String
+  categoryId String   @map("category_id")
+  priority   Int      @default(0)
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  category Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, keyword])
 }
 
 model Category {
@@ -119,8 +166,48 @@ model Category {
   createdAt      DateTime @default(now()) @map("created_at")
   updatedAt      DateTime @updatedAt @map("updated_at")
 
+  user           User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  transactions   Transaction[]
+  recurringRules RecurringRule[]
+  categoryRules  CategoryRule[]
+  budgets        Budget[]
+}
+
+model Budget {
+  id         String   @id @default(uuid())
+  userId     String   @map("user_id")
+  name       String
+  categoryId String?  @map("category_id")
+  amount     Decimal  @db.Decimal(18, 4)
+  startDate  DateTime @map("start_date")
+  endDate    DateTime @map("end_date")
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+
   user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  category     Category?     @relation(fields: [categoryId], references: [id])
   transactions Transaction[]
+
+  @@index([userId, startDate, endDate])
+}
+
+model SavingsGoal {
+  id            String   @id @default(uuid())
+  userId        String   @map("user_id")
+  name          String
+  targetAmount  Decimal  @db.Decimal(18, 4) @map("target_amount")
+  currentAmount Decimal  @default(0) @db.Decimal(18, 4) @map("current_amount")
+  assetId       String?  @map("asset_id")
+  deadline      DateTime?
+  icon          String?
+  color         String?
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  asset Asset? @relation(fields: [assetId], references: [id])
+
+  @@index([userId])
 }
 
 model MarketPrice {
@@ -129,6 +216,7 @@ model MarketPrice {
   market    String
   name      String
   price     Decimal  @db.Decimal(18, 4)
+  currency  String   @default("CNY")
   source    String?
   updatedAt DateTime @updatedAt @map("updated_at")
 
