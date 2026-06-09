@@ -6,19 +6,21 @@ import { getUserKey } from '@/lib/key-cache';
 import { encryptValue, decryptValue } from '@/lib/crypto';
 import { revalidateTag } from 'next/cache';
 import Decimal from 'decimal.js';
+import { autoCategorize } from './category-rules';
 
 export async function getTransactions() {
   const session = await auth();
   const userId = session?.user?.id;
   if (!userId) return { success: false, error: 'Unauthorized' };
 
-  const derivedKey = await getUserKey(userId);
-  if (!derivedKey) return { success: false, error: 'Session expired' };
+  const derivedKey = session?.user?.derivedKey || await getUserKey(userId);
+  if (!derivedKey) return { success: false, error: '会话密钥已过期，请退出重新登录' };
 
   const transactions = await prisma.transaction.findMany({
     where: { userId },
     include: {
       category: true,
+      budget: { select: { id: true, name: true } },
       fromAsset: true,
       toAsset: true,
       liability: true,
@@ -27,38 +29,95 @@ export async function getTransactions() {
   });
 
   const decrypted = transactions.map((t) => ({
-    ...t,
+    id: t.id,
+    userId: t.userId,
+    type: t.type,
     amount: t.amount.toFixed(4),
+    categoryId: t.categoryId,
+    budgetId: t.budgetId,
+    fromAccountId: t.fromAccountId,
+    toAccountId: t.toAccountId,
+    liabilityId: t.liabilityId,
+    description: t.description,
+    occurredAt: t.occurredAt,
+    isEssential: t.isEssential,
+    reconciled: t.reconciled,
+    currency: t.currency,
+    createdAt: t.createdAt,
+    budget: t.budget
+      ? { id: t.budget.id, name: t.budget.name }
+      : null,
+    category: t.category
+      ? {
+          id: t.category.id,
+          userId: t.category.userId,
+          name: t.category.name,
+          type: t.category.type,
+          isEssential: t.category.isEssential,
+          essentialRatio: t.category.essentialRatio.toNumber(),
+          icon: t.category.icon,
+          color: t.category.color,
+          createdAt: t.category.createdAt,
+          updatedAt: t.category.updatedAt,
+        }
+      : null,
     fromAsset: t.fromAsset
       ? {
-          ...t.fromAsset,
+          id: t.fromAsset.id,
+          name: t.fromAsset.name,
+          category: t.fromAsset.category,
           balance: decryptValue(t.fromAsset.balance, derivedKey, userId),
+          currency: t.fromAsset.currency,
+          liquidityTier: t.fromAsset.liquidityTier,
+          isEncrypted: t.fromAsset.isEncrypted,
           costPrice: t.fromAsset.costPrice
             ? decryptValue(t.fromAsset.costPrice, derivedKey, userId)
             : null,
+          quantity: t.fromAsset.quantity ? Number(t.fromAsset.quantity) : null,
+          stockCode: t.fromAsset.stockCode,
+          market: t.fromAsset.market,
+          costUnitPrice: t.fromAsset.costUnitPrice ? Number(t.fromAsset.costUnitPrice) : null,
+          createdAt: t.fromAsset.createdAt,
+          updatedAt: t.fromAsset.updatedAt,
         }
       : null,
     toAsset: t.toAsset
       ? {
-          ...t.toAsset,
+          id: t.toAsset.id,
+          name: t.toAsset.name,
+          category: t.toAsset.category,
           balance: decryptValue(t.toAsset.balance, derivedKey, userId),
+          currency: t.toAsset.currency,
+          liquidityTier: t.toAsset.liquidityTier,
+          isEncrypted: t.toAsset.isEncrypted,
           costPrice: t.toAsset.costPrice
             ? decryptValue(t.toAsset.costPrice, derivedKey, userId)
             : null,
+          quantity: t.toAsset.quantity ? Number(t.toAsset.quantity) : null,
+          stockCode: t.toAsset.stockCode,
+          market: t.toAsset.market,
+          costUnitPrice: t.toAsset.costUnitPrice ? Number(t.toAsset.costUnitPrice) : null,
+          createdAt: t.toAsset.createdAt,
+          updatedAt: t.toAsset.updatedAt,
         }
       : null,
     liability: t.liability
       ? {
-          ...t.liability,
+          id: t.liability.id,
+          name: t.liability.name,
+          category: t.liability.category,
           principal: decryptValue(t.liability.principal, derivedKey, userId),
-          currentBalance: decryptValue(
-            t.liability.currentBalance,
-            derivedKey,
-            userId,
-          ),
+          currentBalance: decryptValue(t.liability.currentBalance, derivedKey, userId),
+          interestRate: t.liability.interestRate.toNumber(),
+          termMonths: t.liability.termMonths,
+          startDate: t.liability.startDate,
+          paymentMethod: t.liability.paymentMethod,
           monthlyPayment: t.liability.monthlyPayment
             ? decryptValue(t.liability.monthlyPayment, derivedKey, userId)
             : null,
+          isEncrypted: t.liability.isEncrypted,
+          createdAt: t.liability.createdAt,
+          updatedAt: t.liability.updatedAt,
         }
       : null,
   }));
@@ -69,7 +128,9 @@ export async function getTransactions() {
 export async function createTransaction(data: {
   type: string;
   amount: string;
+  currency?: string;
   categoryId?: string;
+  budgetId?: string;
   fromAccountId?: string;
   toAccountId?: string;
   liabilityId?: string;
@@ -81,10 +142,17 @@ export async function createTransaction(data: {
   const userId = session?.user?.id;
   if (!userId) return { success: false, error: 'Unauthorized' };
 
-  const derivedKey = await getUserKey(userId);
-  if (!derivedKey) return { success: false, error: 'Session expired' };
+  const derivedKey = session?.user?.derivedKey || await getUserKey(userId);
+  if (!derivedKey) return { success: false, error: '会话密钥已过期，请退出重新登录' };
 
   const amount = new Decimal(data.amount);
+
+  // Auto-categorize if no category provided but description is available
+  let resolvedCategoryId = data.categoryId || undefined;
+  if (!resolvedCategoryId && data.description) {
+    const autoCat = await autoCategorize(userId, data.description);
+    if (autoCat) resolvedCategoryId = autoCat;
+  }
 
   try {
     await prisma.$transaction(async (tx) => {
@@ -230,13 +298,15 @@ export async function createTransaction(data: {
         data: {
           type: data.type,
           amount,
-          categoryId: data.categoryId || null,
+          categoryId: resolvedCategoryId || null,
+          budgetId: data.budgetId || null,
           fromAccountId: data.fromAccountId || null,
           toAccountId: data.toAccountId || null,
           liabilityId: data.liabilityId || null,
           description: data.description,
           occurredAt: new Date(data.occurredAt),
           isEssential: data.isEssential ?? false,
+          currency: data.currency || 'CNY',
           userId,
         },
       });
@@ -249,13 +319,64 @@ export async function createTransaction(data: {
   }
 }
 
+export async function updateTransaction(
+  id: string,
+  data: Partial<{
+    amount: string;
+    categoryId: string;
+    budgetId: string | null;
+    description: string;
+    occurredAt: string;
+  }>
+) {
+  const session = await auth();
+  const userId = session?.user?.id;
+  if (!userId) return { success: false, error: 'Unauthorized' };
+
+  try {
+    const updateData: any = {};
+    if (data.amount !== undefined) updateData.amount = new Decimal(data.amount);
+    if (data.categoryId !== undefined) updateData.categoryId = data.categoryId || null;
+    if (data.budgetId !== undefined) updateData.budgetId = data.budgetId || null;
+    if (data.description !== undefined) updateData.description = data.description;
+    if (data.occurredAt !== undefined) updateData.occurredAt = new Date(data.occurredAt);
+
+    await prisma.transaction.updateMany({
+      where: { id, userId },
+      data: updateData,
+    });
+
+    revalidateTag(`user-${userId}`, 'default');
+    return { success: true };
+  } catch (error: any) {
+    return { success: false, error: error.message };
+  }
+}
+
+export async function updateTransactionReconciled(id: string, reconciled: boolean) {
+  const session = await auth();
+  const userId = session?.user?.id;
+  if (!userId) return { success: false, error: 'Unauthorized' };
+
+  try {
+    await prisma.transaction.updateMany({
+      where: { id, userId },
+      data: { reconciled },
+    });
+    revalidateTag(`user-${userId}`, 'default');
+    return { success: true };
+  } catch (error: any) {
+    return { success: false, error: error.message };
+  }
+}
+
 export async function deleteTransaction(id: string) {
   const session = await auth();
   const userId = session?.user?.id;
   if (!userId) return { success: false, error: 'Unauthorized' };
 
-  const derivedKey = await getUserKey(userId);
-  if (!derivedKey) return { success: false, error: 'Session expired' };
+  const derivedKey = session?.user?.derivedKey || await getUserKey(userId);
+  if (!derivedKey) return { success: false, error: '会话密钥已过期，请退出重新登录' };
 
   try {
     const existing = await prisma.transaction.findFirst({
