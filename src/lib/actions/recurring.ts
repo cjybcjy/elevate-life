@@ -224,10 +224,41 @@ export async function processDueRecurring() {
 
   for (const rule of dueRules) {
     try {
-      // Create the transaction using the ledger action
-      // We need to bypass auth here since this runs as cron/system
-      // Use raw transaction creation with the rule's userId
+      const nextDue = computeNextDueDate(rule.nextDueDate, rule.frequency, rule.interval);
+
       await prisma.$transaction(async (tx) => {
+        // Deduct from source account
+        if (rule.fromAccountId) {
+          const [asset] = await tx.$queryRawUnsafe<{ id: string; balance: string; is_encrypted: boolean }[]>(
+            `SELECT id, balance, is_encrypted FROM "Asset" WHERE id = $1 AND user_id = $2 FOR UPDATE`,
+            rule.fromAccountId, rule.userId
+          );
+          if (asset) {
+            const current = new Decimal(asset.balance);
+            const newBalance = current.minus(rule.amount);
+            if (!newBalance.isNegative()) {
+              await tx.$executeRawUnsafe(
+                `UPDATE "Asset" SET balance = $1 WHERE id = $2`,
+                newBalance.toFixed(4), asset.id
+              );
+            }
+          }
+        }
+        // Add to target account
+        if (rule.toAccountId) {
+          const [asset] = await tx.$queryRawUnsafe<{ id: string; balance: string }[]>(
+            `SELECT id, balance FROM "Asset" WHERE id = $1 AND user_id = $2 FOR UPDATE`,
+            rule.toAccountId, rule.userId
+          );
+          if (asset) {
+            const current = new Decimal(asset.balance);
+            const newBalance = current.plus(rule.amount);
+            await tx.$executeRawUnsafe(
+              `UPDATE "Asset" SET balance = $1 WHERE id = $2`,
+              newBalance.toFixed(4), asset.id
+            );
+          }
+        }
         await tx.transaction.create({
           data: {
             type: rule.type,
@@ -241,13 +272,11 @@ export async function processDueRecurring() {
             userId: rule.userId,
           },
         });
-      });
-
-      // Update next due date
-      const nextDue = computeNextDueDate(rule.nextDueDate, rule.frequency, rule.interval);
-      await prisma.recurringRule.update({
-        where: { id: rule.id },
-        data: { nextDueDate: nextDue },
+        // Advance nextDueDate atomically — prevents duplicates
+        await tx.recurringRule.update({
+          where: { id: rule.id },
+          data: { nextDueDate: nextDue },
+        });
       });
 
       results.push({ ruleId: rule.id, name: rule.name, success: true });

@@ -1,0 +1,85 @@
+<h2>实施方案对比</h2>
+<p class="subtitle">三种实现路径 — 在 Tailwind v4 + Next.js 16 技术栈下</p>
+
+<div class="options" data-multiselect>
+  <div class="option" data-choice="approach1" onclick="toggleSelect(this)">
+    <div class="letter">A</div>
+    <div class="content">
+      <h3>CSS 变量 + Tailwind 主题扩展（推荐）</h3>
+      <p>在 globals.css 中用 @theme 扩展 Tailwind，定义 Firefly III 风格的色板。通过 <code>data-theme</code> 属性切换亮暗。保留所有 Tailwind 类名，改动最小。</p>
+      <div class="pros-cons" style="margin-top:12px;">
+        <div class="pros"><h4>优点</h4><ul>
+          <li>改动最小，不破坏现有功能</li>
+          <li>利用 Tailwind v4 原生 @theme 能力</li>
+          <li>亮暗切换只需切换 data 属性</li>
+          <li>所有组件自动响应主题</li>
+        </ul></div>
+        <div class="cons"><h4>缺点</h4><ul>
+          <li>需要在 globals.css 中维护较长的主题变量</li>
+        </ul></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="option" data-choice="approach2" onclick="toggleSelect(this)">
+    <div class="letter">B</div>
+    <div class="content">
+      <h3>CSS Modules 完全重写</h3>
+      <p>为每个组件创建 .module.css 文件，用原生 CSS 变量控制主题。完全脱离 Tailwind 工具类。</p>
+      <div class="pros-cons" style="margin-top:12px;">
+        <div class="pros"><h4>优点</h4><ul>
+          <li>完全控制样式细节</li>
+          <li>组件样式隔离，无冲突</li>
+        </ul></div>
+        <div class="cons"><h4>缺点</h4><ul>
+          <li>工作量大，需重写所有组件的 className</li>
+          <li>丢失 Tailwind 的响应式/变体便利性</li>
+          <li>后续维护成本高</li>
+        </ul></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="option" data-choice="approach3" onclick="toggleSelect(this)">
+    <div class="letter">C</div>
+    <div class="content">
+      <h3>引入组件库 (shadcn/ui)</h3>
+      <p>安装 shadcn/ui 或其他组件库，用预制组件替换现有 UI。主题切换由库内置支持。</p>
+      <div class="pros-cons" style="margin-top:12px;">
+        <div class="pros"><h4>优点</h4><ul>
+          <li>开箱即用的组件和主题</li>
+          <li>组件质量高，无障碍性好</li>
+        </ul></div>
+        <div class="cons"><h4>缺点</h4><ul>
+          <li>增加依赖，bundle 体积变大</li>
+          <li>需要将现有功能映射到新组件</li>
+          <li>可能与现有 echarts/自定义组件冲突</li>
+          <li>风格可能不完全匹配 Firefly III</li>
+        </ul></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="section" style="margin-top:28px;">
+  <h3>推荐方案 A 的核心思路</h3>
+  <div class="mockup">
+    <div class="mockup-header">架构：CSS 变量 → Tailwind @theme → data-theme 切换</div>
+    <div class="mockup-body" style="padding:20px;">
+      <div style="display:flex; flex-direction:column; gap:12px; font-size:13px;">
+        <div style="background:#f0f9ff; border:1px solid #bae6fd; border-radius:6px; padding:12px;">
+          <strong>1. 主题 Token 层</strong> — globals.css 定义 <code>:root { --color-bg: #f4f6f9; ... }</code> 和 <code>[data-theme="dark"] { --color-bg: #0f172a; ... }</code>
+        </div>
+        <div style="background:#f0fdf4; border:1px solid #bbf7d0; border-radius:6px; padding:12px;">
+          <strong>2. Tailwind 桥接</strong> — <code>@theme { --color-bg: var(--color-bg-ref); }</code> 让 CSS 变量对接到 Tailwind 类名
+        </div>
+        <div style="background:#fefce8; border:1px solid #fef08a; border-radius:6px; padding:12px;">
+          <strong>3. 组件层</strong> — 现有 <code>bg-ledger-surface</code> → <code>bg-surface</code>，自动跟随主题切换，无需逐个组件改
+        </div>
+        <div style="background:#fff1f2; border:1px solid #fecdd3; border-radius:6px; padding:12px;">
+          <strong>4. 主题切换</strong> — ThemeProvider 组件 + localStorage 持久化，点击按钮切换 html 上的 data-theme
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

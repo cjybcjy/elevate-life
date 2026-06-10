@@ -1,22 +1,25 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useOptimistic } from 'react';
 import { AmountDisplay } from '@/components/common/AmountDisplay';
-import { useRouter } from 'next/navigation';
 import { createAsset, updateAsset, deleteAsset } from '@/lib/actions/assets';
 import { AssetTable } from './AssetTable';
 import { PriceRefresher } from '@/components/widgets/PriceRefresher';
+import { useAssets } from '@/hooks/useAssets';
+import { useToast } from '@/components/common/Toast';
+import { useSWRConfig } from 'swr';
 
-export default function AssetManager({
-  assets: initialAssets,
-  pricesStale: initialStale,
-}: {
-  assets: any[];
-  pricesStale: boolean;
-}) {
-  const router = useRouter();
+export default function AssetManager() {
+  const { data, isLoading, error: fetchError } = useAssets();
+  const { mutate } = useSWRConfig();
+  const toast = useToast();
+
+  const assets = data?.data ?? [];
+  const pricesStale = data?.pricesStale ?? false;
+
+  const [optimisticAssets, addOptimistic] = useOptimistic(assets, (state: any[], newAsset: any) => [newAsset, ...state]);
   const [error, setError] = useState('');
-  const [refreshKey, setRefreshKey] = useState(0);
+  const [showDepreciation, setShowDepreciation] = useState(false);
 
   async function handleCreate(formData: FormData) {
     setError('');
@@ -24,23 +27,57 @@ export default function AssetManager({
     const isGold = category === 'gold_physical' || category === 'gold_paper';
     const isSecurity = category === 'stock' || category === 'fund';
 
+    const purchaseDate = (formData.get('purchaseDate') as string) || undefined;
+    const scrapDate = (formData.get('scrapDate') as string) || undefined;
+    const scrapValue = (formData.get('scrapValue') as string) || undefined;
+
+    // Auto-calculate balance for depreciating assets
+    let balance: string | undefined;
+    let costPrice: string | undefined;
+    if (purchaseDate && scrapDate && isGold === false && isSecurity === false) {
+      costPrice = (formData.get('costPrice') as string) || undefined;
+      if (costPrice && purchaseDate && scrapDate) {
+        const purchaseMs = new Date(purchaseDate).getTime();
+        const scrapMs = new Date(scrapDate).getTime();
+        const nowMs = Date.now();
+        const totalDays = (scrapMs - purchaseMs) / (1000 * 60 * 60 * 24);
+        const elapsedDays = (nowMs - purchaseMs) / (1000 * 60 * 60 * 24);
+        const purchaseVal = parseFloat(costPrice);
+        const scrapVal = parseFloat(scrapValue || '0');
+        if (totalDays > 0) {
+          const ratio = Math.max(0, Math.min(1, elapsedDays / totalDays));
+          balance = (purchaseVal - (purchaseVal - scrapVal) * ratio).toFixed(4);
+        } else {
+          balance = costPrice;
+        }
+      }
+    } else {
+      balance = isGold || isSecurity ? undefined : (formData.get('balance') as string);
+    }
+
     const result = await createAsset({
       name: formData.get('name') as string,
       category,
-      balance: isGold || isSecurity ? undefined : (formData.get('balance') as string),
+      balance,
       currency: (formData.get('currency') as string) || 'CNY',
       quantity: isGold || isSecurity ? (formData.get('quantity') as string) : undefined,
       stockCode: isSecurity ? (formData.get('stockCode') as string) : undefined,
       market: isSecurity ? (formData.get('market') as string) : undefined,
       costUnitPrice: isGold || isSecurity ? (formData.get('costUnitPrice') as string) : undefined,
+      costPrice,
+      purchaseDate,
+      scrapDate,
+      scrapValue,
     });
     if (result.success) {
       (document.getElementById('create-form') as HTMLFormElement)?.reset();
-      setRefreshKey(k => k + 1); router.refresh();
+      mutate('assets');
+      toast.success('资产已创建');
     } else if (result.error?.includes('会话密钥')) {
-      router.push('/login');
+      window.location.href = '/login';
     } else {
       setError(result.error || '创建失败');
+      mutate('assets');
     }
   }
 
@@ -54,11 +91,15 @@ export default function AssetManager({
       stockCode: (formData.get('stockCode') as string) || undefined,
       market: (formData.get('market') as string) || undefined,
       costUnitPrice: (formData.get('costUnitPrice') as string) || undefined,
+      purchaseDate: (formData.get('purchaseDate') as string) || undefined,
+      scrapDate: (formData.get('scrapDate') as string) || undefined,
+      scrapValue: (formData.get('scrapValue') as string) || undefined,
     });
     if (result.success) {
-      setRefreshKey(k => k + 1); router.refresh();
+      mutate('assets');
+      toast.success('资产已更新');
     } else if (result.error?.includes('会话密钥')) {
-      router.push('/login');
+      window.location.href = '/login';
     } else {
       setError(result.error || '更新失败');
     }
@@ -69,11 +110,13 @@ export default function AssetManager({
     const id = formData.get('id') as string;
     const result = await deleteAsset(id);
     if (result.success) {
-      setRefreshKey(k => k + 1); router.refresh();
+      mutate('assets');
+      toast.success('资产已删除');
     } else if (result.error?.includes('会话密钥')) {
-      router.push('/login');
+      window.location.href = '/login';
     } else {
       setError(result.error || '删除失败');
+      mutate('assets');
     }
   }
 
@@ -81,7 +124,7 @@ export default function AssetManager({
     <div>
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-bold text-white">资产管理</h1>
-        <PriceRefresher pricesStale={initialStale} />
+        <PriceRefresher pricesStale={pricesStale} />
       </div>
 
       {error && (
@@ -96,8 +139,9 @@ export default function AssetManager({
         const specialMap: Record<string, { icon: string; label: string }> = {
           provident_fund: { icon: '🏦', label: '公积金' },
           pension: { icon: '🏛️', label: '养老保险' },
+          current_deposit: { icon: '💳', label: '银行活期' },
         };
-        const specialAssets = initialAssets.filter((a: any) => specialMap[a.category]);
+        const specialAssets = assets.filter((a: any) => specialMap[a.category]);
         if (specialAssets.length === 0) return null;
         const groups: Record<string, { icon: string; label: string; assets: any[]; total: number }> = {};
         for (const a of specialAssets) {
@@ -156,6 +200,7 @@ export default function AssetManager({
             <option value="">选择分类</option>
             <option value="real_estate">🏠 房产</option>
             <option value="cash">💰 现金</option>
+            <option value="current_deposit">💳 银行活期</option>
             <option value="provident_fund">🏦 公积金账户</option>
             <option value="pension">🏛️ 养老账户</option>
             <option value="gold_physical">🟡 实物黄金</option>
@@ -184,7 +229,7 @@ export default function AssetManager({
           <input
             name="stockCode"
             className="rounded-md bg-ledger-bg border border-ledger-bg px-3 py-2 text-sm text-white placeholder-ledger-muted focus:outline-none focus:border-ledger-accent font-mono"
-            placeholder="600519"
+            placeholder="000000"
           />
         </div>
         <div>
@@ -207,16 +252,30 @@ export default function AssetManager({
             placeholder="每份买入价"
           />
         </div>
-        <div>
-          <label className="block text-xs text-ledger-muted mb-1">余额/金额</label>
-          <input
-            name="balance"
-            type="number"
-            step="0.01"
-            className="rounded-md bg-ledger-bg border border-ledger-bg px-3 py-2 text-sm text-white placeholder-ledger-muted focus:outline-none focus:border-ledger-accent"
-            placeholder="手动金额（非黄金/股票类）"
-          />
-        </div>
+        {showDepreciation ? (
+          <div>
+            <label className="block text-xs text-ledger-muted mb-1">买入总价</label>
+            <input
+              name="costPrice"
+              type="number"
+              step="0.01"
+              required
+              className="rounded-md bg-ledger-bg border border-ledger-bg px-3 py-2 text-sm text-white placeholder-ledger-muted focus:outline-none focus:border-ledger-accent"
+              placeholder="折旧前原价"
+            />
+          </div>
+        ) : (
+          <div>
+            <label className="block text-xs text-ledger-muted mb-1">余额/金额</label>
+            <input
+              name="balance"
+              type="number"
+              step="0.01"
+              className="rounded-md bg-ledger-bg border border-ledger-bg px-3 py-2 text-sm text-white placeholder-ledger-muted focus:outline-none focus:border-ledger-accent"
+              placeholder="手动金额（非黄金/股票类）"
+            />
+          </div>
+        )}
         <div>
           <label className="block text-xs text-ledger-muted mb-1">币种</label>
           <input
@@ -226,6 +285,48 @@ export default function AssetManager({
             placeholder="CNY"
           />
         </div>
+        <div>
+          <label className="flex items-center gap-2 text-sm text-ledger-muted cursor-pointer">
+            <input
+              type="checkbox"
+              checked={showDepreciation}
+              onChange={e => setShowDepreciation(e.target.checked)}
+              className="rounded"
+            />
+            折旧
+          </label>
+        </div>
+        {showDepreciation && (
+          <>
+            <div>
+              <label className="block text-xs text-ledger-muted mb-1">买入日期</label>
+              <input
+                name="purchaseDate"
+                type="date"
+                className="rounded-md bg-ledger-bg border border-ledger-bg px-3 py-2 text-sm text-white focus:outline-none focus:border-ledger-accent"
+              />
+            </div>
+            <div>
+              <label className="block text-xs text-ledger-muted mb-1">报废日期</label>
+              <input
+                name="scrapDate"
+                type="date"
+                className="rounded-md bg-ledger-bg border border-ledger-bg px-3 py-2 text-sm text-white focus:outline-none focus:border-ledger-accent"
+              />
+            </div>
+            <div>
+              <label className="block text-xs text-ledger-muted mb-1">报废残值</label>
+              <input
+                name="scrapValue"
+                type="number"
+                step="0.01"
+                defaultValue="0"
+                className="rounded-md bg-ledger-bg border border-ledger-bg px-3 py-2 text-sm text-white placeholder-ledger-muted focus:outline-none focus:border-ledger-accent"
+                placeholder="0"
+              />
+            </div>
+          </>
+        )}
         <button
           type="submit"
           className="rounded-md bg-ledger-accent px-4 py-2 text-sm font-medium text-white hover:opacity-90 transition-opacity"
@@ -234,7 +335,7 @@ export default function AssetManager({
         </button>
       </form>
 
-      <AssetTable key={refreshKey} assets={initialAssets} handleDelete={handleDelete} handleUpdate={handleUpdate} />
+      <AssetTable assets={optimisticAssets} handleDelete={handleDelete} handleUpdate={handleUpdate} />
     </div>
   );
 }

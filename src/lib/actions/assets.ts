@@ -99,8 +99,25 @@ export async function getAssets() {
           priceCurrency = priceData.currency;
         }
       } else {
-        // Non-market-priced: balance stays as-is
+        // Non-market-priced: apply straight-line depreciation if configured
         currentValue = balance;
+        if (a.purchaseDate && a.scrapDate && costPrice !== null) {
+          const purchaseDate = new Date(a.purchaseDate);
+          const scrapDate = new Date(a.scrapDate);
+          const now = new Date();
+          const totalDays = (scrapDate.getTime() - purchaseDate.getTime()) / (1000 * 60 * 60 * 24);
+          const elapsedDays = (now.getTime() - purchaseDate.getTime()) / (1000 * 60 * 60 * 24);
+          const scrapVal = a.scrapValue ? Number(a.scrapValue) : 0;
+          const purchasePrice = parseFloat(costPrice);
+
+          if (totalDays > 0) {
+            const ratio = Math.max(0, Math.min(1, elapsedDays / totalDays));
+            const depreciatedValue = purchasePrice - (purchasePrice - scrapVal) * ratio;
+            const rounded = depreciatedValue.toFixed(4);
+            currentValue = rounded;
+            marketValue = rounded;
+          }
+        }
       }
 
       const quantityNum = a.quantity ? Number(a.quantity) : null;
@@ -124,11 +141,13 @@ export async function getAssets() {
         unitPrice: currentUnitPrice,
         currentValue,
         priceCurrency,
+        purchaseDate: a.purchaseDate,
+        scrapDate: a.scrapDate,
+        scrapValue: a.scrapValue ? Number(a.scrapValue) : null,
         createdAt: a.createdAt,
         updatedAt: a.updatedAt,
       };
     } catch {
-      // Return asset with raw values if decryption fails
       const quantityNum = a.quantity ? Number(a.quantity) : null;
       const costUnitPriceNum = a.costUnitPrice ? Number(a.costUnitPrice) : null;
       return {
@@ -149,6 +168,9 @@ export async function getAssets() {
         unitPrice: null,
         currentValue: null,
         priceCurrency: null,
+        purchaseDate: a.purchaseDate,
+        scrapDate: a.scrapDate,
+        scrapValue: a.scrapValue ? Number(a.scrapValue) : null,
         createdAt: a.createdAt,
         updatedAt: a.updatedAt,
       };
@@ -170,6 +192,9 @@ export async function createAsset(data: {
   stockCode?: string;
   market?: string;
   costUnitPrice?: string;
+  purchaseDate?: string;
+  scrapDate?: string;
+  scrapValue?: string;
 }) {
   const session = await auth();
   const userId = session?.user?.id;
@@ -258,6 +283,9 @@ export async function createAsset(data: {
         stockCode: data.stockCode,
         market: resolvedMarket,
         costUnitPrice: effectiveCostUnitPrice ? new Decimal(effectiveCostUnitPrice) : undefined,
+        purchaseDate: data.purchaseDate ? new Date(data.purchaseDate) : undefined,
+        scrapDate: data.scrapDate ? new Date(data.scrapDate) : undefined,
+        scrapValue: data.scrapValue ? new Decimal(data.scrapValue) : undefined,
         userId,
       },
     });
@@ -269,6 +297,7 @@ export async function createAsset(data: {
         ...asset,
         quantity: asset.quantity ? Number(asset.quantity) : null,
         costUnitPrice: asset.costUnitPrice ? Number(asset.costUnitPrice) : null,
+        scrapValue: asset.scrapValue ? Number(asset.scrapValue) : null,
       },
     };
   } catch (error: any) {
@@ -286,6 +315,9 @@ export async function updateAsset(
     stockCode: string;
     market: string;
     costUnitPrice: string;
+    purchaseDate: string;
+    scrapDate: string;
+    scrapValue: string;
   }>
 ) {
   const session = await auth();
@@ -302,6 +334,9 @@ export async function updateAsset(
     if (data.market !== undefined) updateData.market = data.market;
     if (data.quantity !== undefined) updateData.quantity = new Decimal(data.quantity);
     if (data.costUnitPrice !== undefined) updateData.costUnitPrice = new Decimal(data.costUnitPrice);
+    if (data.purchaseDate !== undefined) updateData.purchaseDate = data.purchaseDate ? new Date(data.purchaseDate) : null;
+    if (data.scrapDate !== undefined) updateData.scrapDate = data.scrapDate ? new Date(data.scrapDate) : null;
+    if (data.scrapValue !== undefined) updateData.scrapValue = data.scrapValue ? new Decimal(data.scrapValue) : null;
 
     // Recompute costPrice if quantity or costUnitPrice changed
     if (data.quantity !== undefined || data.costUnitPrice !== undefined) {
@@ -333,6 +368,7 @@ export async function updateAsset(
         ...asset,
         quantity: asset.quantity ? Number(asset.quantity) : null,
         costUnitPrice: asset.costUnitPrice ? Number(asset.costUnitPrice) : null,
+        scrapValue: asset.scrapValue ? Number(asset.scrapValue) : null,
       },
     };
   } catch (error: any) {

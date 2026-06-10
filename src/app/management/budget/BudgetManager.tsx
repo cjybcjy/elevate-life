@@ -1,10 +1,14 @@
 'use client';
 
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
-import { createBudget, updateBudget, deleteBudget } from '@/lib/actions/budget';
+import { useState, useOptimistic } from 'react';
+import { createBudget, updateBudget, deleteBudget, getBudgets } from '@/lib/actions/budget';
 import { createTransaction } from '@/lib/actions/ledger';
+import { getCategories } from '@/lib/actions/categories';
 import BudgetTracker from '@/components/widgets/BudgetTracker';
+import { useBudgets } from '@/hooks/useBudgets';
+import { useToast } from '@/components/common/Toast';
+import { useSWRConfig } from 'swr';
+import useSWR from 'swr';
 
 interface Budget {
   id: string;
@@ -27,13 +31,6 @@ interface BudgetProgress {
   isOverBudget: boolean;
 }
 
-interface Props {
-  budgets: Budget[];
-  progress: BudgetProgress[];
-  categories: any[];
-  currentDate: string;
-}
-
 function parseAmount(v: any): number {
   if (typeof v === 'number') return v;
   if (typeof v === 'string') return parseFloat(v);
@@ -45,11 +42,19 @@ function fmtDate(d: string | Date | undefined): string {
   return new Date(d).toISOString().slice(0, 10);
 }
 
-export default function BudgetManager({ budgets, progress, categories, currentDate }: Props) {
-  const router = useRouter();
+export default function BudgetManager({ currentDate }: { currentDate: string }) {
+  const { data: budgetData, isLoading: budgetLoading } = useBudgets(currentDate);
+  const progress = budgetData?.data ?? [];
+  const { data: budgetsData } = useSWR('budgets-list', () => getBudgets().then(r => r.success ? (r.data ?? []) : []));
+  const budgets: Budget[] = budgetsData ?? [];
+  const { data: catData } = useSWR('categories', () => getCategories().then(r => r.success ? (r.data ?? []) : []));
+  const categories = catData ?? [];
+  const { mutate } = useSWRConfig();
+  const toast = useToast();
+
   const [error, setError] = useState('');
+  const [successMsg, setSuccessMsg] = useState('');
   const [loading, setLoading] = useState(false);
-  const [refreshKey, setRefreshKey] = useState(0);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editForm, setEditForm] = useState({ name: '', amount: '', startDate: '', endDate: '' });
   const [expenseRowId, setExpenseRowId] = useState<string | null>(null);
@@ -67,7 +72,9 @@ export default function BudgetManager({ budgets, progress, categories, currentDa
     });
     if (result.success) {
       (document.getElementById('budget-form') as HTMLFormElement)?.reset();
-      setRefreshKey(k => k + 1); router.refresh();
+      setSuccessMsg('预算已创建');
+      mutate('budgets');
+      setTimeout(() => setSuccessMsg(''), 2500);
     } else {
       setError(result.error || '创建失败');
     }
@@ -77,7 +84,7 @@ export default function BudgetManager({ budgets, progress, categories, currentDa
   async function handleDelete(formData: FormData) {
     const id = formData.get('id') as string;
     await deleteBudget(id);
-    setRefreshKey(k => k + 1); router.refresh();
+    mutate('budgets');
   }
 
   async function handleUpdateBudget() {
@@ -90,7 +97,7 @@ export default function BudgetManager({ budgets, progress, categories, currentDa
       endDate: editForm.endDate || undefined,
     });
     setEditingId(null);
-    setRefreshKey(k => k + 1); router.refresh();
+    mutate('budgets');
   }
 
   function startEdit(b: Budget) {
@@ -117,8 +124,7 @@ export default function BudgetManager({ budgets, progress, categories, currentDa
     });
     if (result.success) {
       setExpenseRowId(null);
-      setRefreshKey(k => k + 1);
-      router.refresh();
+            mutate('budgets');
     } else {
       setError(result.error || '记录失败');
     }
@@ -135,6 +141,12 @@ export default function BudgetManager({ budgets, progress, categories, currentDa
         <div className="mb-4 flex items-center justify-between rounded-lg bg-red-500/10 px-4 py-3 text-sm text-ledger-danger">
           <span>{error}</span>
           <button onClick={() => setError('')} className="text-ledger-muted hover:text-white">✕</button>
+        </div>
+      )}
+
+      {successMsg && (
+        <div className="mb-4 rounded-lg bg-green-500/10 px-4 py-3 text-sm text-green-400">
+          ✓ {successMsg}
         </div>
       )}
 

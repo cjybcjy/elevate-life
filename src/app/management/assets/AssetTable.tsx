@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { AmountDisplay } from '@/components/common/AmountDisplay';
 
 const categoryLabel: Record<string, string> = {
-  real_estate: '房产', cash: '现金', provident_fund: '公积金账户', pension: '养老账户',
+  real_estate: '房产', cash: '现金', current_deposit: '银行活期', provident_fund: '公积金账户', pension: '养老账户',
   gold_physical: '实物黄金', gold_paper: '纸黄金',
   stock: '股票', fund: '基金', bond: '债券', vehicle: '车辆', other: '其他',
 };
@@ -22,6 +22,7 @@ export function AssetTable({
   handleUpdate: (formData: FormData) => Promise<void>;
 }) {
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [showDepreciation, setShowDepreciation] = useState(false);
 
   return (
     <div className="rounded-xl bg-ledger-surface overflow-hidden overflow-x-auto">
@@ -79,7 +80,10 @@ export function AssetTable({
                   <div className="flex items-center gap-1">
                     <button
                       type="button"
-                      onClick={() => setEditingId(isEditing ? null : asset.id)}
+                      onClick={() => {
+                        if (isEditing) { setEditingId(null); setShowDepreciation(false); }
+                        else { setEditingId(asset.id); setShowDepreciation(!!asset.purchaseDate || !!asset.scrapDate); }
+                      }}
                       className={`text-xs px-2 py-1 rounded ${
                         isEditing ? 'bg-ledger-accent/20 text-ledger-accent' : 'bg-ledger-bg text-ledger-muted hover:text-white'
                       }`}
@@ -133,6 +137,33 @@ export function AssetTable({
                             <label className="block text-xs text-ledger-muted mb-1">余额</label>
                             <input name="balance" type="number" step="0.01" defaultValue={parseFloat(asset.balance || '0')} className="rounded-md bg-ledger-surface border border-ledger-bg px-2 py-1.5 text-xs text-white focus:outline-none focus:border-ledger-accent w-28" />
                           </div>
+                        )}
+                        <div>
+                          <label className="flex items-center gap-2 text-sm text-ledger-muted cursor-pointer">
+                            <input
+                              type="checkbox"
+                              checked={showDepreciation}
+                              onChange={e => setShowDepreciation(e.target.checked)}
+                              className="rounded"
+                            />
+                            折旧
+                          </label>
+                        </div>
+                        {showDepreciation && (
+                          <>
+                            <div>
+                              <label className="block text-xs text-ledger-muted mb-1">买入日期</label>
+                              <input name="purchaseDate" type="date" defaultValue={asset.purchaseDate ? new Date(asset.purchaseDate).toISOString().slice(0,10) : ''} className="rounded-md bg-ledger-surface border border-ledger-bg px-2 py-1.5 text-xs text-white focus:outline-none focus:border-ledger-accent" />
+                            </div>
+                            <div>
+                              <label className="block text-xs text-ledger-muted mb-1">报废日期</label>
+                              <input name="scrapDate" type="date" defaultValue={asset.scrapDate ? new Date(asset.scrapDate).toISOString().slice(0,10) : ''} className="rounded-md bg-ledger-surface border border-ledger-bg px-2 py-1.5 text-xs text-white focus:outline-none focus:border-ledger-accent" />
+                            </div>
+                            <div>
+                              <label className="block text-xs text-ledger-muted mb-1">报废残值</label>
+                              <input name="scrapValue" type="number" step="0.01" defaultValue={asset.scrapValue || 0} className="rounded-md bg-ledger-surface border border-ledger-bg px-2 py-1.5 text-xs text-white focus:outline-none focus:border-ledger-accent w-24" />
+                            </div>
+                          </>
                         )}
                         <button type="submit" className="rounded-md bg-ledger-accent px-3 py-1.5 text-xs font-medium text-white hover:opacity-90">
                           保存

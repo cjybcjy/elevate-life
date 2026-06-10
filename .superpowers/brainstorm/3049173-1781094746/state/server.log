@@ -1,0 +1,6 @@
+{"type":"server-started","port":53239,"host":"127.0.0.1","url_host":"localhost","url":"http://localhost:53239","screen_dir":"/home/kyrie/workspace/elevate-life/.superpowers/brainstorm/3049173-1781094746/content","state_dir":"/home/kyrie/workspace/elevate-life/.superpowers/brainstorm/3049173-1781094746/state"}
+{"type":"screen-added","file":"/home/kyrie/workspace/elevate-life/.superpowers/brainstorm/3049173-1781094746/content/01-comparison.html"}
+{"type":"screen-added","file":"/home/kyrie/workspace/elevate-life/.superpowers/brainstorm/3049173-1781094746/content/02-approaches.html"}
+{"type":"screen-added","file":"/home/kyrie/workspace/elevate-life/.superpowers/brainstorm/3049173-1781094746/content/03-final-design.html"}
+{"type":"screen-added","file":"/home/kyrie/workspace/elevate-life/.superpowers/brainstorm/3049173-1781094746/content/waiting.html"}
+{"type":"server-stopped","reason":"idle timeout"}

@@ -156,7 +156,8 @@ export async function createTransaction(data: {
 
   try {
     await prisma.$transaction(async (tx) => {
-      if (data.type === 'EXPENSE' && data.fromAccountId) {
+      // Deduct from source account (if set)
+      if (data.fromAccountId) {
         const [asset] = await tx.$queryRaw<
           { id: string; balance: string }[]
         >`
@@ -183,7 +184,8 @@ export async function createTransaction(data: {
         });
       }
 
-      if (data.type === 'INCOME' && data.toAccountId) {
+      // Add to target account (if set)
+      if (data.toAccountId) {
         const [asset] = await tx.$queryRaw<
           { id: string; balance: string }[]
         >`
@@ -202,65 +204,6 @@ export async function createTransaction(data: {
           where: { id: asset.id },
           data: {
             balance: encryptValue(newBalance.toFixed(4), derivedKey, userId),
-            isEncrypted: true,
-          },
-        });
-      }
-
-      if (data.type === 'TRANSFER') {
-        if (!data.fromAccountId || !data.toAccountId) {
-          throw new Error('TRANSFER requires both from and to accounts');
-        }
-
-        const [fromAsset] = await tx.$queryRaw<
-          { id: string; balance: string }[]
-        >`
-          SELECT id, balance FROM "Asset"
-          WHERE id = ${data.fromAccountId} AND user_id = ${userId}
-          FOR UPDATE
-        `;
-        const [toAsset] = await tx.$queryRaw<
-          { id: string; balance: string }[]
-        >`
-          SELECT id, balance FROM "Asset"
-          WHERE id = ${data.toAccountId} AND user_id = ${userId}
-          FOR UPDATE
-        `;
-        if (!fromAsset) throw new Error('Source asset not found');
-        if (!toAsset) throw new Error('Target asset not found');
-
-        const fromBalance = new Decimal(
-          decryptValue(fromAsset.balance, derivedKey, userId),
-        );
-        const toBalance = new Decimal(
-          decryptValue(toAsset.balance, derivedKey, userId),
-        );
-
-        const newFromBalance = fromBalance.minus(amount);
-        if (newFromBalance.isNegative()) {
-          throw new Error('Insufficient balance');
-        }
-        const newToBalance = toBalance.plus(amount);
-
-        await tx.asset.update({
-          where: { id: fromAsset.id },
-          data: {
-            balance: encryptValue(
-              newFromBalance.toFixed(4),
-              derivedKey,
-              userId,
-            ),
-            isEncrypted: true,
-          },
-        });
-        await tx.asset.update({
-          where: { id: toAsset.id },
-          data: {
-            balance: encryptValue(
-              newToBalance.toFixed(4),
-              derivedKey,
-              userId,
-            ),
             isEncrypted: true,
           },
         });
@@ -387,7 +330,8 @@ export async function deleteTransaction(id: string) {
     const amount = existing.amount;
 
     await prisma.$transaction(async (tx) => {
-      if (existing.type === 'EXPENSE' && existing.fromAccountId) {
+      // Reverse: add back to source account (if set)
+      if (existing.fromAccountId) {
         const [asset] = await tx.$queryRaw<
           { id: string; balance: string }[]
         >`
@@ -411,7 +355,8 @@ export async function deleteTransaction(id: string) {
         });
       }
 
-      if (existing.type === 'INCOME' && existing.toAccountId) {
+      // Reverse: deduct from target account (if set)
+      if (existing.toAccountId) {
         const [asset] = await tx.$queryRaw<
           { id: string; balance: string }[]
         >`
@@ -426,72 +371,13 @@ export async function deleteTransaction(id: string) {
         );
         const newBalance = currentBalance.minus(amount);
         if (newBalance.isNegative()) {
-          throw new Error('Insufficient balance to reverse income');
+          throw new Error('Insufficient balance to reverse');
         }
 
         await tx.asset.update({
           where: { id: asset.id },
           data: {
             balance: encryptValue(newBalance.toFixed(4), derivedKey, userId),
-            isEncrypted: true,
-          },
-        });
-      }
-
-      if (existing.type === 'TRANSFER') {
-        if (!existing.fromAccountId || !existing.toAccountId) {
-          throw new Error('TRANSFER requires both from and to accounts');
-        }
-
-        const [fromAsset] = await tx.$queryRaw<
-          { id: string; balance: string }[]
-        >`
-          SELECT id, balance FROM "Asset"
-          WHERE id = ${existing.fromAccountId} AND user_id = ${userId}
-          FOR UPDATE
-        `;
-        const [toAsset] = await tx.$queryRaw<
-          { id: string; balance: string }[]
-        >`
-          SELECT id, balance FROM "Asset"
-          WHERE id = ${existing.toAccountId} AND user_id = ${userId}
-          FOR UPDATE
-        `;
-        if (!fromAsset) throw new Error('Source asset not found');
-        if (!toAsset) throw new Error('Target asset not found');
-
-        const fromBalance = new Decimal(
-          decryptValue(fromAsset.balance, derivedKey, userId),
-        );
-        const toBalance = new Decimal(
-          decryptValue(toAsset.balance, derivedKey, userId),
-        );
-
-        const newFromBalance = fromBalance.plus(amount);
-        const newToBalance = toBalance.minus(amount);
-        if (newToBalance.isNegative()) {
-          throw new Error('Insufficient balance to reverse transfer');
-        }
-
-        await tx.asset.update({
-          where: { id: fromAsset.id },
-          data: {
-            balance: encryptValue(
-              newFromBalance.toFixed(4),
-              derivedKey,
-              userId,
-            ),
-            isEncrypted: true,
-          },
-        });
-        await tx.asset.update({
-          where: { id: toAsset.id },
-          data: {
-            balance: encryptValue(
-              newToBalance.toFixed(4),
-              derivedKey,
-              userId,
-            ),
             isEncrypted: true,
           },
         });

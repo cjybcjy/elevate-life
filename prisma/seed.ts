@@ -35,6 +35,9 @@ async function main() {
       { name: '交通', type: 'EXPENSE', icon: '🚗', color: '#3b82f6', userId: user.id },
       { name: '医疗', type: 'EXPENSE', icon: '🏥', color: '#ef4444', userId: user.id },
       { name: '固定支出', type: 'EXPENSE', icon: '📋', color: '#f59e0b', isEssential: true, userId: user.id },
+      { name: '提升品质', type: 'EXPENSE', icon: '✨', color: '#8b5cf6', userId: user.id },
+      { name: '旅行', type: 'EXPENSE', icon: '✈️', color: '#06b6d4', userId: user.id },
+      { name: '人情往来', type: 'EXPENSE', icon: '🎁', color: '#ec4899', userId: user.id },
     ],
   });
 

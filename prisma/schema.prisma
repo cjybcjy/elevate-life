@@ -39,6 +39,9 @@ model Asset {
   stockCode       String?  @map("stock_code")
   market          String?
   costUnitPrice   Decimal?  @db.Decimal(18, 4) @map("cost_unit_price")
+  purchaseDate    DateTime? @map("purchase_date")
+  scrapDate       DateTime? @map("scrap_date")
+  scrapValue      Decimal?  @db.Decimal(18, 4) @map("scrap_value")
   createdAt       DateTime @default(now()) @map("created_at")
   updatedAt       DateTime @updatedAt @map("updated_at")
 

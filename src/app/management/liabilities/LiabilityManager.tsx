@@ -1,10 +1,14 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useState, useEffect, useOptimistic } from 'react';
 import { createLiability, updateLiability, deleteLiability } from '@/lib/actions/liabilities';
-import { createTransaction } from '@/lib/actions/ledger';
+import { createTransaction, deleteTransaction, updateTransaction } from '@/lib/actions/ledger';
 import { AmountDisplay } from '@/components/common/AmountDisplay';
+import { useLiabilities } from '@/hooks/useLiabilities';
+import { useTransactions } from '@/hooks/useTransactions';
+import { useAssets } from '@/hooks/useAssets';
+import { useToast } from '@/components/common/Toast';
+import { useSWRConfig } from 'swr';
 
 interface Liability {
   id: string;
@@ -30,8 +34,16 @@ const paymentMethodLabel: Record<string, string> = {
   equal_principal: '等额本金',
 };
 
-export default function LiabilityManager({ liabilities: initial, transactions, assets }: LiabilityManagerProps) {
-  const router = useRouter();
+export default function LiabilityManager() {
+  const { data: liabData, isLoading: liabLoading } = useLiabilities();
+  const initial = liabData?.data ?? [];
+  const { data: txData } = useTransactions();
+  const transactions = txData?.data ?? [];
+  const { data: assetData } = useAssets();
+  const assets = assetData?.data ?? [];
+  const { mutate } = useSWRConfig();
+  const toast = useToast();
+
   const [liabilities, setLiabilities] = useState(initial);
   useEffect(() => { setLiabilities(initial); }, [initial]);
   const [error, setError] = useState('');
@@ -45,6 +57,8 @@ export default function LiabilityManager({ liabilities: initial, transactions, a
     occurredAt: new Date().toISOString().split('T')[0],
   });
   const [repayMsg, setRepayMsg] = useState('');
+  const [editingRepayId, setEditingRepayId] = useState<string | null>(null);
+  const [editRepayForm, setEditRepayForm] = useState({ amount: '', description: '', occurredAt: '' });
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editForm, setEditForm] = useState({
     name: '', category: '', principal: '', currentBalance: '',
@@ -66,9 +80,9 @@ export default function LiabilityManager({ liabilities: initial, transactions, a
     });
     if (result.success) {
       (document.getElementById('create-form') as HTMLFormElement)?.reset();
-      router.refresh();
+      mutate('liabilities'); mutate('transactions');
     } else if (result.error?.includes('会话密钥')) {
-      router.push('/login');
+      window.location.href = '/login';
     } else {
       setError(result.error || '创建失败，请检查数据是否正确');
     }
@@ -81,9 +95,9 @@ export default function LiabilityManager({ liabilities: initial, transactions, a
     setLiabilities((prev) => prev.filter((l) => l.id !== id));
     const result = await deleteLiability(id);
     if (result.success) {
-      router.refresh();
+      mutate('liabilities'); mutate('transactions');
     } else if (result.error?.includes('会话密钥')) {
-      router.push('/login');
+      window.location.href = '/login';
     } else {
       setLiabilities((prev) => [...prev, liabilities.find((l) => l.id === id)!]);
       setError(result.error || '删除失败');
@@ -115,13 +129,47 @@ export default function LiabilityManager({ liabilities: initial, transactions, a
         description: '',
         occurredAt: new Date().toISOString().split('T')[0],
       });
-      router.refresh();
+      mutate('liabilities'); mutate('transactions');
     } else if (result.error?.includes('会话密钥')) {
-      router.push('/login');
+      window.location.href = '/login';
     } else {
       setError(result.error || '还款失败');
     }
     setLoading(false);
+  }
+
+  async function handleDeleteRepay(txId: string) {
+    const result = await deleteTransaction(txId);
+    if (result.success) {
+      mutate('liabilities'); mutate('transactions');
+    } else {
+      setError(result.error || '删除失败');
+    }
+  }
+
+  async function handleUpdateRepay() {
+    if (!editingRepayId) return;
+    setError('');
+    const result = await updateTransaction(editingRepayId, {
+      amount: editRepayForm.amount || undefined,
+      description: editRepayForm.description || undefined,
+      occurredAt: editRepayForm.occurredAt || undefined,
+    });
+    if (result.success) {
+      setEditingRepayId(null);
+      mutate('liabilities'); mutate('transactions');
+    } else {
+      setError(result.error || '更新失败');
+    }
+  }
+
+  function startEditRepay(t: any) {
+    setEditingRepayId(t.id);
+    setEditRepayForm({
+      amount: t.amount?.toString() || '',
+      description: t.description || '',
+      occurredAt: new Date(t.occurredAt).toISOString().split('T')[0],
+    });
   }
 
   async function handleUpdate() {
@@ -142,9 +190,9 @@ export default function LiabilityManager({ liabilities: initial, transactions, a
 
     if (result.success) {
       setEditingId(null);
-      router.refresh();
+      mutate('liabilities'); mutate('transactions');
     } else if (result.error?.includes('会话密钥')) {
-      router.push('/login');
+      window.location.href = '/login';
     } else {
       setError(result.error || '更新失败');
     }
@@ -573,15 +621,71 @@ export default function LiabilityManager({ liabilities: initial, transactions, a
                         ) : (
                           <div className="space-y-1.5">
                             {history.slice(0, 10).map((t: any) => (
-                              <div key={t.id} className="flex items-center gap-3 text-xs bg-ledger-surface/50 rounded-md px-3 py-1.5">
-                                <span className="text-ledger-muted w-20 shrink-0">
-                                  {new Date(t.occurredAt).toLocaleDateString('zh-CN')}
-                                </span>
-                                <AmountDisplay amount={parseFloat(t.amount || '0')} className="text-green-400 font-medium w-24 shrink-0" />
-                                {t.fromAsset && (
-                                  <span className="text-ledger-muted shrink-0">{t.fromAsset.name}</span>
+                              <div key={t.id}>
+                                <div className="flex items-center gap-3 text-xs bg-ledger-surface/50 rounded-md px-3 py-1.5">
+                                  <span className="text-ledger-muted w-20 shrink-0">
+                                    {new Date(t.occurredAt).toLocaleDateString('zh-CN')}
+                                  </span>
+                                  <AmountDisplay amount={parseFloat(t.amount || '0')} className="text-green-400 font-medium w-24 shrink-0" />
+                                  {t.fromAsset && (
+                                    <span className="text-ledger-muted shrink-0">{t.fromAsset.name}</span>
+                                  )}
+                                  <span className="text-ledger-muted flex-1 truncate">{t.description || '还款'}</span>
+                                  <button
+                                    type="button"
+                                    onClick={() => editingRepayId === t.id ? setEditingRepayId(null) : startEditRepay(t)}
+                                    className="text-ledger-muted hover:text-white shrink-0"
+                                  >
+                                    {editingRepayId === t.id ? '取消' : '编辑'}
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => { if (confirm('确认删除这笔还款？')) handleDeleteRepay(t.id); }}
+                                    className="text-ledger-danger hover:underline shrink-0"
+                                  >
+                                    删除
+                                  </button>
+                                </div>
+                                {editingRepayId === t.id && (
+                                  <div className="mt-1 p-2 bg-ledger-bg rounded-md border border-ledger-accent/30">
+                                    <div className="flex flex-wrap gap-2 items-end">
+                                      <div>
+                                        <label className="block text-xs text-ledger-muted mb-1">金额</label>
+                                        <input
+                                          type="number" step="0.01"
+                                          value={editRepayForm.amount}
+                                          onChange={e => setEditRepayForm(p => ({ ...p, amount: e.target.value }))}
+                                          className="rounded-md bg-ledger-surface border border-ledger-bg px-2 py-1 text-xs text-white focus:outline-none focus:border-ledger-accent w-24"
+                                        />
+                                      </div>
+                                      <div>
+                                        <label className="block text-xs text-ledger-muted mb-1">日期</label>
+                                        <input
+                                          type="date"
+                                          value={editRepayForm.occurredAt}
+                                          onChange={e => setEditRepayForm(p => ({ ...p, occurredAt: e.target.value }))}
+                                          className="rounded-md bg-ledger-surface border border-ledger-bg px-2 py-1 text-xs text-white focus:outline-none focus:border-ledger-accent"
+                                        />
+                                      </div>
+                                      <div>
+                                        <label className="block text-xs text-ledger-muted mb-1">备注</label>
+                                        <input
+                                          type="text"
+                                          value={editRepayForm.description}
+                                          onChange={e => setEditRepayForm(p => ({ ...p, description: e.target.value }))}
+                                          className="rounded-md bg-ledger-surface border border-ledger-bg px-2 py-1 text-xs text-white focus:outline-none focus:border-ledger-accent"
+                                        />
+                                      </div>
+                                      <button
+                                        type="button"
+                                        onClick={handleUpdateRepay}
+                                        className="rounded-md bg-ledger-accent px-2 py-1 text-xs font-medium text-white hover:opacity-90"
+                                      >
+                                        保存
+                                      </button>
+                                    </div>
+                                  </div>
                                 )}
-                                <span className="text-ledger-muted flex-1 truncate">{t.description || '还款'}</span>
                               </div>
                             ))}
                             {history.length > 10 && (

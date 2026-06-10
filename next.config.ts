@@ -1,7 +1,7 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  viewTransition: true,
+  // View Transitions are enabled via CSS ::view-transition-old/new in globals.css
 };
 
 export default nextConfig;

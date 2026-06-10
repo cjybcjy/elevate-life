@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { AmountDisplay } from '../common/AmountDisplay';
 
-const collapsibleCats = new Set(['provident_fund', 'pension', 'gold_physical', 'gold_paper']);
+const collapsibleCats = new Set(['provident_fund', 'pension', 'gold_physical', 'gold_paper', 'current_deposit']);
 
 export function isCollapsibleCat(cat: string) { return collapsibleCats.has(cat); }
 

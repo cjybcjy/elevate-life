@@ -1,7 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
-import { useRouter } from 'next/navigation';
+import { useState, useEffect, useCallback, useOptimistic } from 'react';
 import { createTransaction, deleteTransaction, updateTransactionReconciled, updateTransaction } from '@/lib/actions/ledger';
 import {
   getRecurringRules,
@@ -19,13 +18,6 @@ interface Template {
   fromAccountId: string;
   toAccountId: string;
   description: string;
-}
-
-interface LedgerManagerProps {
-  transactions: any[];
-  assets: any[];
-  categories: any[];
-  recurringRules: any[];
 }
 
 const TEMPLATES_KEY = 'ledger-templates';
@@ -71,11 +63,28 @@ const typeBadgeClass = (type: string) => {
   }
 };
 
-export default function LedgerManager({ transactions: initialTx, assets, categories, recurringRules: initialRules }: LedgerManagerProps) {
-  const router = useRouter();
+import { useTransactions } from '@/hooks/useTransactions';
+import { useAssets } from '@/hooks/useAssets';
+import { useToast } from '@/components/common/Toast';
+import { useSWRConfig } from 'swr';
+import useSWR from 'swr';
+import { getCategories } from '@/lib/actions/categories';
+
+// ... (keep all existing type definitions and utility functions above)
+
+export default function LedgerManager() {
+  const { data: txData, isLoading: txLoading } = useTransactions();
+  const initialTx = txData?.data ?? [];
+  const { data: assetData } = useAssets();
+  const assets = assetData?.data ?? [];
+  const { mutate } = useSWRConfig();
+  const toast = useToast();
+  const { data: catData } = useSWR('categories', () => getCategories().then(r => r.success ? (r.data ?? []) : []));
+  const categories = catData ?? [];
+
   const [activeTab, setActiveTab] = useState<'transactions' | 'recurring'>('transactions');
   const [transactions, setTransactions] = useState(initialTx);
-  const [recurringRules, setRecurringRules] = useState(initialRules);
+  const [recurringRules, setRecurringRules] = useState<any[]>([]);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [templates, setTemplates] = useState<Template[]>([]);
@@ -140,9 +149,8 @@ export default function LedgerManager({ transactions: initialTx, assets, categor
     }
   }, [formValues.categoryId, formValues.occurredAt]);
 
-  // Sync state when server props change (after router.refresh())
+  // Sync state when SWR data changes
   useEffect(() => { setTransactions(initialTx); }, [initialTx]);
-  useEffect(() => { setRecurringRules(initialRules); }, [initialRules]);
 
   const applyTemplate = useCallback((t: Template) => {
     setFormValues({
@@ -150,6 +158,7 @@ export default function LedgerManager({ transactions: initialTx, assets, categor
       amount: t.amount,
       currency: (t as any).currency || 'CNY',
       categoryId: t.categoryId || '',
+      budgetId: '',
       fromAccountId: t.fromAccountId || '',
       toAccountId: t.toAccountId || '',
       description: t.description || '',
@@ -200,7 +209,7 @@ export default function LedgerManager({ transactions: initialTx, assets, categor
       t.id === transactionId ? { ...t, reconciled: !currentStatus } : t
     ));
     await updateTransactionReconciled(transactionId, !currentStatus);
-    router.refresh();
+    mutate('transactions'); toast.success('操作成功');
   }
 
   async function handleCreate(formData: FormData) {
@@ -212,6 +221,7 @@ export default function LedgerManager({ transactions: initialTx, assets, categor
       currency: (formData.get('currency') as string) || 'CNY',
       categoryId: (formData.get('categoryId') as string) || undefined,
       fromAccountId: (formData.get('fromAccountId') as string) || undefined,
+      toAccountId: (formData.get('toAccountId') as string) || undefined,
       liabilityId: (formData.get('liabilityId') as string) || undefined,
       description: (formData.get('description') as string) || undefined,
       occurredAt: formData.get('occurredAt') as string,
@@ -223,14 +233,15 @@ export default function LedgerManager({ transactions: initialTx, assets, categor
         amount: '',
         currency: 'CNY',
         categoryId: '',
+        budgetId: '',
         fromAccountId: '',
         toAccountId: '',
         description: '',
         occurredAt: new Date().toISOString().split('T')[0],
       });
-      router.refresh();
+      mutate('transactions'); toast.success('操作成功');
     } else if (result.error?.includes('会话密钥')) {
-      router.push('/login');
+      window.location.href = '/login';
     } else {
       setError(result.error || '创建失败');
     }
@@ -243,9 +254,9 @@ export default function LedgerManager({ transactions: initialTx, assets, categor
     setTransactions(prev => prev.filter(t => t.id !== id));
     const result = await deleteTransaction(id);
     if (result.success) {
-      router.refresh();
+      mutate('transactions'); toast.success('操作成功');
     } else if (result.error?.includes('会话密钥')) {
-      router.push('/login');
+      window.location.href = '/login';
     } else {
       setTransactions(prev => [...prev, initialTx.find((t: any) => t.id === id)!]);
       setError(result.error || '删除失败');
@@ -262,6 +273,7 @@ export default function LedgerManager({ transactions: initialTx, assets, categor
       currency: (formData.get('currency') as string) || 'CNY',
       categoryId: (formData.get('categoryId') as string) || undefined,
       fromAccountId: (formData.get('fromAccountId') as string) || undefined,
+      toAccountId: (formData.get('toAccountId') as string) || undefined,
       description: (formData.get('description') as string) || undefined,
       frequency: formData.get('frequency') as string,
       interval: Number(formData.get('interval') || 1),
@@ -282,9 +294,9 @@ export default function LedgerManager({ transactions: initialTx, assets, categor
         interval: 1,
         startDate: new Date().toISOString().split('T')[0],
       });
-      router.refresh();
+      mutate('transactions'); toast.success('操作成功');
     } else if (result.error?.includes('会话密钥')) {
-      router.push('/login');
+      window.location.href = '/login';
     } else {
       setError(result.error || '创建失败');
     }
@@ -296,14 +308,14 @@ export default function LedgerManager({ transactions: initialTx, assets, categor
       r.id === ruleId ? { ...r, isActive: !r.isActive } : r
     ));
     await toggleRecurringRule(ruleId);
-    router.refresh();
+    mutate('transactions'); toast.success('操作成功');
   }
 
   async function handleDeleteRecurring(ruleId: string) {
     setRecurringRules(prev => prev.filter(r => r.id !== ruleId));
     const result = await deleteRecurringRule(ruleId);
     if (result.success) {
-      router.refresh();
+      mutate('transactions'); toast.success('操作成功');
     } else {
       setError(result.error || '删除失败');
     }
@@ -322,7 +334,7 @@ export default function LedgerManager({ transactions: initialTx, assets, categor
     });
     if (result.success) {
       setEditingTxId(null);
-      router.refresh();
+      mutate('transactions'); toast.success('操作成功');
     } else {
       setError(result.error || '更新失败');
     }
@@ -362,7 +374,7 @@ export default function LedgerManager({ transactions: initialTx, assets, categor
     });
     if (result.success) {
       setEditingRecurringId(null);
-      router.refresh();
+      mutate('transactions'); toast.success('操作成功');
     } else {
       setError(result.error || '更新失败');
     }
@@ -1016,6 +1028,7 @@ export default function LedgerManager({ transactions: initialTx, assets, categor
                   <th className="px-4 py-3 font-medium">类型</th>
                   <th className="px-4 py-3 font-medium">金额</th>
                   <th className="px-4 py-3 font-medium">频率</th>
+                  <th className="px-4 py-3 font-medium">上次执行</th>
                   <th className="px-4 py-3 font-medium">下次到期</th>
                   <th className="px-4 py-3 font-medium">状态</th>
                   <th className="px-4 py-3 font-medium">操作</th>
@@ -1024,7 +1037,7 @@ export default function LedgerManager({ transactions: initialTx, assets, categor
               <tbody>
                 {recurringRules.length === 0 && (
                   <tr>
-                    <td colSpan={7} className="px-4 py-8 text-center text-ledger-muted">
+                    <td colSpan={8} className="px-4 py-8 text-center text-ledger-muted">
                       暂无周期交易
                     </td>
                   </tr>
@@ -1040,6 +1053,14 @@ export default function LedgerManager({ transactions: initialTx, assets, categor
                     <td className="px-4 py-3 text-white">{(curSym[r.currency || 'CNY'] || '¥')}{r.amount.toString()}</td>
                     <td className="px-4 py-3 text-ledger-muted">
                       {r.interval > 1 ? `每${r.interval}${frequencyLabel[r.frequency]?.replace('每', '')}` : frequencyLabel[r.frequency]}
+                    </td>
+                    <td className="px-4 py-3 text-ledger-muted">
+                      {(() => {
+                        const next = new Date(r.nextDueDate);
+                        const mult = ({ daily: 1, weekly: 7, monthly: 30, yearly: 365 } as Record<string, number>)[r.frequency] || 30;
+                        const last = new Date(next.getTime() - (r.interval || 1) * mult * 86400000);
+                        return last.toLocaleDateString('zh-CN');
+                      })()}
                     </td>
                     <td className="px-4 py-3 text-ledger-muted">
                       {new Date(r.nextDueDate).toLocaleDateString('zh-CN')}

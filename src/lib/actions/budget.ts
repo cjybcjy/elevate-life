@@ -24,18 +24,20 @@ function serializeBudget(b: any) {
   return result;
 }
 
-export async function getBudgets(date: string) {
+export async function getBudgets(date?: string) {
   const session = await auth();
   const userId = session?.user?.id;
   if (!userId) return { success: false, error: 'Unauthorized' };
 
-  const targetDate = new Date(date);
+  const where: any = { userId };
+  if (date) {
+    const targetDate = new Date(date);
+    where.startDate = { lte: targetDate };
+    where.endDate = { gte: targetDate };
+  }
+
   const budgets = await prisma.budget.findMany({
-    where: {
-      userId,
-      startDate: { lte: targetDate },
-      endDate: { gte: targetDate },
-    },
+    where,
     include: { category: true },
     orderBy: { createdAt: 'asc' },
   });

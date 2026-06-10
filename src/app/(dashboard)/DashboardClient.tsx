@@ -129,8 +129,8 @@ export default function DashboardClient({ currentDate }: { currentDate: string }
                 </div>
               </div>
               <div style={{ display: 'flex', gap: 20, fontSize: 13 }}>
-                <div><span style={{ color: 'var(--color-text-muted)' }}>总资产 </span><AmountDisplay amount={totalAssets.toNumber()} className="font-medium" sensitive style={{ color: 'var(--color-success)' }} /></div>
-                <div><span style={{ color: 'var(--color-text-muted)' }}>总负债 </span><AmountDisplay amount={totalLiabilities.toNumber()} className="font-medium" sensitive style={{ color: 'var(--color-danger)' }} /></div>
+                <div><span style={{ color: 'var(--color-text-muted)' }}>总资产 </span><AmountDisplay amount={totalAssets.toNumber()} className="font-medium" sensitive /></div>
+                <div><span style={{ color: 'var(--color-text-muted)' }}>总负债 </span><AmountDisplay amount={totalLiabilities.toNumber()} className="font-medium" sensitive /></div>
                 <div><span style={{ color: 'var(--color-text-muted)' }}>净资产率 </span><span style={{ fontWeight: 500, color: 'var(--color-text-heading)' }}>{surplusRate.toFixed(1)}%</span></div>
               </div>
             </div>
@@ -175,7 +175,7 @@ export default function DashboardClient({ currentDate }: { currentDate: string }
                       return <span style={{ color: 'var(--color-text-muted)', fontSize: 11, width: 48, textAlign: 'right' }}>{Number(grams).toFixed(0)}克</span>;
                     })()}
                     <span style={{ color: 'var(--color-text-muted)', fontSize: 11, width: 40, textAlign: 'right', marginLeft: 'auto' }}>{pct}%</span>
-                    <AmountDisplay amount={total} className="text-sm" sensitive style={{ width: 96, textAlign: 'right' }} />
+                    <AmountDisplay amount={total} className="text-sm" sensitive />
                   </div>
                 );
               })}
@@ -200,7 +200,7 @@ export default function DashboardClient({ currentDate }: { currentDate: string }
             </div>
             <div style={{ flex: 1, minWidth: 0 }}>
               <div style={{ fontSize: 13, color: 'var(--color-text-muted)', marginBottom: 8 }}>
-                总额 <AmountDisplay amount={totalLiabilities.toNumber()} className="font-bold" sensitive style={{ color: 'var(--color-text-heading)' }} /> · WACR <span style={{ color: 'var(--color-primary)', fontWeight: 500 }}>{(wacr * 100).toFixed(2)}%</span>
+                总额 <AmountDisplay amount={totalLiabilities.toNumber()} className="font-bold" sensitive /> · WACR <span style={{ color: 'var(--color-primary)', fontWeight: 500 }}>{(wacr * 100).toFixed(2)}%</span>
               </div>
               <LiabilityCards liabilities={liabilities} transactions={transactions} />
             </div>
@@ -240,7 +240,7 @@ export default function DashboardClient({ currentDate }: { currentDate: string }
         <ErrorBoundary name="Budget">
           <div className="card" style={{ gridColumn: '1 / -1' }}>
             <div className="card-body">
-              <BudgetTracker progress={budgetProgress} transactions={transactions} />
+              <BudgetTracker progress={budgetProgress} transactions={transactions as any} />
             </div>
           </div>
         </ErrorBoundary>
@@ -266,8 +266,8 @@ export default function DashboardClient({ currentDate }: { currentDate: string }
           </div>
           <div className="card-body">
             <div style={{ display: 'flex', gap: 16, fontSize: 13, marginBottom: 8 }}>
-              <span style={{ color: 'var(--color-text-muted)' }}>本月收入 <AmountDisplay amount={curIncome} className="font-medium" sensitive style={{ color: 'var(--color-success)' }} /></span>
-              <span style={{ color: 'var(--color-text-muted)' }}>支出 <AmountDisplay amount={curExpense} className="font-medium" sensitive style={{ color: 'var(--color-danger)' }} /></span>
+              <span style={{ color: 'var(--color-text-muted)' }}>本月收入 <AmountDisplay amount={curIncome} className="font-medium" sensitive /></span>
+              <span style={{ color: 'var(--color-text-muted)' }}>支出 <AmountDisplay amount={curExpense} className="font-medium" sensitive /></span>
               <span style={{ color: 'var(--color-text-muted)' }}>盈余率 <span style={{ fontWeight: 500, color: 'var(--color-text-heading)' }}>{curIncome > 0 ? ((curIncome - curExpense) / curIncome * 100).toFixed(1) : '0'}%</span></span>
             </div>
             <ScissorChart months={months} income={incomeData} expense={expenseData} survivalLine={curIncome * 0.5} />
