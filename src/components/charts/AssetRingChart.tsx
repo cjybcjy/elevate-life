@@ -13,11 +13,19 @@ export default function AssetRingChart({ data }: Props) {
       radius: ['40%', '70%'],
       center: ['50%', '50%'],
       avoidLabelOverlap: false,
-      itemStyle: { borderRadius: 8, borderColor: '#0f172a', borderWidth: 2 },
+      itemStyle: {
+        borderRadius: 8,
+        borderColor: typeof document !== 'undefined'
+          ? getComputedStyle(document.documentElement).getPropertyValue('--color-chart-bg').trim() || '#ffffff'
+          : '#ffffff',
+        borderWidth: 2,
+      },
       label: {
         show: true,
         position: 'inside',
-        color: '#fff',
+        color: typeof document !== 'undefined'
+          ? getComputedStyle(document.documentElement).getPropertyValue('--color-chart-label').trim() || '#212529'
+          : '#212529',
         fontSize: 13,
         fontWeight: 'bold',
         formatter: '{b}\n{d}%',
