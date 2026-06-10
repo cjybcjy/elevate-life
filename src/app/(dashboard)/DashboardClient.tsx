@@ -139,10 +139,33 @@ export default function DashboardClient({ currentDate }: { currentDate: string }
         </div>
       </ErrorBoundary>
 
-      {/* MonthFlow */}
+      {/* MonthFlow + Budget — side by side */}
       <ErrorBoundary name="MonthFlow">
         <MonthFlow curIncome={curIncome} curExpense={curExpense} transactions={transactions} />
       </ErrorBoundary>
+
+      {budgetProgress.length > 0 ? (
+        <ErrorBoundary name="Budget">
+          <div className="card">
+            <div className="card-header">
+              <span>预算追踪</span>
+              <Link href="/management/budget" className="btn btn-outline btn-sm">管理</Link>
+            </div>
+            <div className="card-body">
+              <BudgetTracker progress={budgetProgress} transactions={transactions as any} />
+            </div>
+          </div>
+        </ErrorBoundary>
+      ) : (
+        <ErrorBoundary name="BudgetEmpty">
+          <div className="card">
+            <div className="card-header"><span>预算追踪</span></div>
+            <div className="card-body" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: 120, color: 'var(--color-text-muted)', fontSize: 13 }}>
+              暂无预算 · <Link href="/management/budget" className="btn btn-outline btn-sm" style={{ marginLeft: 8 }}>创建</Link>
+            </div>
+          </div>
+        </ErrorBoundary>
+      )}
 
       {/* Assets */}
       <ErrorBoundary name="Assets">
@@ -234,17 +257,6 @@ export default function DashboardClient({ currentDate }: { currentDate: string }
           </div>
         </div>
       </ErrorBoundary>
-
-      {/* Budget — only if budgets exist */}
-      {budgetProgress.length > 0 && (
-        <ErrorBoundary name="Budget">
-          <div className="card" style={{ gridColumn: '1 / -1' }}>
-            <div className="card-body">
-              <BudgetTracker progress={budgetProgress} transactions={transactions as any} />
-            </div>
-          </div>
-        </ErrorBoundary>
-      )}
 
       {/* Goals — only if goals exist */}
       {goals.length > 0 && (
