@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
+import Sidebar from "@/components/layout/Sidebar";
+import { ToastProvider } from "@/components/common/Toast";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -13,8 +15,13 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Ledger - Financial Management",
-  description: "Personal financial management system",
+  title: "家庭账本",
+  description: "个人家庭财务管理系统",
+  manifest: "/manifest.json",
+  appleWebApp: {
+    capable: true,
+    title: "家庭账本",
+  },
 };
 
 export default function RootLayout({
@@ -24,10 +31,33 @@ export default function RootLayout({
 }>) {
   return (
     <html
-      lang="en"
+      lang="zh-CN"
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
+      suppressHydrationWarning
     >
-      <body className="min-h-full flex flex-col">{children}</body>
+      <head>
+        <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+        <meta name="theme-color" content="#1E6581" />
+        <meta name="apple-mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+        <link rel="apple-touch-icon" href="/icon-192.png" />
+      </head>
+      <body className="min-h-full flex">
+        <ToastProvider>
+          <Sidebar />
+          <main
+            className="flex-1 overflow-auto"
+            style={{
+              viewTransitionName: 'main-content',
+              padding: '24px 28px',
+              minHeight: '100vh',
+              background: 'var(--color-bg)',
+            }}
+          >
+            {children}
+          </main>
+        </ToastProvider>
+      </body>
     </html>
   );
 }
