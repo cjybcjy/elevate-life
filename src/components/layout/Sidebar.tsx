@@ -37,13 +37,13 @@ export default function Sidebar() {
       <div
         style={{
           padding: '16px 20px',
-          borderBottom: '1px solid rgba(255,255,255,0.08)',
+          borderBottom: '1px solid var(--color-sidebar-border)',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
         }}
       >
-        <Link href="/" style={{ textDecoration: 'none', color: '#ffffff' }}>
+        <Link href="/" style={{ textDecoration: 'none', color: 'var(--color-text-heading)' }}>
           <span style={{ fontSize: '18px', fontWeight: 700 }}>📊 家庭账本</span>
         </Link>
       </div>
@@ -81,7 +81,7 @@ export default function Sidebar() {
               onMouseEnter={e => {
                 if (!isActive) {
                   e.currentTarget.style.background = 'var(--color-sidebar-hover-bg)';
-                  e.currentTarget.style.color = '#ffffff';
+                  e.currentTarget.style.color = 'var(--color-text-heading)';
                 }
               }}
               onMouseLeave={e => {
@@ -102,7 +102,7 @@ export default function Sidebar() {
       <div
         style={{
           padding: '12px 10px',
-          borderTop: '1px solid rgba(255,255,255,0.08)',
+          borderTop: '1px solid var(--color-sidebar-border)',
           display: 'flex',
           flexDirection: 'column',
           gap: '4px',

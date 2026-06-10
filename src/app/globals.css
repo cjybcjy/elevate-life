@@ -53,12 +53,13 @@
   --radius-lg: 8px;
   --radius-full: 9999px;
 
-  /* Sidebar */
-  --color-sidebar-bg: #1a2332;
-  --color-sidebar-text: #c8d6e5;
-  --color-sidebar-active-bg: rgba(30, 101, 129, 0.25);
-  --color-sidebar-active-text: #5dafd2;
-  --color-sidebar-hover-bg: rgba(255,255,255,0.05);
+  /* Sidebar — light theme */
+  --color-sidebar-bg: #f8f9fa;
+  --color-sidebar-text: #495057;
+  --color-sidebar-active-bg: rgba(30, 101, 129, 0.1);
+  --color-sidebar-active-text: #1E6581;
+  --color-sidebar-hover-bg: rgba(0, 0, 0, 0.04);
+  --color-sidebar-border: rgba(0, 0, 0, 0.06);
   --sidebar-width: 240px;
 
   /* Animations */
@@ -113,6 +114,7 @@
   --color-sidebar-active-bg: rgba(45, 139, 181, 0.2);
   --color-sidebar-active-text: #5dafd2;
   --color-sidebar-hover-bg: rgba(255,255,255,0.05);
+  --color-sidebar-border: rgba(255,255,255,0.08);
 
   --color-table-header-bg: #1a2332;
   --color-table-stripe: #1c2538;
@@ -126,6 +128,7 @@
   --color-sidebar-active-bg: var(--color-sidebar-active-bg);
   --color-sidebar-active-text: var(--color-sidebar-active-text);
   --color-sidebar-hover-bg: var(--color-sidebar-hover-bg);
+  --color-sidebar-border: var(--color-sidebar-border);
 
   /* Backward compatibility — old ledger-* classes map to new theme colors */
   --color-ledger-bg: var(--color-bg);
