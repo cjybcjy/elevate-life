@@ -37,7 +37,7 @@ export default function RootLayout({
     >
       <head>
         <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-        <meta name="theme-color" content="#1E6581" />
+        <meta name="theme-color" content="#0B0B0B" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
         <link rel="apple-touch-icon" href="/icon-192.png" />
@@ -51,7 +51,7 @@ export default function RootLayout({
               viewTransitionName: 'main-content',
               padding: '24px 28px',
               minHeight: '100vh',
-              background: 'var(--color-bg)',
+              background: 'var(--color-surface)',
             }}
           >
             {children}
