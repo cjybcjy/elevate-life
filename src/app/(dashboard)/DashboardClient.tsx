@@ -74,7 +74,13 @@ export default function DashboardClient({ currentDate }: { currentDate: string }
     );
   }
 
-  const totalAssets = assets.reduce((sum: Decimal, a: any) => sum.plus(new Decimal(a.balance || 0)), new Decimal(0));
+  const totalAssets = assets.reduce((sum: Decimal, a: any) => {
+    let v = parseFloat(a.balance || '0');
+    if ((a.category === 'stock' || a.category === 'fund') && a.priceCurrency && a.priceCurrency !== 'CNY') {
+      v = v * (cnyRate[a.priceCurrency] || 1);
+    }
+    return sum.plus(new Decimal(v));
+  }, new Decimal(0)).plus(new Decimal(idleCash));
   const totalLiabilities = liabilities.reduce((sum: Decimal, l: any) => sum.plus(new Decimal(l.currentBalance || 0)), new Decimal(0));
   const netWorth = totalAssets.minus(totalLiabilities).toNumber();
   const surplusRate = totalAssets.gt(0) ? netWorth / totalAssets.toNumber() * 100 : 0;
@@ -130,13 +136,21 @@ export default function DashboardClient({ currentDate }: { currentDate: string }
   const currentCash = assets.filter((a: any) => a.category === 'cash' || a.category === 'current_deposit').reduce((s: number, a: any) => s + parseFloat(a.balance || '0'), 0);
 
   // Liquidity tiers
+  function convertBalance(a: any): number {
+    let v = parseFloat(a.balance || '0');
+    if ((a.category === 'stock' || a.category === 'fund') && a.priceCurrency && a.priceCurrency !== 'CNY') {
+      v = v * (cnyRate[a.priceCurrency] || 1);
+    }
+    return v;
+  }
+
   const tier1Categories = ['stock', 'current_deposit', 'cash'];
   const tier1Assets = assets.filter((a: any) => tier1Categories.includes(a.category || ''));
-  const tier1Total = tier1Assets.reduce((s: number, a: any) => s + parseFloat(a.balance || '0'), 0);
+  const tier1Total = tier1Assets.reduce((s: number, a: any) => s + convertBalance(a), 0) + idleCash;
 
   const tier2Exclude = ['provident_fund', 'pension'];
   const tier2Assets = assets.filter((a: any) => !tier2Exclude.includes(a.category || ''));
-  const tier2Total = tier2Assets.reduce((s: number, a: any) => s + parseFloat(a.balance || '0'), 0);
+  const tier2Total = tier2Assets.reduce((s: number, a: any) => s + convertBalance(a), 0) + idleCash;
 
   return (
     <div style={{
