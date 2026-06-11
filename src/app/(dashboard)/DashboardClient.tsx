@@ -13,7 +13,6 @@ import CashflowForecastChart from '@/components/charts/CashflowForecastChart';
 import TargetCashflow from '@/components/widgets/TargetCashflow';
 import StockTable from '@/components/widgets/StockTable';
 import LiabilityCards from '@/components/widgets/LiabilityCards';
-import DebtStrategyComparison from '@/components/widgets/DebtStrategyComparison';
 import BudgetTracker from '@/components/widgets/BudgetTracker';
 import GoalTracker from '@/components/widgets/GoalTracker';
 import MonthFlow from '@/components/widgets/MonthFlow';
@@ -295,17 +294,6 @@ export default function DashboardClient({ currentDate }: { currentDate: string }
           </div>
         </div>
       </ErrorBoundary>
-
-      {/* Debt Strategy — only if 2+ liabilities */}
-      {liabilities.length >= 2 && (
-        <ErrorBoundary name="DebtStrategy">
-          <div className="card" style={{ gridColumn: '1 / -1' }}>
-            <div className="card-body">
-              <DebtStrategyComparison liabilities={liabilities} />
-            </div>
-          </div>
-        </ErrorBoundary>
-      )}
 
       {/* Stocks */}
       <ErrorBoundary name="Stocks">
