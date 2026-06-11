@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useOptimistic } from 'react';
+import { useState } from 'react';
 import { createLiability, updateLiability, deleteLiability } from '@/lib/actions/liabilities';
 import { createTransaction, deleteTransaction, updateTransaction } from '@/lib/actions/ledger';
 import { AmountDisplay } from '@/components/common/AmountDisplay';
@@ -37,7 +37,6 @@ const paymentMethodLabel: Record<string, string> = {
 
 export default function LiabilityManager() {
   const { data: liabData, isLoading: liabLoading } = useLiabilities();
-  const initial = liabData?.data ?? [];
   const { data: txData } = useTransactions();
   const transactions = txData?.data ?? [];
   const { data: assetData } = useAssets();
@@ -45,8 +44,7 @@ export default function LiabilityManager() {
   const { mutate } = useSWRConfig();
   const toast = useToast();
 
-  const [liabilities, setLiabilities] = useState(initial);
-  useEffect(() => { setLiabilities(initial); }, [initial]);
+  const liabilities = liabData?.data ?? [];
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [expandedRepayId, setExpandedRepayId] = useState<string | null>(null);
@@ -93,14 +91,19 @@ export default function LiabilityManager() {
   async function handleDelete(formData: FormData) {
     setError('');
     const id = formData.get('id') as string;
-    setLiabilities((prev) => prev.filter((l) => l.id !== id));
+    // Optimistic: remove from SWR cache immediately
+    mutate('liabilities',
+      (current: any) => ({ ...current, data: (current?.data ?? []).filter((l: any) => l.id !== id) }),
+      false
+    );
     const result = await deleteLiability(id);
     if (result.success) {
-      mutate('liabilities'); mutate('transactions');
+      mutate('liabilities');
+      mutate('transactions');
     } else if (result.error?.includes('会话密钥')) {
       window.location.href = '/login';
     } else {
-      setLiabilities((prev) => [...prev, liabilities.find((l) => l.id === id)!]);
+      mutate('liabilities'); // rollback
       setError(result.error || '删除失败');
     }
   }

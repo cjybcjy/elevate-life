@@ -74,7 +74,7 @@ import { getCategories } from '@/lib/actions/categories';
 
 export default function LedgerManager() {
   const { data: txData, isLoading: txLoading } = useTransactions();
-  const initialTx = txData?.data ?? [];
+  const transactions = txData?.data ?? [];
   const { data: assetData } = useAssets();
   const assets = assetData?.data ?? [];
   const { mutate } = useSWRConfig();
@@ -83,7 +83,6 @@ export default function LedgerManager() {
   const categories = catData ?? [];
 
   const [activeTab, setActiveTab] = useState<'transactions' | 'recurring'>('transactions');
-  const [transactions, setTransactions] = useState(initialTx);
   const [recurringRules, setRecurringRules] = useState<any[]>([]);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -149,9 +148,6 @@ export default function LedgerManager() {
     }
   }, [formValues.categoryId, formValues.occurredAt]);
 
-  // Sync state when SWR data changes
-  useEffect(() => { setTransactions(initialTx); }, [initialTx]);
-
   const applyTemplate = useCallback((t: Template) => {
     setFormValues({
       type: t.type,
@@ -204,12 +200,9 @@ export default function LedgerManager() {
     setReconCandidates(candidates);
   }, [reconAmount, reconDate, reconDays, transactions]);
 
-  async function toggleReconciled(transactionId: string, currentStatus: boolean) {
-    setTransactions(prev => prev.map(t =>
-      t.id === transactionId ? { ...t, reconciled: !currentStatus } : t
-    ));
-    await updateTransactionReconciled(transactionId, !currentStatus);
-    mutate('transactions'); toast.success('操作成功');
+  async function toggleReconciled(transactionId: string, _currentStatus: boolean) {
+    await updateTransactionReconciled(transactionId, !_currentStatus);
+    mutate('transactions');
   }
 
   async function handleCreate(formData: FormData) {
@@ -251,14 +244,14 @@ export default function LedgerManager() {
   async function handleDelete(formData: FormData) {
     setError('');
     const id = formData.get('id') as string;
-    setTransactions(prev => prev.filter(t => t.id !== id));
+    mutate('transactions', (current: any) => ({ ...current, data: (current?.data ?? []).filter((t: any) => t.id !== id) }), false);
     const result = await deleteTransaction(id);
     if (result.success) {
-      mutate('transactions'); toast.success('操作成功');
+      mutate('transactions');
     } else if (result.error?.includes('会话密钥')) {
       window.location.href = '/login';
     } else {
-      setTransactions(prev => [...prev, initialTx.find((t: any) => t.id === id)!]);
+      mutate('transactions');
       setError(result.error || '删除失败');
     }
   }
@@ -315,7 +308,7 @@ export default function LedgerManager() {
     setRecurringRules(prev => prev.filter(r => r.id !== ruleId));
     const result = await deleteRecurringRule(ruleId);
     if (result.success) {
-      mutate('transactions'); toast.success('操作成功');
+      mutate('transactions');
     } else {
       setError(result.error || '删除失败');
     }
