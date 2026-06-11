@@ -253,7 +253,7 @@ export default function DashboardClient({ currentDate }: { currentDate: string }
                   <div key={cat} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, padding: '3px 0' }}>
                     {isCollapsible && <ExpandableDetail cat={cat} assets={assets} />}
                     <span style={{
-                      display: 'inline-block', width: 10, height: 10, borderRadius: '50%',
+                      display: 'inline-block', width: 10, height: 10, borderRadius: 2.5,
                       background: cfg.color, flexShrink: 0,
                     }} />
                     <span style={{ color: 'var(--color-text)' }}>{cfg.label}</span>

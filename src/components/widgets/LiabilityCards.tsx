@@ -99,7 +99,7 @@ function CollapsibleLiabilityCard({
       <div className="flex items-center justify-between mb-1.5">
         <div className="flex items-center gap-1.5 min-w-0">
           <span style={{
-            display: 'inline-block', width: 8, height: 8, borderRadius: '50%', flexShrink: 0,
+            display: 'inline-block', width: 8, height: 8, borderRadius: 2, flexShrink: 0,
             background: interestRate > 0.06 ? '#ef4444' : interestRate > 0.05 ? '#f59e0b' : '#3b82f6',
           }} />
           <span className="text-sm font-medium truncate" style={{ color: 'var(--color-text-primary)' }}>{name}</span>
