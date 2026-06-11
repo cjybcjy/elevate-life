@@ -1,5 +1,6 @@
 'use client';
 
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import Decimal from 'decimal.js';
 import { ErrorBoundary } from '@/components/common/ErrorBoundary';
@@ -50,6 +51,15 @@ export default function DashboardClient({ currentDate }: { currentDate: string }
   const { data: goalsData } = useSWR('goals', () => getGoals().then(r => r.success ? (r.data ?? []) : []));
   const goals = goalsData ?? [];
 
+  // Idle cash from localStorage (synced with StockTable)
+  const [idleCash, setIdleCash] = useState(0);
+  useEffect(() => {
+    try {
+      const ic = localStorage.getItem('stock-idle-cash');
+      if (ic) setIdleCash(parseFloat(ic));
+    } catch {}
+  }, []);
+
   if (isLoading) {
     return (
       <div style={{ padding: '24px 0' }}>
@@ -75,6 +85,10 @@ export default function DashboardClient({ currentDate }: { currentDate: string }
   for (const a of assets) {
     const v = parseFloat(a.balance || '0');
     catTotals[a.category || 'other'] = (catTotals[a.category || 'other'] || 0) + v;
+  }
+  // Include idle cash in stock total (matches StockTable's account total = market value + idle cash)
+  if (idleCash > 0) {
+    catTotals['stock'] = (catTotals['stock'] || 0) + idleCash;
   }
   const ringData = Object.entries(catTotals)
     .map(([cat, value]) => ({ name: categoryConfig[cat]?.label || cat, value, itemStyle: { color: categoryConfig[cat]?.color || '#94a3b8' } }))
