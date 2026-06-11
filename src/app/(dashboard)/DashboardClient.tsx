@@ -280,11 +280,18 @@ export default function DashboardClient({ currentDate }: { currentDate: string }
             <span>负债总览</span>
             <Link href="/management/liabilities" className="btn btn-outline btn-sm">管理</Link>
           </div>
-          <div className="card-body">
-            <div style={{ fontSize: 13, color: 'var(--color-text-muted)', marginBottom: 10 }}>
-              总额 <AmountDisplay amount={totalLiabilities.toNumber()} className="font-bold" /> · WACR <span style={{ color: 'var(--color-primary)', fontWeight: 500 }}>{(wacr * 100).toFixed(2)}%</span>
+          <div className="card-body" style={{ display: 'flex', gap: 20, alignItems: 'flex-start' }}>
+            <div style={{ flexShrink: 0 }}>
+              {funnelData.length > 0 ? <DebtFunnelChart data={funnelData} /> : (
+                <div style={{ width: 200, height: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--color-text-muted)', fontSize: 13 }}>暂无负债</div>
+              )}
             </div>
-            <LiabilityCards liabilities={liabilities} transactions={transactions} />
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontSize: 13, color: 'var(--color-text-muted)', marginBottom: 8 }}>
+                总额 <AmountDisplay amount={totalLiabilities.toNumber()} className="font-bold" /> · WACR <span style={{ color: 'var(--color-primary)', fontWeight: 500 }}>{(wacr * 100).toFixed(2)}%</span>
+              </div>
+              <LiabilityCards liabilities={liabilities} transactions={transactions} />
+            </div>
           </div>
         </div>
       </ErrorBoundary>
