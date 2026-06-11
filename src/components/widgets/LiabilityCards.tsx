@@ -39,7 +39,13 @@ export default function LiabilityCards({
   return (
     <div className="space-y-2">
       {liabilities
-        .sort((a, b) => (parseFloat(b.currentBalance) || 0) - (parseFloat(a.currentBalance) || 0))
+        .sort((a, b) => {
+          const aEnd = new Date(a.startDate);
+          aEnd.setMonth(aEnd.getMonth() + (a.termMonths || 0));
+          const bEnd = new Date(b.startDate);
+          bEnd.setMonth(bEnd.getMonth() + (b.termMonths || 0));
+          return aEnd.getTime() - bEnd.getTime();
+        })
         .map((l, i) => {
           const balance = parseFloat(l.currentBalance) || 0;
           const principal = parseFloat(l.principal) || 1;
