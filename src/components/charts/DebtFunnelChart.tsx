@@ -44,7 +44,7 @@ export default function DebtFunnelChart({ data }: Props) {
         show: true,
         position: 'inside' as const,
         formatter: (params: any) => `${params.percent}%`,
-        color: '#ffffff',
+        color: labelColor,
         fontSize: 11,
         fontWeight: 'bold' as const,
       },
