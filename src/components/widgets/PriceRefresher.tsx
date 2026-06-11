@@ -1,21 +1,21 @@
 'use client';
 
-import { useEffect, useState, useTransition } from 'react';
-import { useRouter } from 'next/navigation';
+import { useEffect, useState } from 'react';
 import { refreshMyPrices } from '@/lib/actions/assets';
+import { useSWRConfig } from 'swr';
 
 export function PriceRefresher({ pricesStale }: { pricesStale: boolean }) {
-  const router = useRouter();
+  const { mutate } = useSWRConfig();
   const [refreshing, setRefreshing] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
-  const [isPending, startTransition] = useTransition();
 
-  // Auto-refresh on mount if prices are stale
+  // Auto-refresh on mount if prices are stale (runs once when component mounts)
   useEffect(() => {
     if (pricesStale) {
       doRefresh();
     }
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pricesStale]);
 
   async function doRefresh() {
     setRefreshing(true);
@@ -24,7 +24,8 @@ export function PriceRefresher({ pricesStale }: { pricesStale: boolean }) {
       const result = await refreshMyPrices();
       if (result.success) {
         setMessage('价格已更新');
-        startTransition(() => router.refresh());
+        // Invalidate SWR cache so all components using assets data re-fetch
+        mutate('assets');
       } else {
         setMessage('部分价格更新失败');
       }
