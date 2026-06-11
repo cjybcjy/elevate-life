@@ -64,6 +64,7 @@ export default function LiabilityCards({
               remaining={remaining}
               progress={progress}
               startDate={start}
+              termMonths={l.termMonths}
               repayments={repayments}
               totalRepaid={totalRepaid}
               paymentMethod={l.paymentMethod}
@@ -85,6 +86,7 @@ function CollapsibleLiabilityCard({
   remaining,
   progress,
   startDate,
+  termMonths,
   repayments,
   totalRepaid,
   paymentMethod,
@@ -99,6 +101,7 @@ function CollapsibleLiabilityCard({
   remaining: number;
   progress: number;
   startDate: Date;
+  termMonths: number;
   repayments: Transaction[];
   totalRepaid: number;
   paymentMethod?: string | null;
@@ -174,7 +177,7 @@ function CollapsibleLiabilityCard({
           <span className="text-ledger-muted ml-3">
             到期应还{' '}
             <AmountDisplay
-              amount={principal * (1 + interestRate * remaining / 12)}
+              amount={principal * (1 + interestRate * termMonths / 12)}
               className="font-medium"
             />
             <span className="text-ledger-muted/60 ml-1" style={{ fontSize: 10 }}>
