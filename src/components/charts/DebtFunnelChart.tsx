@@ -22,7 +22,6 @@ export default function DebtFunnelChart({ data }: Props) {
   );
 
   const labelColor = getCSSVar('--color-chart-label', '#212529');
-  const legendColor = getCSSVar('--color-text-muted', '#6c757d');
   const isDark = typeof document !== 'undefined' && document.documentElement.getAttribute('data-theme') !== 'light';
 
   const option = {
@@ -37,15 +36,7 @@ export default function DebtFunnelChart({ data }: Props) {
       borderColor: isDark ? '#334155' : '#dee2e6',
       textStyle: { color: isDark ? '#fff' : '#212529', fontSize: 12 },
     },
-    legend: {
-      orient: 'vertical' as const,
-      right: 0,
-      top: 'center',
-      textStyle: { color: legendColor, fontSize: 11 },
-      itemWidth: 10,
-      itemHeight: 10,
-      itemGap: 12,
-    },
+    legend: { show: false },
     series: [{
       type: 'pie',
       radius: ['40%', '75%'],
