@@ -129,40 +129,47 @@ export default function DashboardClient({ currentDate }: { currentDate: string }
       {/* Net Worth — full width */}
       <ErrorBoundary name="NetWorth">
         <div className="card" style={{ gridColumn: '1 / -1' }}>
-          <div className="card-body" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 20px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 24 }}>
+          <div className="card-body" style={{ padding: '16px 20px' }}>
+            {/* Top row: 净资产 + 管理 button */}
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
               <div>
-                <div style={{ fontSize: 11, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: 0.3 }}>净资产</div>
-                <div style={{ fontSize: 26, fontWeight: 700, color: 'var(--color-text-heading)' }}>
+                <div style={{ fontSize: 11, color: 'var(--color-text-secondary)', textTransform: 'uppercase', letterSpacing: 0.3 }}>净资产</div>
+                <div style={{ fontSize: 26, fontWeight: 700, color: 'var(--color-text-primary)' }}>
                   <AnimatedNumber value={netWorth} prefix="¥" />
                 </div>
               </div>
-              <div style={{ display: 'flex', gap: 20, fontSize: 13 }}>
-                <div><span style={{ color: 'var(--color-text-muted)' }}>总资产 </span><AmountDisplay amount={totalAssets.toNumber()} className="font-medium" /></div>
-                <div><span style={{ color: 'var(--color-text-muted)' }}>总负债 </span><AmountDisplay amount={totalLiabilities.toNumber()} className="font-medium" /></div>
-                <div><span style={{ color: 'var(--color-text-muted)' }}>净资产率 </span><span style={{ fontWeight: 500, color: 'var(--color-text-heading)' }}>{surplusRate.toFixed(1)}%</span></div>
-                <div style={{ width: 1, background: 'var(--border-tertiary)', margin: '2px 0' }} />
-                <div>
-                  <span style={{ color: 'var(--color-text-muted)', fontSize: 11 }}>一级流动性 </span>
-                  <span style={{ fontWeight: 500, color: 'var(--color-text-primary)', fontSize: 12 }}>
-                    ¥{tier1Total.toLocaleString('zh-CN', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+              <Link href="/management/assets" className="btn btn-outline btn-sm">管理</Link>
+            </div>
+            {/* Stats row: 总资产 / 总负债 / 净资产率 */}
+            <div style={{ display: 'flex', gap: 20, fontSize: 13, marginTop: 12 }}>
+              <div>
+                <span style={{ color: 'var(--color-text-secondary)' }}>总资产 </span>
+                <AmountDisplay amount={totalAssets.toNumber()} className="font-medium" />
+                {/* Liquidity sub-labels under 总资产 */}
+                <div style={{ display: 'flex', gap: 12, marginTop: 4 }}>
+                  <span style={{ fontSize: 11, color: 'var(--color-text-subdued)' }}>
+                    一级流动性{' '}
+                    <span style={{ fontWeight: 500, color: 'var(--color-text-secondary)' }}>
+                      ¥{(tier1Total / 10000).toFixed(0)}万
+                    </span>
+                    <span style={{ color: 'var(--color-text-subdued)', fontSize: 10 }}>
+                      {' '}({totalAssets.gt(0) ? (tier1Total / totalAssets.toNumber() * 100).toFixed(0) : 0}%)
+                    </span>
                   </span>
-                  <span style={{ color: 'var(--color-text-subdued)', fontSize: 10, marginLeft: 2 }}>
-                    {totalAssets.gt(0) ? (tier1Total / totalAssets.toNumber() * 100).toFixed(0) : 0}%
-                  </span>
-                </div>
-                <div>
-                  <span style={{ color: 'var(--color-text-muted)', fontSize: 11 }}>二级流动性 </span>
-                  <span style={{ fontWeight: 500, color: 'var(--color-text-primary)', fontSize: 12 }}>
-                    ¥{tier2Total.toLocaleString('zh-CN', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
-                  </span>
-                  <span style={{ color: 'var(--color-text-subdued)', fontSize: 10, marginLeft: 2 }}>
-                    {totalAssets.gt(0) ? (tier2Total / totalAssets.toNumber() * 100).toFixed(0) : 0}%
+                  <span style={{ fontSize: 11, color: 'var(--color-text-subdued)' }}>
+                    二级{' '}
+                    <span style={{ fontWeight: 500, color: 'var(--color-text-secondary)' }}>
+                      ¥{(tier2Total / 10000).toFixed(0)}万
+                    </span>
+                    <span style={{ color: 'var(--color-text-subdued)', fontSize: 10 }}>
+                      {' '}({totalAssets.gt(0) ? (tier2Total / totalAssets.toNumber() * 100).toFixed(0) : 0}%)
+                    </span>
                   </span>
                 </div>
               </div>
+              <div><span style={{ color: 'var(--color-text-secondary)' }}>总负债 </span><AmountDisplay amount={totalLiabilities.toNumber()} className="font-medium" /></div>
+              <div><span style={{ color: 'var(--color-text-secondary)' }}>净资产率 </span><span style={{ fontWeight: 500, color: 'var(--color-text-primary)' }}>{surplusRate.toFixed(1)}%</span></div>
             </div>
-            <Link href="/management/assets" className="btn btn-outline btn-sm">管理</Link>
           </div>
         </div>
       </ErrorBoundary>
