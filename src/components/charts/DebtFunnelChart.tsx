@@ -62,5 +62,5 @@ export default function DebtFunnelChart({ data }: Props) {
     }],
   };
 
-  return <ReactECharts option={option} style={{ height: '240px', width: '100%' }} />;
+  return <ReactECharts option={option} style={{ height: '260px', width: '100%' }} />;
 }

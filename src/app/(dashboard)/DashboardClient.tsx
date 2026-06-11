@@ -283,7 +283,7 @@ export default function DashboardClient({ currentDate }: { currentDate: string }
           <div className="card-body" style={{ display: 'flex', gap: 20, alignItems: 'flex-start' }}>
             <div style={{ flexShrink: 0 }}>
               {funnelData.length > 0 ? <DebtFunnelChart data={funnelData} /> : (
-                <div style={{ width: 200, height: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--color-text-muted)', fontSize: 13 }}>暂无负债</div>
+                <div style={{ width: 220, height: 220, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--color-text-muted)', fontSize: 13 }}>暂无负债</div>
               )}
             </div>
             <div style={{ flex: 1, minWidth: 0 }}>

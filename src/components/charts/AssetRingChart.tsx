@@ -45,5 +45,5 @@ export default function AssetRingChart({ data }: Props) {
       data: data,
     }],
   };
-  return <ReactECharts option={option} style={{ height: '240px', width: '240px' }} />;
+  return <ReactECharts option={option} style={{ height: '280px', width: '280px' }} />;
 }
