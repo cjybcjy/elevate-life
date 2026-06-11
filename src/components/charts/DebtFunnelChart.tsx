@@ -44,11 +44,11 @@ export default function DebtFunnelChart({ data }: Props) {
       avoidLabelOverlap: false,
       label: {
         show: true,
-        position: 'inside' as const,
+        position: 'outside' as const,
         formatter: (params: any) => `${params.percent}%`,
         color: labelColor,
-        fontSize: 12,
-        fontWeight: 'bold' as const,
+        fontSize: 11,
+        distanceToLabelLine: 2,
       },
       emphasis: {
         label: { show: true, fontSize: 16, fontWeight: 'bold' as const },
@@ -62,5 +62,5 @@ export default function DebtFunnelChart({ data }: Props) {
     }],
   };
 
-  return <ReactECharts option={option} style={{ height: '260px', width: '100%' }} />;
+  return <ReactECharts option={option} style={{ height: '260px', width: '100%', overflow: 'visible' }} />;
 }

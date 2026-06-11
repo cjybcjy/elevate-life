@@ -23,6 +23,10 @@ interface Transaction {
   description?: string | null;
 }
 
+const DOT_COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#8b5cf6', '#06b6d4', '#f97316'];
+
+const RATE_COLORS = { high: '#ef4444', mid: '#f59e0b', low: '#3b82f6' };
+
 export default function LiabilityCards({
   liabilities,
   transactions = [],
@@ -36,7 +40,7 @@ export default function LiabilityCards({
     <div className="space-y-2">
       {liabilities
         .sort((a, b) => (parseFloat(b.currentBalance) || 0) - (parseFloat(a.currentBalance) || 0))
-        .map((l) => {
+        .map((l, i) => {
           const balance = parseFloat(l.currentBalance) || 0;
           const principal = parseFloat(l.principal) || 1;
           const paid = principal - balance;
@@ -63,6 +67,8 @@ export default function LiabilityCards({
               repayments={repayments}
               totalRepaid={totalRepaid}
               paymentMethod={l.paymentMethod}
+              dotColor={DOT_COLORS[i % DOT_COLORS.length]}
+              rateColor={l.interestRate > 0.06 ? RATE_COLORS.high : l.interestRate > 0.05 ? RATE_COLORS.mid : RATE_COLORS.low}
             />
           );
         })}
@@ -82,6 +88,8 @@ function CollapsibleLiabilityCard({
   repayments,
   totalRepaid,
   paymentMethod,
+  dotColor,
+  rateColor,
 }: {
   name: string;
   interestRate: number;
@@ -94,6 +102,8 @@ function CollapsibleLiabilityCard({
   repayments: Transaction[];
   totalRepaid: number;
   paymentMethod?: string | null;
+  dotColor: string;
+  rateColor: string;
 }) {
   const [showHistory, setShowHistory] = useState(false);
 
@@ -104,15 +114,13 @@ function CollapsibleLiabilityCard({
         <div className="flex items-center gap-1.5 min-w-0">
           <span style={{
             display: 'inline-block', width: 8, height: 8, borderRadius: 2, flexShrink: 0,
-            background: interestRate > 0.06 ? '#ef4444' : interestRate > 0.05 ? '#f59e0b' : '#3b82f6',
+            background: dotColor,
           }} />
           <span className="text-sm font-medium truncate" style={{ color: 'var(--color-text-primary)' }}>{name}</span>
           <span className="text-xs text-ledger-muted/60 shrink-0">
             {startDate.toLocaleDateString('zh-CN', { year: 'numeric', month: 'short' })}
           </span>
-          <span className="text-xs font-medium shrink-0" style={{
-            color: interestRate > 0.06 ? '#ef4444' : interestRate > 0.05 ? '#f59e0b' : '#3b82f6',
-          }}>
+          <span className="text-xs font-medium shrink-0" style={{ color: rateColor }}>
             {(interestRate * 100).toFixed(1)}%
           </span>
         </div>
