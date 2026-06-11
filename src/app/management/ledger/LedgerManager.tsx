@@ -588,7 +588,7 @@ export default function LedgerManager() {
               <button
                 type="submit"
                 disabled={loading}
-                className="rounded-md bg-ledger-accent px-4 py-2 text-sm font-medium hover:opacity-90 transition-opacity disabled:opacity-50"
+                className="rounded-md bg-ledger-accent text-[var(--color-text-inverse)] px-4 py-2 text-sm font-medium hover:opacity-90 transition-opacity disabled:opacity-50"
               >
                 {loading ? '创建中...' : '创建'}
               </button>
@@ -618,7 +618,7 @@ export default function LedgerManager() {
                 type="button"
                 onClick={saveCurrentAsTemplate}
                 disabled={!templateName.trim()}
-                className="rounded-md bg-ledger-accent px-3 py-1.5 text-xs font-medium hover:opacity-90 disabled:opacity-50"
+                className="rounded-md bg-ledger-accent text-[var(--color-text-inverse)] px-3 py-1.5 text-xs font-medium hover:opacity-90 disabled:opacity-50"
               >
                 保存模板
               </button>
@@ -683,7 +683,7 @@ export default function LedgerManager() {
                   <button
                     type="button"
                     onClick={searchReconciliation}
-                    className="rounded-md bg-ledger-accent px-3 py-1.5 text-xs font-medium hover:opacity-90"
+                    className="rounded-md bg-ledger-accent text-[var(--color-text-inverse)] px-3 py-1.5 text-xs font-medium hover:opacity-90"
                   >
                     搜索匹配
                   </button>
@@ -846,7 +846,7 @@ export default function LedgerManager() {
                             <button
                               type="button"
                               onClick={() => handleUpdateTransaction(t.id)}
-                              className="rounded-md bg-ledger-accent px-2 py-1.5 text-xs font-medium hover:opacity-90"
+                              className="rounded-md bg-ledger-accent text-[var(--color-text-inverse)] px-2 py-1.5 text-xs font-medium hover:opacity-90"
                             >
                               保存
                             </button>
@@ -1013,7 +1013,7 @@ export default function LedgerManager() {
             <button
               type="submit"
               disabled={loading}
-              className="rounded-md bg-ledger-accent px-4 py-2 text-sm font-medium hover:opacity-90 transition-opacity disabled:opacity-50"
+              className="rounded-md bg-ledger-accent text-[var(--color-text-inverse)] px-4 py-2 text-sm font-medium hover:opacity-90 transition-opacity disabled:opacity-50"
             >
               {loading ? '创建中...' : '添加周期'}
             </button>
@@ -1155,7 +1155,7 @@ export default function LedgerManager() {
                                 className="rounded-md bg-ledger-surface border border-ledger-bg px-2 py-1.5 text-xs focus:outline-none focus:border-ledger-accent" />
                             </div>
                             <button type="button" onClick={handleUpdateRecurring}
-                              className="rounded-md bg-ledger-accent px-2 py-1.5 text-xs font-medium hover:opacity-90">
+                              className="rounded-md bg-ledger-accent text-[var(--color-text-inverse)] px-2 py-1.5 text-xs font-medium hover:opacity-90">
                               保存
                             </button>
                           </div>

@@ -329,7 +329,7 @@ export default function AssetManager() {
         )}
         <button
           type="submit"
-          className="rounded-md bg-ledger-accent px-4 py-2 text-sm font-medium hover:opacity-90 transition-opacity"
+          className="rounded-md bg-ledger-accent text-[var(--color-text-inverse)] px-4 py-2 text-sm font-medium hover:opacity-90 transition-opacity"
         >
           创建
         </button>

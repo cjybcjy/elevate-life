@@ -219,7 +219,7 @@ export default function BudgetManager({ currentDate }: { currentDate: string }) 
         <button
           type="submit"
           disabled={loading}
-          className="rounded-md bg-ledger-accent px-4 py-2 text-sm font-medium hover:opacity-90 transition-opacity disabled:opacity-50"
+          className="rounded-md bg-ledger-accent text-[var(--color-text-inverse)] px-4 py-2 text-sm font-medium hover:opacity-90 transition-opacity disabled:opacity-50"
         >
           {loading ? '创建中...' : '添加预算'}
         </button>
@@ -320,7 +320,7 @@ export default function BudgetManager({ currentDate }: { currentDate: string }) 
                             type="button"
                             onClick={() => handleRecordExpense(b.id)}
                             disabled={!expenseForm.amount}
-                            className="rounded-md bg-ledger-accent px-2 py-1.5 text-xs font-medium hover:opacity-90 disabled:opacity-50"
+                            className="rounded-md bg-ledger-accent text-[var(--color-text-inverse)] px-2 py-1.5 text-xs font-medium hover:opacity-90 disabled:opacity-50"
                           >
                             保存
                           </button>
@@ -366,7 +366,7 @@ export default function BudgetManager({ currentDate }: { currentDate: string }) 
                           </div>
                           <button
                             type="button" onClick={handleUpdateBudget}
-                            className="rounded-md bg-ledger-accent px-2 py-1.5 text-xs font-medium hover:opacity-90"
+                            className="rounded-md bg-ledger-accent text-[var(--color-text-inverse)] px-2 py-1.5 text-xs font-medium hover:opacity-90"
                           >
                             保存
                           </button>
