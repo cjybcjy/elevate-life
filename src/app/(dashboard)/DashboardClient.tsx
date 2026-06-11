@@ -252,7 +252,10 @@ export default function DashboardClient({ currentDate }: { currentDate: string }
                 return (
                   <div key={cat} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, padding: '3px 0' }}>
                     {isCollapsible && <ExpandableDetail cat={cat} assets={assets} />}
-                    <span>{cfg.icon}</span>
+                    <span style={{
+                      display: 'inline-block', width: 10, height: 10, borderRadius: '50%',
+                      background: cfg.color, flexShrink: 0,
+                    }} />
                     <span style={{ color: 'var(--color-text)' }}>{cfg.label}</span>
                     {!isCollapsible && count > 1 && <span style={{ color: 'var(--color-text-muted)', fontSize: 11 }}>({count}项)</span>}
                     {isGoldCat && (() => {
