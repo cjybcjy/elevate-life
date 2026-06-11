@@ -86,7 +86,7 @@ export default function AllocationAnalysis({ assets, totalAssets }: Props) {
                   <div className="flex-1 h-1 bg-ledger-bg rounded-full overflow-hidden">
                     <div className="h-full rounded-full" style={{ width: `${pct}%`, backgroundColor: info.color }} />
                   </div>
-                  <AmountDisplay amount={amount} className="w-18 text-right" sensitive />
+                  <AmountDisplay amount={amount} className="w-18 text-right" />
                 </div>
               );
             })}

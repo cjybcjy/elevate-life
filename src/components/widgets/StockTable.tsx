@@ -59,13 +59,13 @@ function CostCell({ stock }: { stock: Stock }) {
             value={value}
             onChange={e => setValue(e.target.value)}
             onKeyDown={e => { if (e.key === 'Enter') save(); if (e.key === 'Escape') setEditing(false); }}
-            className="w-24 rounded-md bg-ledger-bg border border-ledger-accent px-2 py-1 text-xs text-white focus:outline-none"
+            className="w-24 rounded-md bg-ledger-bg border border-ledger-accent px-2 py-1 text-xs text-[var(--color-text-primary)] focus:outline-none"
             autoFocus
           />
           <button onClick={save} disabled={saving} className="text-xs text-green-400 hover:text-green-300 shrink-0">
             {saving ? '...' : '✓'}
           </button>
-          <button onClick={() => setEditing(false)} className="text-xs text-ledger-muted hover:text-white shrink-0">✕</button>
+          <button onClick={() => setEditing(false)} className="text-xs text-ledger-muted hover:text-[var(--color-text-primary)] shrink-0">✕</button>
         </div>
       </td>
     );
@@ -73,7 +73,7 @@ function CostCell({ stock }: { stock: Stock }) {
 
   return (
     <td
-      className="py-2 px-3 text-right text-ledger-muted cursor-pointer hover:text-white hover:bg-ledger-bg/50 transition-colors"
+      className="py-2 px-3 text-right text-ledger-muted cursor-pointer hover:text-[var(--color-text-primary)] hover:bg-ledger-bg/50 transition-colors"
       onClick={() => { setValue(cup > 0 ? cup.toString() : ''); setEditing(true); }}
       title="点击修改成本价"
     >
@@ -111,18 +111,18 @@ function EditablePrincipal({ totalCost, onSave }: { totalCost: number; onSave: (
             if (e.key === 'Escape') setEditing(false);
           }}
           onBlur={() => { const n = parseFloat(value); if (!isNaN(n) && n > 0) { onSave(n); } setEditing(false); }}
-          className="w-28 rounded-md bg-ledger-bg border border-ledger-accent px-2 py-0.5 text-xs text-white focus:outline-none"
+          className="w-28 rounded-md bg-ledger-bg border border-ledger-accent px-2 py-0.5 text-xs text-[var(--color-text-primary)] focus:outline-none"
           autoFocus
         />
         <button onMouseDown={e => { e.preventDefault(); doSave(); }} className="text-xs text-green-400 hover:text-green-300">✓</button>
-        <button onMouseDown={e => { e.preventDefault(); setEditing(false); }} className="text-xs text-ledger-muted hover:text-white">✕</button>
+        <button onMouseDown={e => { e.preventDefault(); setEditing(false); }} className="text-xs text-ledger-muted hover:text-[var(--color-text-primary)]">✕</button>
       </span>
     );
   }
 
   return (
     <span
-      className="text-white font-medium cursor-pointer hover:text-ledger-accent border-b border-dashed border-ledger-muted/30"
+      className="text-[var(--color-text-primary)] font-medium cursor-pointer hover:text-ledger-accent border-b border-dashed border-ledger-muted/30"
       onClick={() => { setValue(totalCost > 0 ? totalCost.toString() : ''); setEditing(true); }}
       title="点击手动修改总本金"
     >
@@ -192,7 +192,7 @@ export default function StockTable({ stocks, forexRates }: { stocks: Stock[]; fo
       {accountTotal !== null && (
         <div className="flex items-center mb-2">
           <span className="text-sm text-ledger-muted">
-            账户总额 <span className="text-white font-bold text-base">{fmt(accountTotal, 'CNY')}</span>
+            账户总额 <span className="text-[var(--color-text-primary)] font-bold text-base">{fmt(accountTotal, 'CNY')}</span>
           </span>
         </div>
       )}
@@ -202,7 +202,7 @@ export default function StockTable({ stocks, forexRates }: { stocks: Stock[]; fo
           {manualCost !== null && (
             <button
               onClick={() => { setManualCost(null); try { localStorage.removeItem('stock-manual-principal'); } catch {} }}
-              className="ml-1 text-xs text-ledger-muted/50 hover:text-white"
+              className="ml-1 text-xs text-ledger-muted/50 hover:text-[var(--color-text-primary)]"
               title="恢复自动计算"
             >
               ↺
@@ -217,7 +217,7 @@ export default function StockTable({ stocks, forexRates }: { stocks: Stock[]; fo
           {idleCash !== null && (
             <button
               onClick={() => { setIdleCash(null); try { localStorage.removeItem('stock-idle-cash'); } catch {} }}
-              className="ml-1 text-xs text-ledger-muted/50 hover:text-white"
+              className="ml-1 text-xs text-ledger-muted/50 hover:text-[var(--color-text-primary)]"
               title="清除"
             >
               ↺
@@ -253,12 +253,12 @@ export default function StockTable({ stocks, forexRates }: { stocks: Stock[]; fo
               const market = s.market || 'cn';
               return (
                 <tr key={s.id} className="border-b border-ledger-primary/5 hover:bg-ledger-bg/30">
-                  <td className="py-2 px-3 text-white">{s.name}</td>
+                  <td className="py-2 px-3 text-[var(--color-text-primary)]">{s.name}</td>
                   <td className="py-2 px-3"><span className="text-xs px-1.5 py-0.5 rounded bg-ledger-bg text-ledger-muted">{marketLabel[market] || market}</span></td>
                   <td className="py-2 px-3 text-ledger-muted font-mono">{s.stockCode || '-'}</td>
-                  <td className="py-2 px-3 text-right text-white">{qty || '-'}</td>
-                  <td className="py-2 px-3 text-right text-white">{s.unitPrice ? fmt(s.unitPrice, s.priceCurrency) : '-'}</td>
-                  <td className="py-2 px-3 text-right text-white font-medium">
+                  <td className="py-2 px-3 text-right text-[var(--color-text-primary)]">{qty || '-'}</td>
+                  <td className="py-2 px-3 text-right text-[var(--color-text-primary)]">{s.unitPrice ? fmt(s.unitPrice, s.priceCurrency) : '-'}</td>
+                  <td className="py-2 px-3 text-right text-[var(--color-text-primary)] font-medium">
                     {fmt(value, s.priceCurrency)}
                     {s.priceCurrency && s.priceCurrency !== 'CNY' && (
                       <div className="text-xs text-ledger-muted">≈ ¥{toCny(value, s.priceCurrency).toLocaleString('zh-CN', { minimumFractionDigits: 2 })}</div>

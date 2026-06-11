@@ -98,7 +98,7 @@ function CollapsibleLiabilityCard({
       {/* Row 1: name + start date + rate + remaining */}
       <div className="flex items-center justify-between mb-1.5">
         <div className="flex items-center gap-1.5 min-w-0">
-          <span className="text-sm text-white font-medium truncate">{name}</span>
+          <span className="text-sm font-medium truncate" style={{ color: 'var(--color-text-primary)' }}>{name}</span>
           <span className="text-xs text-ledger-muted/60 shrink-0">
             {startDate.toLocaleDateString('zh-CN', { year: 'numeric', month: 'short' })}
           </span>
@@ -135,7 +135,7 @@ function CollapsibleLiabilityCard({
       {/* Row 3: amount details + toggle history */}
       <div className="flex items-center text-xs">
         <span className="text-ledger-muted">
-          余额 <AmountDisplay amount={balance} className="text-white" sensitive />
+          余额 <AmountDisplay amount={balance} className="font-medium" />
         </span>
         <button
           type="button"
@@ -147,14 +147,14 @@ function CollapsibleLiabilityCard({
             <span>已还</span>
           </span>
           <span className="inline-flex items-center gap-0.5">
-            <AmountDisplay amount={paid} className="text-green-400" sensitive />
+            <AmountDisplay amount={paid} className="text-green-400" />
             {repayments.length > 0 && (
               <span className="text-ledger-muted/60">({repayments.length}笔)</span>
             )}
           </span>
         </button>
         <span className="text-ledger-muted ml-3">
-          本金 <AmountDisplay amount={principal} sensitive />
+          本金 <AmountDisplay amount={principal} />
         </span>
       </div>
 
