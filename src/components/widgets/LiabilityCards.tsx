@@ -177,6 +177,9 @@ function CollapsibleLiabilityCard({
               amount={principal * (1 + interestRate * remaining / 12)}
               className="font-medium"
             />
+            <span className="text-ledger-muted/60 ml-1" style={{ fontSize: 10 }}>
+              (本金+总利息)
+            </span>
           </span>
         )}
       </div>
