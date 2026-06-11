@@ -177,7 +177,7 @@ export default function DashboardClient({ currentDate }: { currentDate: string }
                   <span style={{ fontSize: 11, color: 'var(--color-text-subdued)' }}>
                     一级流动性{' '}
                     <span style={{ fontWeight: 500, color: 'var(--color-text-secondary)' }}>
-                      ¥{(tier1Total / 10000).toFixed(0)}万
+                      ¥{tier1Total.toLocaleString('zh-CN', { minimumFractionDigits: 2 })}
                     </span>
                     <span style={{ color: 'var(--color-text-subdued)', fontSize: 10 }}>
                       {' '}({totalAssets.gt(0) ? (tier1Total / totalAssets.toNumber() * 100).toFixed(0) : 0}%)
@@ -186,7 +186,7 @@ export default function DashboardClient({ currentDate }: { currentDate: string }
                   <span style={{ fontSize: 11, color: 'var(--color-text-subdued)' }}>
                     二级{' '}
                     <span style={{ fontWeight: 500, color: 'var(--color-text-secondary)' }}>
-                      ¥{(tier2Total / 10000).toFixed(0)}万
+                      ¥{tier2Total.toLocaleString('zh-CN', { minimumFractionDigits: 2 })}
                     </span>
                     <span style={{ color: 'var(--color-text-subdued)', fontSize: 10 }}>
                       {' '}({totalAssets.gt(0) ? (tier2Total / totalAssets.toNumber() * 100).toFixed(0) : 0}%)
