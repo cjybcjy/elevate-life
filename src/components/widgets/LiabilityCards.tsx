@@ -95,18 +95,20 @@ function CollapsibleLiabilityCard({
 
   return (
     <div className="bg-ledger-bg/50 rounded-lg p-2.5">
-      {/* Row 1: name + start date + rate + remaining */}
+      {/* Row 1: colored dot + name + start date + rate + remaining */}
       <div className="flex items-center justify-between mb-1.5">
         <div className="flex items-center gap-1.5 min-w-0">
+          <span style={{
+            display: 'inline-block', width: 8, height: 8, borderRadius: '50%', flexShrink: 0,
+            background: interestRate > 0.06 ? '#ef4444' : interestRate > 0.05 ? '#f59e0b' : '#3b82f6',
+          }} />
           <span className="text-sm font-medium truncate" style={{ color: 'var(--color-text-primary)' }}>{name}</span>
           <span className="text-xs text-ledger-muted/60 shrink-0">
             {startDate.toLocaleDateString('zh-CN', { year: 'numeric', month: 'short' })}
           </span>
-          <span className={`text-xs px-1.5 py-0.5 rounded shrink-0 ${
-            interestRate > 0.06 ? 'bg-red-900/30 text-red-400' :
-            interestRate > 0.05 ? 'bg-yellow-900/30 text-yellow-400' :
-            'bg-blue-900/30 text-blue-400'
-          }`}>
+          <span className="text-xs font-medium shrink-0" style={{
+            color: interestRate > 0.06 ? '#ef4444' : interestRate > 0.05 ? '#f59e0b' : '#3b82f6',
+          }}>
             {(interestRate * 100).toFixed(1)}%
           </span>
         </div>
