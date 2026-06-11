@@ -81,9 +81,20 @@ export default function DashboardClient({ currentDate }: { currentDate: string }
 
   const stocks = assets.filter((a: any) => a.category === 'stock');
 
+  // Forex rates for currency conversion (must be before catTotals)
+  const cnyRate: Record<string, number> = { CNY: 1, USD: forexRates.usdToCny, HKD: forexRates.hkdToCny, JPY: forexRates.jpyToCny };
+  function toCny(amount: number | string, currency?: string): number {
+    const cur = currency || 'CNY';
+    return parseFloat(amount as string) * (cnyRate[cur] || 1);
+  }
+
   const catTotals: Record<string, number> = {};
   for (const a of assets) {
-    const v = parseFloat(a.balance || '0');
+    let v = parseFloat(a.balance || '0');
+    // Convert stock/fund market value to CNY using forex rate (matches StockTable logic)
+    if ((a.category === 'stock' || a.category === 'fund') && a.priceCurrency && a.priceCurrency !== 'CNY') {
+      v = v * (cnyRate[a.priceCurrency] || 1);
+    }
     catTotals[a.category || 'other'] = (catTotals[a.category || 'other'] || 0) + v;
   }
   // Include idle cash in stock total (matches StockTable's account total = market value + idle cash)
@@ -99,11 +110,6 @@ export default function DashboardClient({ currentDate }: { currentDate: string }
 
   const now = new Date();
   const months: string[] = [], incomeData: number[] = [], expenseData: number[] = [];
-  const cnyRate: Record<string, number> = { CNY: 1, USD: forexRates.usdToCny, HKD: forexRates.hkdToCny, JPY: forexRates.jpyToCny };
-  function toCny(amount: number | string, currency?: string): number {
-    const cur = currency || 'CNY';
-    return parseFloat(amount as string) * (cnyRate[cur] || 1);
-  }
   function toBeijingDate(v: any): Date {
     const ts = v instanceof Date ? v.getTime() : new Date(typeof v === 'string' && v.endsWith('Z') ? v : v + 'Z').getTime();
     return new Date(ts + 8 * 3600_000);
