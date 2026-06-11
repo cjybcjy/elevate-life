@@ -58,7 +58,7 @@ export default async function CategoryManagementPage() {
           <input
             name="name"
             required
-            className="rounded-md bg-ledger-bg border border-ledger-bg px-3 py-2 text-sm text-white placeholder-ledger-muted focus:outline-none focus:border-ledger-accent"
+            className="rounded-md bg-ledger-bg border border-ledger-bg px-3 py-2 text-sm placeholder-ledger-muted focus:outline-none focus:border-ledger-accent"
             placeholder="分类名称"
           />
         </div>
@@ -67,7 +67,7 @@ export default async function CategoryManagementPage() {
           <select
             name="type"
             required
-            className="rounded-md bg-ledger-bg border border-ledger-bg px-3 py-2 text-sm text-white focus:outline-none focus:border-ledger-accent"
+            className="rounded-md bg-ledger-bg border border-ledger-bg px-3 py-2 text-sm focus:outline-none focus:border-ledger-accent"
           >
             <option value="EXPENSE">支出</option>
             <option value="INCOME">收入</option>
@@ -77,7 +77,7 @@ export default async function CategoryManagementPage() {
           <label className="block text-xs text-ledger-muted mb-1">图标</label>
           <input
             name="icon"
-            className="rounded-md bg-ledger-bg border border-ledger-bg px-3 py-2 text-sm text-white placeholder-ledger-muted focus:outline-none focus:border-ledger-accent"
+            className="rounded-md bg-ledger-bg border border-ledger-bg px-3 py-2 text-sm placeholder-ledger-muted focus:outline-none focus:border-ledger-accent"
             placeholder="图标名称"
           />
         </div>
@@ -87,7 +87,7 @@ export default async function CategoryManagementPage() {
             name="color"
             type="color"
             defaultValue="#3b82f6"
-            className="rounded-md bg-ledger-bg border border-ledger-bg px-2 py-1.5 text-sm text-white focus:outline-none focus:border-ledger-accent h-[34px] w-[60px]"
+            className="rounded-md bg-ledger-bg border border-ledger-bg px-2 py-1.5 text-sm focus:outline-none focus:border-ledger-accent h-[34px] w-[60px]"
           />
         </div>
         <div className="flex items-center pb-2">
@@ -106,7 +106,7 @@ export default async function CategoryManagementPage() {
         </div>
         <button
           type="submit"
-          className="rounded-md bg-ledger-accent px-4 py-2 text-sm font-medium text-white hover:opacity-90 transition-opacity"
+          className="rounded-md bg-ledger-accent px-4 py-2 text-sm font-medium hover:opacity-90 transition-opacity"
         >
           创建
         </button>
@@ -141,7 +141,7 @@ export default async function CategoryManagementPage() {
                 key={category.id}
                 className="border-b border-ledger-bg last:border-0"
               >
-                <td className="px-4 py-3 text-white">{category.name}</td>
+                <td className="px-4 py-3" style={{ color: 'var(--color-text-primary)' }}>{category.name}</td>
                 <td className="px-4 py-3 text-ledger-muted">
                   {typeLabel(category.type)}
                 </td>

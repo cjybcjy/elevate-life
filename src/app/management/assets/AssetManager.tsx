@@ -123,7 +123,7 @@ export default function AssetManager() {
   return (
     <div>
       <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-bold text-white">资产管理</h1>
+        <h1 className="text-2xl font-bold" style={{ color: 'var(--color-text-primary)' }}>资产管理</h1>
         <PriceRefresher pricesStale={pricesStale} />
       </div>
 
@@ -152,7 +152,7 @@ export default function AssetManager() {
         }
         return (
           <div className="mb-6 rounded-xl bg-ledger-surface p-4">
-            <h2 className="text-base font-bold text-white mb-3">专项账户总览</h2>
+            <h2 className="text-base font-bold mb-3">专项账户总览</h2>
             <div className="grid grid-cols-3 gap-4">
               {Object.entries(groups).map(([cat, g]) => (
                 <div key={cat} className="bg-ledger-bg rounded-lg p-3">
@@ -186,7 +186,7 @@ export default function AssetManager() {
           <input
             name="name"
             required
-            className="rounded-md bg-ledger-bg border border-ledger-bg px-3 py-2 text-sm text-white placeholder-ledger-muted focus:outline-none focus:border-ledger-accent"
+            className="rounded-md bg-ledger-bg border border-ledger-bg px-3 py-2 text-sm placeholder-ledger-muted focus:outline-none focus:border-ledger-accent"
             placeholder="资产名称"
           />
         </div>
@@ -195,7 +195,7 @@ export default function AssetManager() {
           <select
             name="category"
             required
-            className="rounded-md bg-ledger-bg border border-ledger-bg px-3 py-2 text-sm text-white focus:outline-none focus:border-ledger-accent"
+            className="rounded-md bg-ledger-bg border border-ledger-bg px-3 py-2 text-sm focus:outline-none focus:border-ledger-accent"
           >
             <option value="">选择分类</option>
             <option value="real_estate">🏠 房产</option>
@@ -216,7 +216,7 @@ export default function AssetManager() {
           <label className="block text-xs text-ledger-muted mb-1">市场</label>
           <select
             name="market"
-            className="rounded-md bg-ledger-bg border border-ledger-bg px-3 py-2 text-sm text-white focus:outline-none focus:border-ledger-accent"
+            className="rounded-md bg-ledger-bg border border-ledger-bg px-3 py-2 text-sm focus:outline-none focus:border-ledger-accent"
           >
             <option value="">无需</option>
             <option value="cn">A股</option>
@@ -228,7 +228,7 @@ export default function AssetManager() {
           <label className="block text-xs text-ledger-muted mb-1">代码</label>
           <input
             name="stockCode"
-            className="rounded-md bg-ledger-bg border border-ledger-bg px-3 py-2 text-sm text-white placeholder-ledger-muted focus:outline-none focus:border-ledger-accent font-mono"
+            className="rounded-md bg-ledger-bg border border-ledger-bg px-3 py-2 text-sm placeholder-ledger-muted focus:outline-none focus:border-ledger-accent font-mono"
             placeholder="000000"
           />
         </div>
@@ -238,7 +238,7 @@ export default function AssetManager() {
             name="quantity"
             type="number"
             step="0.0001"
-            className="rounded-md bg-ledger-bg border border-ledger-bg px-3 py-2 text-sm text-white placeholder-ledger-muted focus:outline-none focus:border-ledger-accent"
+            className="rounded-md bg-ledger-bg border border-ledger-bg px-3 py-2 text-sm placeholder-ledger-muted focus:outline-none focus:border-ledger-accent"
             placeholder="克数/股数"
           />
         </div>
@@ -248,7 +248,7 @@ export default function AssetManager() {
             name="costUnitPrice"
             type="number"
             step="0.01"
-            className="rounded-md bg-ledger-bg border border-ledger-bg px-3 py-2 text-sm text-white placeholder-ledger-muted focus:outline-none focus:border-ledger-accent"
+            className="rounded-md bg-ledger-bg border border-ledger-bg px-3 py-2 text-sm placeholder-ledger-muted focus:outline-none focus:border-ledger-accent"
             placeholder="每份买入价"
           />
         </div>
@@ -260,7 +260,7 @@ export default function AssetManager() {
               type="number"
               step="0.01"
               required
-              className="rounded-md bg-ledger-bg border border-ledger-bg px-3 py-2 text-sm text-white placeholder-ledger-muted focus:outline-none focus:border-ledger-accent"
+              className="rounded-md bg-ledger-bg border border-ledger-bg px-3 py-2 text-sm placeholder-ledger-muted focus:outline-none focus:border-ledger-accent"
               placeholder="折旧前原价"
             />
           </div>
@@ -271,7 +271,7 @@ export default function AssetManager() {
               name="balance"
               type="number"
               step="0.01"
-              className="rounded-md bg-ledger-bg border border-ledger-bg px-3 py-2 text-sm text-white placeholder-ledger-muted focus:outline-none focus:border-ledger-accent"
+              className="rounded-md bg-ledger-bg border border-ledger-bg px-3 py-2 text-sm placeholder-ledger-muted focus:outline-none focus:border-ledger-accent"
               placeholder="手动金额（非黄金/股票类）"
             />
           </div>
@@ -281,7 +281,7 @@ export default function AssetManager() {
           <input
             name="currency"
             defaultValue="CNY"
-            className="rounded-md bg-ledger-bg border border-ledger-bg px-3 py-2 text-sm text-white placeholder-ledger-muted focus:outline-none focus:border-ledger-accent w-20"
+            className="rounded-md bg-ledger-bg border border-ledger-bg px-3 py-2 text-sm placeholder-ledger-muted focus:outline-none focus:border-ledger-accent w-20"
             placeholder="CNY"
           />
         </div>
@@ -303,7 +303,7 @@ export default function AssetManager() {
               <input
                 name="purchaseDate"
                 type="date"
-                className="rounded-md bg-ledger-bg border border-ledger-bg px-3 py-2 text-sm text-white focus:outline-none focus:border-ledger-accent"
+                className="rounded-md bg-ledger-bg border border-ledger-bg px-3 py-2 text-sm focus:outline-none focus:border-ledger-accent"
               />
             </div>
             <div>
@@ -311,7 +311,7 @@ export default function AssetManager() {
               <input
                 name="scrapDate"
                 type="date"
-                className="rounded-md bg-ledger-bg border border-ledger-bg px-3 py-2 text-sm text-white focus:outline-none focus:border-ledger-accent"
+                className="rounded-md bg-ledger-bg border border-ledger-bg px-3 py-2 text-sm focus:outline-none focus:border-ledger-accent"
               />
             </div>
             <div>
@@ -321,7 +321,7 @@ export default function AssetManager() {
                 type="number"
                 step="0.01"
                 defaultValue="0"
-                className="rounded-md bg-ledger-bg border border-ledger-bg px-3 py-2 text-sm text-white placeholder-ledger-muted focus:outline-none focus:border-ledger-accent"
+                className="rounded-md bg-ledger-bg border border-ledger-bg px-3 py-2 text-sm placeholder-ledger-muted focus:outline-none focus:border-ledger-accent"
                 placeholder="0"
               />
             </div>
@@ -329,7 +329,7 @@ export default function AssetManager() {
         )}
         <button
           type="submit"
-          className="rounded-md bg-ledger-accent px-4 py-2 text-sm font-medium text-white hover:opacity-90 transition-opacity"
+          className="rounded-md bg-ledger-accent px-4 py-2 text-sm font-medium hover:opacity-90 transition-opacity"
         >
           创建
         </button>

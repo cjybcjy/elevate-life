@@ -252,7 +252,7 @@ export default function LiabilityManager() {
           <input
             name="name"
             required
-            className="rounded-md bg-ledger-bg border border-ledger-bg px-3 py-2 text-sm text-white placeholder-ledger-muted focus:outline-none focus:border-ledger-accent"
+            className="rounded-md bg-ledger-bg border border-ledger-bg px-3 py-2 text-sm placeholder-ledger-muted focus:outline-none focus:border-ledger-accent"
             placeholder="负债名称"
           />
         </div>
@@ -261,7 +261,7 @@ export default function LiabilityManager() {
           <select
             name="category"
             required
-            className="rounded-md bg-ledger-bg border border-ledger-bg px-3 py-2 text-sm text-white focus:outline-none focus:border-ledger-accent"
+            className="rounded-md bg-ledger-bg border border-ledger-bg px-3 py-2 text-sm focus:outline-none focus:border-ledger-accent"
           >
             <option value="">选择分类</option>
             <option value="mortgage">🏠 房贷</option>
@@ -280,7 +280,7 @@ export default function LiabilityManager() {
             type="number"
             step="0.01"
             required
-            className="rounded-md bg-ledger-bg border border-ledger-bg px-3 py-2 text-sm text-white placeholder-ledger-muted focus:outline-none focus:border-ledger-accent"
+            className="rounded-md bg-ledger-bg border border-ledger-bg px-3 py-2 text-sm placeholder-ledger-muted focus:outline-none focus:border-ledger-accent"
             placeholder="0.00"
           />
         </div>
@@ -290,7 +290,7 @@ export default function LiabilityManager() {
             name="currentBalance"
             type="number"
             step="0.01"
-            className="rounded-md bg-ledger-bg border border-ledger-bg px-3 py-2 text-sm text-white placeholder-ledger-muted focus:outline-none focus:border-ledger-accent"
+            className="rounded-md bg-ledger-bg border border-ledger-bg px-3 py-2 text-sm placeholder-ledger-muted focus:outline-none focus:border-ledger-accent"
             placeholder="默认等于本金"
           />
         </div>
@@ -301,7 +301,7 @@ export default function LiabilityManager() {
             type="number"
             step="0.0001"
             required
-            className="rounded-md bg-ledger-bg border border-ledger-bg px-3 py-2 text-sm text-white placeholder-ledger-muted focus:outline-none focus:border-ledger-accent"
+            className="rounded-md bg-ledger-bg border border-ledger-bg px-3 py-2 text-sm placeholder-ledger-muted focus:outline-none focus:border-ledger-accent"
             placeholder="0.05"
           />
         </div>
@@ -311,7 +311,7 @@ export default function LiabilityManager() {
             name="termMonths"
             type="number"
             required
-            className="rounded-md bg-ledger-bg border border-ledger-bg px-3 py-2 text-sm text-white placeholder-ledger-muted focus:outline-none focus:border-ledger-accent"
+            className="rounded-md bg-ledger-bg border border-ledger-bg px-3 py-2 text-sm placeholder-ledger-muted focus:outline-none focus:border-ledger-accent"
             placeholder="12"
           />
         </div>
@@ -321,14 +321,14 @@ export default function LiabilityManager() {
             name="startDate"
             type="date"
             required
-            className="rounded-md bg-ledger-bg border border-ledger-bg px-3 py-2 text-sm text-white placeholder-ledger-muted focus:outline-none focus:border-ledger-accent"
+            className="rounded-md bg-ledger-bg border border-ledger-bg px-3 py-2 text-sm placeholder-ledger-muted focus:outline-none focus:border-ledger-accent"
           />
         </div>
         <div>
           <label className="block text-xs text-ledger-muted mb-1">还款方式</label>
           <select
             name="paymentMethod"
-            className="rounded-md bg-ledger-bg border border-ledger-bg px-3 py-2 text-sm text-white focus:outline-none focus:border-ledger-accent"
+            className="rounded-md bg-ledger-bg border border-ledger-bg px-3 py-2 text-sm focus:outline-none focus:border-ledger-accent"
           >
             <option value="equal_interest">等额本息</option>
             <option value="equal_principal">等额本金</option>
@@ -337,7 +337,7 @@ export default function LiabilityManager() {
         <button
           type="submit"
           disabled={loading}
-          className="rounded-md bg-ledger-accent px-4 py-2 text-sm font-medium text-white hover:opacity-90 transition-opacity disabled:opacity-50"
+          className="rounded-md bg-ledger-accent px-4 py-2 text-sm font-medium hover:opacity-90 transition-opacity disabled:opacity-50"
         >
           {loading ? '创建中...' : '创建'}
         </button>
@@ -377,15 +377,15 @@ export default function LiabilityManager() {
 
               return (
                 <tr key={liability.id} className="border-b border-ledger-bg last:border-0">
-                  <td className="px-4 py-3 text-white">
+                  <td className="px-4 py-3" style={{ color: 'var(--color-text-primary)' }}>
                     <div>{liability.name}</div>
                     <div className="text-xs text-ledger-muted mt-0.5">{paymentMethodLabel[liability.paymentMethod] || liability.paymentMethod}</div>
                   </td>
                   <td className="px-4 py-3 text-ledger-muted">{liability.category}</td>
-                  <td className="px-4 py-3 text-white">
+                  <td className="px-4 py-3" style={{ color: 'var(--color-text-primary)' }}>
                     <AmountDisplay amount={principalVal} />
                   </td>
-                  <td className="px-4 py-3 text-white">
+                  <td className="px-4 py-3" style={{ color: 'var(--color-text-primary)' }}>
                     <AmountDisplay amount={balanceVal} className="font-medium" />
                   </td>
                   <td className="px-4 py-3">
@@ -475,7 +475,7 @@ export default function LiabilityManager() {
                               type="text"
                               value={editForm.name}
                               onChange={e => setEditForm(prev => ({ ...prev, name: e.target.value }))}
-                              className="rounded-md bg-ledger-surface border border-ledger-bg px-2 py-1.5 text-xs text-white focus:outline-none focus:border-ledger-accent w-24"
+                              className="rounded-md bg-ledger-surface border border-ledger-bg px-2 py-1.5 text-xs focus:outline-none focus:border-ledger-accent w-24"
                             />
                           </div>
                           <div>
@@ -483,7 +483,7 @@ export default function LiabilityManager() {
                             <select
                               value={editForm.category}
                               onChange={e => setEditForm(prev => ({ ...prev, category: e.target.value }))}
-                              className="rounded-md bg-ledger-surface border border-ledger-bg px-2 py-1.5 text-xs text-white focus:outline-none focus:border-ledger-accent"
+                              className="rounded-md bg-ledger-surface border border-ledger-bg px-2 py-1.5 text-xs focus:outline-none focus:border-ledger-accent"
                             >
                               <option value="mortgage">🏠 房贷</option>
                               <option value="car_loan">🚗 车贷</option>
@@ -500,7 +500,7 @@ export default function LiabilityManager() {
                               type="number" step="0.01"
                               value={editForm.principal}
                               onChange={e => setEditForm(prev => ({ ...prev, principal: e.target.value }))}
-                              className="rounded-md bg-ledger-surface border border-ledger-bg px-2 py-1.5 text-xs text-white focus:outline-none focus:border-ledger-accent w-24"
+                              className="rounded-md bg-ledger-surface border border-ledger-bg px-2 py-1.5 text-xs focus:outline-none focus:border-ledger-accent w-24"
                             />
                           </div>
                           <div>
@@ -509,7 +509,7 @@ export default function LiabilityManager() {
                               type="number" step="0.01"
                               value={editForm.currentBalance}
                               onChange={e => setEditForm(prev => ({ ...prev, currentBalance: e.target.value }))}
-                              className="rounded-md bg-ledger-surface border border-ledger-bg px-2 py-1.5 text-xs text-white focus:outline-none focus:border-ledger-accent w-24"
+                              className="rounded-md bg-ledger-surface border border-ledger-bg px-2 py-1.5 text-xs focus:outline-none focus:border-ledger-accent w-24"
                             />
                           </div>
                           <div>
@@ -518,7 +518,7 @@ export default function LiabilityManager() {
                               type="number" step="0.0001"
                               value={editForm.interestRate}
                               onChange={e => setEditForm(prev => ({ ...prev, interestRate: e.target.value }))}
-                              className="rounded-md bg-ledger-surface border border-ledger-bg px-2 py-1.5 text-xs text-white focus:outline-none focus:border-ledger-accent w-20"
+                              className="rounded-md bg-ledger-surface border border-ledger-bg px-2 py-1.5 text-xs focus:outline-none focus:border-ledger-accent w-20"
                             />
                           </div>
                           <div>
@@ -527,7 +527,7 @@ export default function LiabilityManager() {
                               type="number"
                               value={editForm.termMonths}
                               onChange={e => setEditForm(prev => ({ ...prev, termMonths: e.target.value }))}
-                              className="rounded-md bg-ledger-surface border border-ledger-bg px-2 py-1.5 text-xs text-white focus:outline-none focus:border-ledger-accent w-16"
+                              className="rounded-md bg-ledger-surface border border-ledger-bg px-2 py-1.5 text-xs focus:outline-none focus:border-ledger-accent w-16"
                             />
                           </div>
                           <div>
@@ -536,14 +536,14 @@ export default function LiabilityManager() {
                               type="date"
                               value={editForm.startDate}
                               onChange={e => setEditForm(prev => ({ ...prev, startDate: e.target.value }))}
-                              className="rounded-md bg-ledger-surface border border-ledger-bg px-2 py-1.5 text-xs text-white focus:outline-none focus:border-ledger-accent"
+                              className="rounded-md bg-ledger-surface border border-ledger-bg px-2 py-1.5 text-xs focus:outline-none focus:border-ledger-accent"
                             />
                           </div>
                           <button
                             type="button"
                             onClick={handleUpdate}
                             disabled={loading}
-                            className="rounded-md bg-ledger-accent px-3 py-1.5 text-xs font-medium text-white hover:opacity-90 disabled:opacity-50"
+                            className="rounded-md bg-ledger-accent px-3 py-1.5 text-xs font-medium hover:opacity-90 disabled:opacity-50"
                           >
                             {loading ? '保存中...' : '保存'}
                           </button>
@@ -562,7 +562,7 @@ export default function LiabilityManager() {
                               step="0.01"
                               value={repayForm.amount}
                               onChange={e => setRepayForm(prev => ({ ...prev, amount: e.target.value }))}
-                              className="rounded-md bg-ledger-surface border border-ledger-bg px-3 py-1.5 text-sm text-white placeholder-ledger-muted focus:outline-none focus:border-ledger-accent w-28"
+                              className="rounded-md bg-ledger-surface border border-ledger-bg px-3 py-1.5 text-sm placeholder-ledger-muted focus:outline-none focus:border-ledger-accent w-28"
                               placeholder="0.00"
                             />
                           </div>
@@ -572,7 +572,7 @@ export default function LiabilityManager() {
                               type="date"
                               value={repayForm.occurredAt}
                               onChange={e => setRepayForm(prev => ({ ...prev, occurredAt: e.target.value }))}
-                              className="rounded-md bg-ledger-surface border border-ledger-bg px-3 py-1.5 text-sm text-white focus:outline-none focus:border-ledger-accent"
+                              className="rounded-md bg-ledger-surface border border-ledger-bg px-3 py-1.5 text-sm focus:outline-none focus:border-ledger-accent"
                             />
                           </div>
                           <div>
@@ -580,7 +580,7 @@ export default function LiabilityManager() {
                             <select
                               value={repayForm.fromAccountId}
                               onChange={e => setRepayForm(prev => ({ ...prev, fromAccountId: e.target.value }))}
-                              className="rounded-md bg-ledger-surface border border-ledger-bg px-3 py-1.5 text-sm text-white focus:outline-none focus:border-ledger-accent"
+                              className="rounded-md bg-ledger-surface border border-ledger-bg px-3 py-1.5 text-sm focus:outline-none focus:border-ledger-accent"
                             >
                               <option value="">不指定</option>
                               {assets.map((a: any) => (
@@ -594,7 +594,7 @@ export default function LiabilityManager() {
                               type="text"
                               value={repayForm.description}
                               onChange={e => setRepayForm(prev => ({ ...prev, description: e.target.value }))}
-                              className="rounded-md bg-ledger-surface border border-ledger-bg px-3 py-1.5 text-sm text-white placeholder-ledger-muted focus:outline-none focus:border-ledger-accent"
+                              className="rounded-md bg-ledger-surface border border-ledger-bg px-3 py-1.5 text-sm placeholder-ledger-muted focus:outline-none focus:border-ledger-accent"
                               placeholder="还款备注"
                             />
                           </div>
@@ -602,7 +602,7 @@ export default function LiabilityManager() {
                             type="button"
                             onClick={() => handleRepay(liability.id)}
                             disabled={loading || !repayForm.amount || parseFloat(repayForm.amount) <= 0}
-                            className="rounded-md bg-ledger-accent px-3 py-1.5 text-xs font-medium text-white hover:opacity-90 disabled:opacity-50"
+                            className="rounded-md bg-ledger-accent px-3 py-1.5 text-xs font-medium hover:opacity-90 disabled:opacity-50"
                           >
                             {loading ? '处理中...' : '确认还款'}
                           </button>
@@ -655,7 +655,7 @@ export default function LiabilityManager() {
                                           type="number" step="0.01"
                                           value={editRepayForm.amount}
                                           onChange={e => setEditRepayForm(p => ({ ...p, amount: e.target.value }))}
-                                          className="rounded-md bg-ledger-surface border border-ledger-bg px-2 py-1 text-xs text-white focus:outline-none focus:border-ledger-accent w-24"
+                                          className="rounded-md bg-ledger-surface border border-ledger-bg px-2 py-1 text-xs focus:outline-none focus:border-ledger-accent w-24"
                                         />
                                       </div>
                                       <div>
@@ -664,7 +664,7 @@ export default function LiabilityManager() {
                                           type="date"
                                           value={editRepayForm.occurredAt}
                                           onChange={e => setEditRepayForm(p => ({ ...p, occurredAt: e.target.value }))}
-                                          className="rounded-md bg-ledger-surface border border-ledger-bg px-2 py-1 text-xs text-white focus:outline-none focus:border-ledger-accent"
+                                          className="rounded-md bg-ledger-surface border border-ledger-bg px-2 py-1 text-xs focus:outline-none focus:border-ledger-accent"
                                         />
                                       </div>
                                       <div>
@@ -673,13 +673,13 @@ export default function LiabilityManager() {
                                           type="text"
                                           value={editRepayForm.description}
                                           onChange={e => setEditRepayForm(p => ({ ...p, description: e.target.value }))}
-                                          className="rounded-md bg-ledger-surface border border-ledger-bg px-2 py-1 text-xs text-white focus:outline-none focus:border-ledger-accent"
+                                          className="rounded-md bg-ledger-surface border border-ledger-bg px-2 py-1 text-xs focus:outline-none focus:border-ledger-accent"
                                         />
                                       </div>
                                       <button
                                         type="button"
                                         onClick={handleUpdateRepay}
-                                        className="rounded-md bg-ledger-accent px-2 py-1 text-xs font-medium text-white hover:opacity-90"
+                                        className="rounded-md bg-ledger-accent px-2 py-1 text-xs font-medium hover:opacity-90"
                                       >
                                         保存
                                       </button>

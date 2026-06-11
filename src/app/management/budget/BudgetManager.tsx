@@ -133,7 +133,7 @@ export default function BudgetManager({ currentDate }: { currentDate: string }) 
   return (
     <div>
       <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-bold text-white">预算管理</h1>
+        <h1 className="text-2xl font-bold" style={{ color: 'var(--color-text-primary)' }}>预算管理</h1>
         <span className="text-sm text-ledger-muted">{currentDate}</span>
       </div>
 
@@ -166,7 +166,7 @@ export default function BudgetManager({ currentDate }: { currentDate: string }) 
           <input
             name="name"
             required
-            className="rounded-md bg-ledger-bg border border-ledger-bg px-3 py-2 text-sm text-white placeholder-ledger-muted focus:outline-none focus:border-ledger-accent"
+            className="rounded-md bg-ledger-bg border border-ledger-bg px-3 py-2 text-sm placeholder-ledger-muted focus:outline-none focus:border-ledger-accent"
             placeholder="如：餐饮预算"
           />
         </div>
@@ -174,7 +174,7 @@ export default function BudgetManager({ currentDate }: { currentDate: string }) 
           <label className="block text-xs text-ledger-muted mb-1">分类</label>
           <select
             name="categoryId"
-            className="rounded-md bg-ledger-bg border border-ledger-bg px-3 py-2 text-sm text-white focus:outline-none focus:border-ledger-accent"
+            className="rounded-md bg-ledger-bg border border-ledger-bg px-3 py-2 text-sm focus:outline-none focus:border-ledger-accent"
           >
             <option value="">总预算</option>
             {categories.map((c: any) => (
@@ -189,7 +189,7 @@ export default function BudgetManager({ currentDate }: { currentDate: string }) 
             type="number"
             step="0.01"
             required
-            className="rounded-md bg-ledger-bg border border-ledger-bg px-3 py-2 text-sm text-white placeholder-ledger-muted focus:outline-none focus:border-ledger-accent"
+            className="rounded-md bg-ledger-bg border border-ledger-bg px-3 py-2 text-sm placeholder-ledger-muted focus:outline-none focus:border-ledger-accent"
             placeholder="0.00"
           />
         </div>
@@ -200,7 +200,7 @@ export default function BudgetManager({ currentDate }: { currentDate: string }) 
             type="date"
             required
             defaultValue={currentDate.slice(0, 7) + '-01'}
-            className="rounded-md bg-ledger-bg border border-ledger-bg px-3 py-2 text-sm text-white focus:outline-none focus:border-ledger-accent"
+            className="rounded-md bg-ledger-bg border border-ledger-bg px-3 py-2 text-sm focus:outline-none focus:border-ledger-accent"
           />
         </div>
         <div>
@@ -213,13 +213,13 @@ export default function BudgetManager({ currentDate }: { currentDate: string }) 
               const d = new Date(currentDate);
               return new Date(d.getFullYear(), d.getMonth() + 1, 0).toISOString().slice(0, 10);
             })()}
-            className="rounded-md bg-ledger-bg border border-ledger-bg px-3 py-2 text-sm text-white focus:outline-none focus:border-ledger-accent"
+            className="rounded-md bg-ledger-bg border border-ledger-bg px-3 py-2 text-sm focus:outline-none focus:border-ledger-accent"
           />
         </div>
         <button
           type="submit"
           disabled={loading}
-          className="rounded-md bg-ledger-accent px-4 py-2 text-sm font-medium text-white hover:opacity-90 transition-opacity disabled:opacity-50"
+          className="rounded-md bg-ledger-accent px-4 py-2 text-sm font-medium hover:opacity-90 transition-opacity disabled:opacity-50"
         >
           {loading ? '创建中...' : '添加预算'}
         </button>
@@ -247,7 +247,7 @@ export default function BudgetManager({ currentDate }: { currentDate: string }) 
             )}
             {budgets.map((b: Budget) => (
               <tr key={b.id} className="border-b border-ledger-bg last:border-0">
-                <td className="px-4 py-3 text-white">{b.name}</td>
+                <td className="px-4 py-3" style={{ color: 'var(--color-text-primary)' }}>{b.name}</td>
                 <td className="px-4 py-3 text-ledger-muted">{b.category?.name || '总计'}</td>
                 <td className="px-4 py-3 text-ledger-muted text-xs">
                   {new Date(b.startDate).toLocaleDateString('zh-CN')} ~ {new Date(b.endDate).toLocaleDateString('zh-CN')}
@@ -293,7 +293,7 @@ export default function BudgetManager({ currentDate }: { currentDate: string }) 
                               type="number" step="0.01" required
                               value={expenseForm.amount}
                               onChange={e => setExpenseForm(p => ({ ...p, amount: e.target.value }))}
-                              className="rounded-md bg-ledger-surface border border-ledger-bg px-2 py-1.5 text-xs text-white focus:outline-none focus:border-ledger-accent w-24"
+                              className="rounded-md bg-ledger-surface border border-ledger-bg px-2 py-1.5 text-xs focus:outline-none focus:border-ledger-accent w-24"
                               placeholder="0.00"
                             />
                           </div>
@@ -303,7 +303,7 @@ export default function BudgetManager({ currentDate }: { currentDate: string }) 
                               type="date"
                               value={expenseForm.date}
                               onChange={e => setExpenseForm(p => ({ ...p, date: e.target.value }))}
-                              className="rounded-md bg-ledger-surface border border-ledger-bg px-2 py-1.5 text-xs text-white focus:outline-none focus:border-ledger-accent"
+                              className="rounded-md bg-ledger-surface border border-ledger-bg px-2 py-1.5 text-xs focus:outline-none focus:border-ledger-accent"
                             />
                           </div>
                           <div>
@@ -312,7 +312,7 @@ export default function BudgetManager({ currentDate }: { currentDate: string }) 
                               type="text"
                               value={expenseForm.description}
                               onChange={e => setExpenseForm(p => ({ ...p, description: e.target.value }))}
-                              className="rounded-md bg-ledger-surface border border-ledger-bg px-2 py-1.5 text-xs text-white focus:outline-none focus:border-ledger-accent"
+                              className="rounded-md bg-ledger-surface border border-ledger-bg px-2 py-1.5 text-xs focus:outline-none focus:border-ledger-accent"
                               placeholder="备注"
                             />
                           </div>
@@ -320,7 +320,7 @@ export default function BudgetManager({ currentDate }: { currentDate: string }) 
                             type="button"
                             onClick={() => handleRecordExpense(b.id)}
                             disabled={!expenseForm.amount}
-                            className="rounded-md bg-ledger-accent px-2 py-1.5 text-xs font-medium text-white hover:opacity-90 disabled:opacity-50"
+                            className="rounded-md bg-ledger-accent px-2 py-1.5 text-xs font-medium hover:opacity-90 disabled:opacity-50"
                           >
                             保存
                           </button>
@@ -337,7 +337,7 @@ export default function BudgetManager({ currentDate }: { currentDate: string }) 
                             <input
                               type="text" value={editForm.name}
                               onChange={e => setEditForm(p => ({ ...p, name: e.target.value }))}
-                              className="rounded-md bg-ledger-surface border border-ledger-bg px-2 py-1.5 text-xs text-white focus:outline-none focus:border-ledger-accent"
+                              className="rounded-md bg-ledger-surface border border-ledger-bg px-2 py-1.5 text-xs focus:outline-none focus:border-ledger-accent"
                             />
                           </div>
                           <div>
@@ -345,7 +345,7 @@ export default function BudgetManager({ currentDate }: { currentDate: string }) 
                             <input
                               type="number" step="0.01" value={editForm.amount}
                               onChange={e => setEditForm(p => ({ ...p, amount: e.target.value }))}
-                              className="rounded-md bg-ledger-surface border border-ledger-bg px-2 py-1.5 text-xs text-white focus:outline-none focus:border-ledger-accent w-28"
+                              className="rounded-md bg-ledger-surface border border-ledger-bg px-2 py-1.5 text-xs focus:outline-none focus:border-ledger-accent w-28"
                             />
                           </div>
                           <div>
@@ -353,7 +353,7 @@ export default function BudgetManager({ currentDate }: { currentDate: string }) 
                             <input
                               type="date" value={editForm.startDate}
                               onChange={e => setEditForm(p => ({ ...p, startDate: e.target.value }))}
-                              className="rounded-md bg-ledger-surface border border-ledger-bg px-2 py-1.5 text-xs text-white focus:outline-none focus:border-ledger-accent"
+                              className="rounded-md bg-ledger-surface border border-ledger-bg px-2 py-1.5 text-xs focus:outline-none focus:border-ledger-accent"
                             />
                           </div>
                           <div>
@@ -361,12 +361,12 @@ export default function BudgetManager({ currentDate }: { currentDate: string }) 
                             <input
                               type="date" value={editForm.endDate}
                               onChange={e => setEditForm(p => ({ ...p, endDate: e.target.value }))}
-                              className="rounded-md bg-ledger-surface border border-ledger-bg px-2 py-1.5 text-xs text-white focus:outline-none focus:border-ledger-accent"
+                              className="rounded-md bg-ledger-surface border border-ledger-bg px-2 py-1.5 text-xs focus:outline-none focus:border-ledger-accent"
                             />
                           </div>
                           <button
                             type="button" onClick={handleUpdateBudget}
-                            className="rounded-md bg-ledger-accent px-2 py-1.5 text-xs font-medium text-white hover:opacity-90"
+                            className="rounded-md bg-ledger-accent px-2 py-1.5 text-xs font-medium hover:opacity-90"
                           >
                             保存
                           </button>

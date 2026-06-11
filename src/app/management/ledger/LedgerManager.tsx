@@ -397,7 +397,7 @@ export default function LedgerManager() {
   return (
     <div>
       <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-bold text-white">流水管理</h1>
+        <h1 className="text-2xl font-bold" style={{ color: 'var(--color-text-primary)' }}>流水管理</h1>
         <div className="flex rounded-lg bg-ledger-surface p-1">
           <button
             onClick={() => { setActiveTab('transactions'); try { localStorage.setItem('ledger-tab', 'transactions'); } catch {} }}
@@ -471,7 +471,7 @@ export default function LedgerManager() {
                 required
                 value={formValues.type}
                 onChange={e => setFormValues(prev => ({ ...prev, type: e.target.value }))}
-                className="rounded-md bg-ledger-bg border border-ledger-bg px-3 py-2 text-sm text-white focus:outline-none focus:border-ledger-accent"
+                className="rounded-md bg-ledger-bg border border-ledger-bg px-3 py-2 text-sm focus:outline-none focus:border-ledger-accent"
               >
                 <option value="EXPENSE">支出</option>
                 <option value="INCOME">收入</option>
@@ -484,7 +484,7 @@ export default function LedgerManager() {
                 name="currency"
                 value={formValues.currency}
                 onChange={e => setFormValues(prev => ({ ...prev, currency: e.target.value }))}
-                className="rounded-md bg-ledger-bg border border-ledger-bg px-2 py-2 text-sm text-white focus:outline-none focus:border-ledger-accent"
+                className="rounded-md bg-ledger-bg border border-ledger-bg px-2 py-2 text-sm focus:outline-none focus:border-ledger-accent"
               >
                 <option value="CNY">¥ 人民币</option>
                 <option value="USD">$ 美元</option>
@@ -501,7 +501,7 @@ export default function LedgerManager() {
                 required
                 value={formValues.amount}
                 onChange={e => setFormValues(prev => ({ ...prev, amount: e.target.value }))}
-                className="rounded-md bg-ledger-bg border border-ledger-bg px-3 py-2 text-sm text-white placeholder-ledger-muted focus:outline-none focus:border-ledger-accent"
+                className="rounded-md bg-ledger-bg border border-ledger-bg px-3 py-2 text-sm placeholder-ledger-muted focus:outline-none focus:border-ledger-accent"
                 placeholder="0.00"
               />
             </div>
@@ -511,7 +511,7 @@ export default function LedgerManager() {
                 name="categoryId"
                 value={formValues.categoryId}
                 onChange={e => setFormValues(prev => ({ ...prev, categoryId: e.target.value, budgetId: '' }))}
-                className="rounded-md bg-ledger-bg border border-ledger-bg px-3 py-2 text-sm text-white focus:outline-none focus:border-ledger-accent"
+                className="rounded-md bg-ledger-bg border border-ledger-bg px-3 py-2 text-sm focus:outline-none focus:border-ledger-accent"
               >
                 <option value="">--</option>
                 {categories.map((c: any) => (
@@ -526,7 +526,7 @@ export default function LedgerManager() {
                   name="budgetId"
                   value={formValues.budgetId}
                   onChange={e => setFormValues(prev => ({ ...prev, budgetId: e.target.value }))}
-                  className="rounded-md bg-ledger-bg border border-ledger-bg px-3 py-2 text-sm text-white focus:outline-none focus:border-ledger-accent"
+                  className="rounded-md bg-ledger-bg border border-ledger-bg px-3 py-2 text-sm focus:outline-none focus:border-ledger-accent"
                 >
                   <option value="">-- 关联预算 --</option>
                   {budgetOptions.map((b: any) => (
@@ -541,7 +541,7 @@ export default function LedgerManager() {
                 name="fromAccountId"
                 value={formValues.fromAccountId}
                 onChange={e => setFormValues(prev => ({ ...prev, fromAccountId: e.target.value }))}
-                className="rounded-md bg-ledger-bg border border-ledger-bg px-3 py-2 text-sm text-white focus:outline-none focus:border-ledger-accent"
+                className="rounded-md bg-ledger-bg border border-ledger-bg px-3 py-2 text-sm focus:outline-none focus:border-ledger-accent"
               >
                 <option value="">--</option>
                 {assets.map((a: any) => (
@@ -555,7 +555,7 @@ export default function LedgerManager() {
                 name="toAccountId"
                 value={formValues.toAccountId}
                 onChange={e => setFormValues(prev => ({ ...prev, toAccountId: e.target.value }))}
-                className="rounded-md bg-ledger-bg border border-ledger-bg px-3 py-2 text-sm text-white focus:outline-none focus:border-ledger-accent"
+                className="rounded-md bg-ledger-bg border border-ledger-bg px-3 py-2 text-sm focus:outline-none focus:border-ledger-accent"
               >
                 <option value="">--</option>
                 {assets.map((a: any) => (
@@ -571,7 +571,7 @@ export default function LedgerManager() {
                 required
                 value={formValues.occurredAt}
                 onChange={e => setFormValues(prev => ({ ...prev, occurredAt: e.target.value }))}
-                className="rounded-md bg-ledger-bg border border-ledger-bg px-3 py-2 text-sm text-white focus:outline-none focus:border-ledger-accent"
+                className="rounded-md bg-ledger-bg border border-ledger-bg px-3 py-2 text-sm focus:outline-none focus:border-ledger-accent"
               />
             </div>
             <div>
@@ -580,7 +580,7 @@ export default function LedgerManager() {
                 name="description"
                 value={formValues.description}
                 onChange={e => setFormValues(prev => ({ ...prev, description: e.target.value }))}
-                className="rounded-md bg-ledger-bg border border-ledger-bg px-3 py-2 text-sm text-white placeholder-ledger-muted focus:outline-none focus:border-ledger-accent"
+                className="rounded-md bg-ledger-bg border border-ledger-bg px-3 py-2 text-sm placeholder-ledger-muted focus:outline-none focus:border-ledger-accent"
                 placeholder="备注"
               />
             </div>
@@ -588,7 +588,7 @@ export default function LedgerManager() {
               <button
                 type="submit"
                 disabled={loading}
-                className="rounded-md bg-ledger-accent px-4 py-2 text-sm font-medium text-white hover:opacity-90 transition-opacity disabled:opacity-50"
+                className="rounded-md bg-ledger-accent px-4 py-2 text-sm font-medium hover:opacity-90 transition-opacity disabled:opacity-50"
               >
                 {loading ? '创建中...' : '创建'}
               </button>
@@ -611,14 +611,14 @@ export default function LedgerManager() {
                 value={templateName}
                 onChange={e => setTemplateName(e.target.value)}
                 placeholder="模板名称（如：午餐）"
-                className="flex-1 rounded-md bg-ledger-bg border border-ledger-bg px-3 py-1.5 text-sm text-white placeholder-ledger-muted focus:outline-none focus:border-ledger-accent"
+                className="flex-1 rounded-md bg-ledger-bg border border-ledger-bg px-3 py-1.5 text-sm placeholder-ledger-muted focus:outline-none focus:border-ledger-accent"
                 onKeyDown={e => e.key === 'Enter' && saveCurrentAsTemplate()}
               />
               <button
                 type="button"
                 onClick={saveCurrentAsTemplate}
                 disabled={!templateName.trim()}
-                className="rounded-md bg-ledger-accent px-3 py-1.5 text-xs font-medium text-white hover:opacity-90 disabled:opacity-50"
+                className="rounded-md bg-ledger-accent px-3 py-1.5 text-xs font-medium hover:opacity-90 disabled:opacity-50"
               >
                 保存模板
               </button>
@@ -655,7 +655,7 @@ export default function LedgerManager() {
                       step="0.01"
                       value={reconAmount}
                       onChange={e => setReconAmount(e.target.value)}
-                      className="rounded-md bg-ledger-bg border border-ledger-bg px-3 py-1.5 text-sm text-white placeholder-ledger-muted focus:outline-none focus:border-ledger-accent w-28"
+                      className="rounded-md bg-ledger-bg border border-ledger-bg px-3 py-1.5 text-sm placeholder-ledger-muted focus:outline-none focus:border-ledger-accent w-28"
                       placeholder="0.00"
                     />
                   </div>
@@ -665,7 +665,7 @@ export default function LedgerManager() {
                       type="date"
                       value={reconDate}
                       onChange={e => setReconDate(e.target.value)}
-                      className="rounded-md bg-ledger-bg border border-ledger-bg px-3 py-1.5 text-sm text-white focus:outline-none focus:border-ledger-accent"
+                      className="rounded-md bg-ledger-bg border border-ledger-bg px-3 py-1.5 text-sm focus:outline-none focus:border-ledger-accent"
                     />
                   </div>
                   <div>
@@ -673,7 +673,7 @@ export default function LedgerManager() {
                     <select
                       value={reconDays}
                       onChange={e => setReconDays(Number(e.target.value))}
-                      className="rounded-md bg-ledger-bg border border-ledger-bg px-2 py-1.5 text-sm text-white focus:outline-none focus:border-ledger-accent"
+                      className="rounded-md bg-ledger-bg border border-ledger-bg px-2 py-1.5 text-sm focus:outline-none focus:border-ledger-accent"
                     >
                       <option value={1}>±1天</option>
                       <option value={3}>±3天</option>
@@ -683,7 +683,7 @@ export default function LedgerManager() {
                   <button
                     type="button"
                     onClick={searchReconciliation}
-                    className="rounded-md bg-ledger-accent px-3 py-1.5 text-xs font-medium text-white hover:opacity-90"
+                    className="rounded-md bg-ledger-accent px-3 py-1.5 text-xs font-medium hover:opacity-90"
                   >
                     搜索匹配
                   </button>
@@ -698,7 +698,7 @@ export default function LedgerManager() {
                         <span className={typeBadgeClass(t.type) + ' inline-block rounded-full px-2 py-0.5 text-xs font-medium'}>
                           {typeLabel(t.type)}
                         </span>
-                        <span className="text-white">{(curSym[t.currency || 'CNY'] || '¥')}{t.amount}</span>
+                        <span className="text-[var(--color-text-primary)]">{(curSym[t.currency || 'CNY'] || '¥')}{t.amount}</span>
                         <span className="text-ledger-muted text-xs">{new Date(t.occurredAt).toLocaleDateString('zh-CN')}</span>
                         <span className="text-ledger-muted text-xs">{t.description || '--'}</span>
                         <button
@@ -753,7 +753,7 @@ export default function LedgerManager() {
                         {typeLabel(t.type)}
                       </span>
                     </td>
-                    <td className="px-4 py-3 text-white">{(curSym[t.currency || 'CNY'] || '¥')}{t.amount}</td>
+                    <td className="px-4 py-3" style={{ color: 'var(--color-text-primary)' }}>{(curSym[t.currency || 'CNY'] || '¥')}{t.amount}</td>
                     <td className="px-4 py-3 text-ledger-muted">{t.category?.name || '--'}</td>
                     <td className="px-4 py-3 text-ledger-muted text-xs">{t.budget?.name || '--'}</td>
                     <td className="px-4 py-3 text-ledger-muted">{t.fromAsset?.name || '--'}</td>
@@ -794,7 +794,7 @@ export default function LedgerManager() {
                                 type="number" step="0.01"
                                 value={editTxForm.amount}
                                 onChange={e => setEditTxForm(p => ({ ...p, amount: e.target.value }))}
-                                className="rounded-md bg-ledger-surface border border-ledger-bg px-2 py-1.5 text-xs text-white focus:outline-none focus:border-ledger-accent w-24"
+                                className="rounded-md bg-ledger-surface border border-ledger-bg px-2 py-1.5 text-xs focus:outline-none focus:border-ledger-accent w-24"
                               />
                             </div>
                             <div>
@@ -802,7 +802,7 @@ export default function LedgerManager() {
                               <select
                                 value={editTxForm.categoryId}
                                 onChange={e => setEditTxForm(p => ({ ...p, categoryId: e.target.value, budgetId: '' }))}
-                                className="rounded-md bg-ledger-surface border border-ledger-bg px-2 py-1.5 text-xs text-white focus:outline-none focus:border-ledger-accent"
+                                className="rounded-md bg-ledger-surface border border-ledger-bg px-2 py-1.5 text-xs focus:outline-none focus:border-ledger-accent"
                               >
                                 <option value="">--</option>
                                 {categories.map((c: any) => (
@@ -816,7 +816,7 @@ export default function LedgerManager() {
                                 <select
                                   value={editTxForm.budgetId}
                                   onChange={e => setEditTxForm(p => ({ ...p, budgetId: e.target.value }))}
-                                  className="rounded-md bg-ledger-surface border border-ledger-bg px-2 py-1.5 text-xs text-white focus:outline-none focus:border-ledger-accent"
+                                  className="rounded-md bg-ledger-surface border border-ledger-bg px-2 py-1.5 text-xs focus:outline-none focus:border-ledger-accent"
                                 >
                                   <option value="">--</option>
                                   {budgetOptions.map((b: any) => (
@@ -831,7 +831,7 @@ export default function LedgerManager() {
                                 type="date"
                                 value={editTxForm.occurredAt}
                                 onChange={e => setEditTxForm(p => ({ ...p, occurredAt: e.target.value }))}
-                                className="rounded-md bg-ledger-surface border border-ledger-bg px-2 py-1.5 text-xs text-white focus:outline-none focus:border-ledger-accent"
+                                className="rounded-md bg-ledger-surface border border-ledger-bg px-2 py-1.5 text-xs focus:outline-none focus:border-ledger-accent"
                               />
                             </div>
                             <div>
@@ -840,13 +840,13 @@ export default function LedgerManager() {
                                 type="text"
                                 value={editTxForm.description}
                                 onChange={e => setEditTxForm(p => ({ ...p, description: e.target.value }))}
-                                className="rounded-md bg-ledger-surface border border-ledger-bg px-2 py-1.5 text-xs text-white focus:outline-none focus:border-ledger-accent"
+                                className="rounded-md bg-ledger-surface border border-ledger-bg px-2 py-1.5 text-xs focus:outline-none focus:border-ledger-accent"
                               />
                             </div>
                             <button
                               type="button"
                               onClick={() => handleUpdateTransaction(t.id)}
-                              className="rounded-md bg-ledger-accent px-2 py-1.5 text-xs font-medium text-white hover:opacity-90"
+                              className="rounded-md bg-ledger-accent px-2 py-1.5 text-xs font-medium hover:opacity-90"
                             >
                               保存
                             </button>
@@ -877,7 +877,7 @@ export default function LedgerManager() {
                 required
                 value={recurringForm.name}
                 onChange={e => setRecurringForm(prev => ({ ...prev, name: e.target.value }))}
-                className="rounded-md bg-ledger-bg border border-ledger-bg px-3 py-2 text-sm text-white placeholder-ledger-muted focus:outline-none focus:border-ledger-accent w-24"
+                className="rounded-md bg-ledger-bg border border-ledger-bg px-3 py-2 text-sm placeholder-ledger-muted focus:outline-none focus:border-ledger-accent w-24"
                 placeholder="如：房租"
               />
             </div>
@@ -888,7 +888,7 @@ export default function LedgerManager() {
                 required
                 value={recurringForm.type}
                 onChange={e => setRecurringForm(prev => ({ ...prev, type: e.target.value }))}
-                className="rounded-md bg-ledger-bg border border-ledger-bg px-3 py-2 text-sm text-white focus:outline-none focus:border-ledger-accent"
+                className="rounded-md bg-ledger-bg border border-ledger-bg px-3 py-2 text-sm focus:outline-none focus:border-ledger-accent"
               >
                 <option value="EXPENSE">支出</option>
                 <option value="INCOME">收入</option>
@@ -900,7 +900,7 @@ export default function LedgerManager() {
                 name="currency"
                 value={recurringForm.currency}
                 onChange={e => setRecurringForm(prev => ({ ...prev, currency: e.target.value }))}
-                className="rounded-md bg-ledger-bg border border-ledger-bg px-2 py-2 text-sm text-white focus:outline-none focus:border-ledger-accent"
+                className="rounded-md bg-ledger-bg border border-ledger-bg px-2 py-2 text-sm focus:outline-none focus:border-ledger-accent"
               >
                 <option value="CNY">¥</option>
                 <option value="USD">$</option>
@@ -917,7 +917,7 @@ export default function LedgerManager() {
                 required
                 value={recurringForm.amount}
                 onChange={e => setRecurringForm(prev => ({ ...prev, amount: e.target.value }))}
-                className="rounded-md bg-ledger-bg border border-ledger-bg px-3 py-2 text-sm text-white placeholder-ledger-muted focus:outline-none focus:border-ledger-accent w-24"
+                className="rounded-md bg-ledger-bg border border-ledger-bg px-3 py-2 text-sm placeholder-ledger-muted focus:outline-none focus:border-ledger-accent w-24"
                 placeholder="0.00"
               />
             </div>
@@ -927,7 +927,7 @@ export default function LedgerManager() {
                 name="categoryId"
                 value={recurringForm.categoryId}
                 onChange={e => setRecurringForm(prev => ({ ...prev, categoryId: e.target.value }))}
-                className="rounded-md bg-ledger-bg border border-ledger-bg px-3 py-2 text-sm text-white focus:outline-none focus:border-ledger-accent"
+                className="rounded-md bg-ledger-bg border border-ledger-bg px-3 py-2 text-sm focus:outline-none focus:border-ledger-accent"
               >
                 <option value="">--</option>
                 {categories.map((c: any) => (
@@ -941,7 +941,7 @@ export default function LedgerManager() {
                 name="fromAccountId"
                 value={recurringForm.fromAccountId}
                 onChange={e => setRecurringForm(prev => ({ ...prev, fromAccountId: e.target.value }))}
-                className="rounded-md bg-ledger-bg border border-ledger-bg px-3 py-2 text-sm text-white focus:outline-none focus:border-ledger-accent"
+                className="rounded-md bg-ledger-bg border border-ledger-bg px-3 py-2 text-sm focus:outline-none focus:border-ledger-accent"
               >
                 <option value="">--</option>
                 {assets.map((a: any) => (
@@ -955,7 +955,7 @@ export default function LedgerManager() {
                 name="toAccountId"
                 value={recurringForm.toAccountId}
                 onChange={e => setRecurringForm(prev => ({ ...prev, toAccountId: e.target.value }))}
-                className="rounded-md bg-ledger-bg border border-ledger-bg px-3 py-2 text-sm text-white focus:outline-none focus:border-ledger-accent"
+                className="rounded-md bg-ledger-bg border border-ledger-bg px-3 py-2 text-sm focus:outline-none focus:border-ledger-accent"
               >
                 <option value="">--</option>
                 {assets.map((a: any) => (
@@ -974,13 +974,13 @@ export default function LedgerManager() {
                   max={99}
                   value={recurringForm.interval}
                   onChange={e => setRecurringForm(prev => ({ ...prev, interval: Number(e.target.value) || 1 }))}
-                  className="rounded-md bg-ledger-bg border border-ledger-bg px-2 py-2 text-sm text-white focus:outline-none focus:border-ledger-accent w-14 text-center"
+                  className="rounded-md bg-ledger-bg border border-ledger-bg px-2 py-2 text-sm focus:outline-none focus:border-ledger-accent w-14 text-center"
                 />
                 <select
                   name="frequency"
                   value={recurringForm.frequency}
                   onChange={e => setRecurringForm(prev => ({ ...prev, frequency: e.target.value }))}
-                  className="rounded-md bg-ledger-bg border border-ledger-bg px-2 py-2 text-sm text-white focus:outline-none focus:border-ledger-accent"
+                  className="rounded-md bg-ledger-bg border border-ledger-bg px-2 py-2 text-sm focus:outline-none focus:border-ledger-accent"
                 >
                   <option value="monthly">个月</option>
                   <option value="weekly">周</option>
@@ -997,7 +997,7 @@ export default function LedgerManager() {
                 required
                 value={recurringForm.startDate}
                 onChange={e => setRecurringForm(prev => ({ ...prev, startDate: e.target.value }))}
-                className="rounded-md bg-ledger-bg border border-ledger-bg px-3 py-2 text-sm text-white focus:outline-none focus:border-ledger-accent"
+                className="rounded-md bg-ledger-bg border border-ledger-bg px-3 py-2 text-sm focus:outline-none focus:border-ledger-accent"
               />
             </div>
             <div>
@@ -1006,14 +1006,14 @@ export default function LedgerManager() {
                 name="description"
                 value={recurringForm.description}
                 onChange={e => setRecurringForm(prev => ({ ...prev, description: e.target.value }))}
-                className="rounded-md bg-ledger-bg border border-ledger-bg px-3 py-2 text-sm text-white placeholder-ledger-muted focus:outline-none focus:border-ledger-accent"
+                className="rounded-md bg-ledger-bg border border-ledger-bg px-3 py-2 text-sm placeholder-ledger-muted focus:outline-none focus:border-ledger-accent"
                 placeholder="备注"
               />
             </div>
             <button
               type="submit"
               disabled={loading}
-              className="rounded-md bg-ledger-accent px-4 py-2 text-sm font-medium text-white hover:opacity-90 transition-opacity disabled:opacity-50"
+              className="rounded-md bg-ledger-accent px-4 py-2 text-sm font-medium hover:opacity-90 transition-opacity disabled:opacity-50"
             >
               {loading ? '创建中...' : '添加周期'}
             </button>
@@ -1044,13 +1044,13 @@ export default function LedgerManager() {
                 )}
                 {recurringRules.map((r: any) => (
                   <tr key={r.id} className={`border-b border-ledger-bg last:border-0 ${!r.isActive ? 'opacity-50' : ''}`}>
-                    <td className="px-4 py-3 text-white">{r.name}</td>
+                    <td className="px-4 py-3" style={{ color: 'var(--color-text-primary)' }}>{r.name}</td>
                     <td className="px-4 py-3">
                       <span className={`inline-block rounded-full px-2 py-0.5 text-xs font-medium ${typeBadgeClass(r.type)}`}>
                         {typeLabel(r.type)}
                       </span>
                     </td>
-                    <td className="px-4 py-3 text-white">{(curSym[r.currency || 'CNY'] || '¥')}{r.amount.toString()}</td>
+                    <td className="px-4 py-3" style={{ color: 'var(--color-text-primary)' }}>{(curSym[r.currency || 'CNY'] || '¥')}{r.amount.toString()}</td>
                     <td className="px-4 py-3 text-ledger-muted">
                       {r.interval > 1 ? `每${r.interval}${frequencyLabel[r.frequency]?.replace('每', '')}` : frequencyLabel[r.frequency]}
                     </td>
@@ -1096,19 +1096,19 @@ export default function LedgerManager() {
                               <label className="block text-xs text-ledger-muted mb-1">名称</label>
                               <input type="text" value={editRecurringForm.name}
                                 onChange={e => setEditRecurringForm(p => ({ ...p, name: e.target.value }))}
-                                className="rounded-md bg-ledger-surface border border-ledger-bg px-2 py-1.5 text-xs text-white focus:outline-none focus:border-ledger-accent w-24" />
+                                className="rounded-md bg-ledger-surface border border-ledger-bg px-2 py-1.5 text-xs focus:outline-none focus:border-ledger-accent w-24" />
                             </div>
                             <div>
                               <label className="block text-xs text-ledger-muted mb-1">金额</label>
                               <input type="number" step="0.01" value={editRecurringForm.amount}
                                 onChange={e => setEditRecurringForm(p => ({ ...p, amount: e.target.value }))}
-                                className="rounded-md bg-ledger-surface border border-ledger-bg px-2 py-1.5 text-xs text-white focus:outline-none focus:border-ledger-accent w-24" />
+                                className="rounded-md bg-ledger-surface border border-ledger-bg px-2 py-1.5 text-xs focus:outline-none focus:border-ledger-accent w-24" />
                             </div>
                             <div>
                               <label className="block text-xs text-ledger-muted mb-1">分类</label>
                               <select value={editRecurringForm.categoryId}
                                 onChange={e => setEditRecurringForm(p => ({ ...p, categoryId: e.target.value }))}
-                                className="rounded-md bg-ledger-surface border border-ledger-bg px-2 py-1.5 text-xs text-white focus:outline-none focus:border-ledger-accent">
+                                className="rounded-md bg-ledger-surface border border-ledger-bg px-2 py-1.5 text-xs focus:outline-none focus:border-ledger-accent">
                                 <option value="">--</option>
                                 {categories.map((c: any) => (
                                   <option key={c.id} value={c.id}>{c.name}</option>
@@ -1119,7 +1119,7 @@ export default function LedgerManager() {
                               <label className="block text-xs text-ledger-muted mb-1">来源账户</label>
                               <select value={editRecurringForm.fromAccountId}
                                 onChange={e => setEditRecurringForm(p => ({ ...p, fromAccountId: e.target.value }))}
-                                className="rounded-md bg-ledger-surface border border-ledger-bg px-2 py-1.5 text-xs text-white focus:outline-none focus:border-ledger-accent">
+                                className="rounded-md bg-ledger-surface border border-ledger-bg px-2 py-1.5 text-xs focus:outline-none focus:border-ledger-accent">
                                 <option value="">--</option>
                                 {assets.map((a: any) => (
                                   <option key={a.id} value={a.id}>{a.name}</option>
@@ -1130,7 +1130,7 @@ export default function LedgerManager() {
                               <label className="block text-xs text-ledger-muted mb-1">目标账户</label>
                               <select value={editRecurringForm.toAccountId}
                                 onChange={e => setEditRecurringForm(p => ({ ...p, toAccountId: e.target.value }))}
-                                className="rounded-md bg-ledger-surface border border-ledger-bg px-2 py-1.5 text-xs text-white focus:outline-none focus:border-ledger-accent">
+                                className="rounded-md bg-ledger-surface border border-ledger-bg px-2 py-1.5 text-xs focus:outline-none focus:border-ledger-accent">
                                 <option value="">--</option>
                                 {assets.map((a: any) => (
                                   <option key={a.id} value={a.id}>{a.name}</option>
@@ -1141,7 +1141,7 @@ export default function LedgerManager() {
                               <label className="block text-xs text-ledger-muted mb-1">频率</label>
                               <select value={editRecurringForm.frequency}
                                 onChange={e => setEditRecurringForm(p => ({ ...p, frequency: e.target.value }))}
-                                className="rounded-md bg-ledger-surface border border-ledger-bg px-2 py-1.5 text-xs text-white focus:outline-none focus:border-ledger-accent">
+                                className="rounded-md bg-ledger-surface border border-ledger-bg px-2 py-1.5 text-xs focus:outline-none focus:border-ledger-accent">
                                 <option value="monthly">每月</option>
                                 <option value="weekly">每周</option>
                                 <option value="daily">每天</option>
@@ -1152,10 +1152,10 @@ export default function LedgerManager() {
                               <label className="block text-xs text-ledger-muted mb-1">下次到期</label>
                               <input type="date" value={editRecurringForm.nextDueDate}
                                 onChange={e => setEditRecurringForm(p => ({ ...p, nextDueDate: e.target.value }))}
-                                className="rounded-md bg-ledger-surface border border-ledger-bg px-2 py-1.5 text-xs text-white focus:outline-none focus:border-ledger-accent" />
+                                className="rounded-md bg-ledger-surface border border-ledger-bg px-2 py-1.5 text-xs focus:outline-none focus:border-ledger-accent" />
                             </div>
                             <button type="button" onClick={handleUpdateRecurring}
-                              className="rounded-md bg-ledger-accent px-2 py-1.5 text-xs font-medium text-white hover:opacity-90">
+                              className="rounded-md bg-ledger-accent px-2 py-1.5 text-xs font-medium hover:opacity-90">
                               保存
                             </button>
                           </div>
