@@ -32,6 +32,7 @@ interface LiabilityManagerProps {
 const paymentMethodLabel: Record<string, string> = {
   equal_interest: '等额本息',
   equal_principal: '等额本金',
+  bullet: '一次性还本付息',
 };
 
 export default function LiabilityManager() {
@@ -332,6 +333,7 @@ export default function LiabilityManager() {
           >
             <option value="equal_interest">等额本息</option>
             <option value="equal_principal">等额本金</option>
+            <option value="bullet">一次性还本付息</option>
           </select>
         </div>
         <button
