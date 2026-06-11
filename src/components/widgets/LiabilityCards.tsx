@@ -11,6 +11,7 @@ interface Liability {
   principal: string;
   termMonths: number;
   startDate: string | Date;
+  paymentMethod?: string | null;
 }
 
 interface Transaction {
@@ -61,6 +62,7 @@ export default function LiabilityCards({
               startDate={start}
               repayments={repayments}
               totalRepaid={totalRepaid}
+              paymentMethod={l.paymentMethod}
             />
           );
         })}
@@ -79,6 +81,7 @@ function CollapsibleLiabilityCard({
   startDate,
   repayments,
   totalRepaid,
+  paymentMethod,
 }: {
   name: string;
   interestRate: number;
@@ -90,6 +93,7 @@ function CollapsibleLiabilityCard({
   startDate: Date;
   repayments: Transaction[];
   totalRepaid: number;
+  paymentMethod?: string | null;
 }) {
   const [showHistory, setShowHistory] = useState(false);
 
@@ -158,6 +162,15 @@ function CollapsibleLiabilityCard({
         <span className="text-ledger-muted ml-3">
           本金 <AmountDisplay amount={principal} />
         </span>
+        {paymentMethod === 'bullet' && (
+          <span className="text-ledger-muted ml-3">
+            到期应还{' '}
+            <AmountDisplay
+              amount={principal * (1 + interestRate * remaining / 12)}
+              className="font-medium"
+            />
+          </span>
+        )}
       </div>
 
       {/* Collapsible repayment history */}
