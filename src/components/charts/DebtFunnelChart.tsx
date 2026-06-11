@@ -11,16 +11,14 @@ function getCSSVar(name: string, fallback: string): string {
   return getComputedStyle(document.documentElement).getPropertyValue(name).trim() || fallback;
 }
 
+const DOT_COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#8b5cf6', '#06b6d4', '#f97316'];
+
 export default function DebtFunnelChart({ data }: Props) {
   if (data.length === 0) {
     return <div className="h-[240px] flex items-center justify-center" style={{ color: 'var(--color-text-muted)' }}>暂无负债</div>;
   }
 
   const sorted = [...data].sort((a, b) => b.value - a.value);
-  const colors = sorted.map(item =>
-    item.rate > 6 ? '#ef4444' : item.rate > 5 ? '#f59e0b' : '#3b82f6'
-  );
-
   const labelColor = getCSSVar('--color-chart-label', '#212529');
   const isDark = typeof document !== 'undefined' && document.documentElement.getAttribute('data-theme') !== 'light';
 
@@ -39,28 +37,28 @@ export default function DebtFunnelChart({ data }: Props) {
     legend: { show: false },
     series: [{
       type: 'pie',
-      radius: ['40%', '75%'],
-      center: ['40%', '50%'],
+      radius: ['45%', '72%'],
+      center: ['45%', '50%'],
       avoidLabelOverlap: false,
       label: {
         show: true,
-        position: 'outside' as const,
+        position: 'inside' as const,
         formatter: (params: any) => `${params.percent}%`,
-        color: labelColor,
+        color: '#ffffff',
         fontSize: 11,
-        distanceToLabelLine: 2,
+        fontWeight: 'bold' as const,
       },
       emphasis: {
-        label: { show: true, fontSize: 16, fontWeight: 'bold' as const },
-        scaleSize: 8,
+        label: { show: true, fontSize: 14, fontWeight: 'bold' as const },
+        scaleSize: 6,
       },
       data: sorted.map((item, i) => ({
         name: item.name,
         value: item.value,
-        itemStyle: { color: colors[i] },
+        itemStyle: { color: DOT_COLORS[i % DOT_COLORS.length] },
       })),
     }],
   };
 
-  return <ReactECharts option={option} style={{ height: '260px', width: '100%', overflow: 'visible' }} />;
+  return <ReactECharts option={option} style={{ height: '260px', width: '100%' }} />;
 }
