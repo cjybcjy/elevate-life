@@ -56,15 +56,15 @@ export default function TargetCashflow({
       <div className="grid grid-cols-3 gap-2 text-xs mb-3">
         <div className="bg-ledger-surface/50 rounded p-2">
           <div className="text-ledger-muted">月盈余</div>
-          <AmountDisplay amount={surplus} className="text-white font-medium" sensitive />
+          <AmountDisplay amount={surplus} className="text-white font-medium" />
         </div>
         <div className="bg-ledger-surface/50 rounded p-2">
           <div className="text-ledger-muted">当前现金流</div>
-          <AmountDisplay amount={currentCash} className="text-white font-medium" sensitive />
+          <AmountDisplay amount={currentCash} className="text-white font-medium" />
         </div>
         <div className="bg-ledger-surface/50 rounded p-2">
           <div className="text-ledger-muted">差距</div>
-          <AmountDisplay amount={Math.max(0, remaining)} className={remaining <= 0 ? 'text-green-400 font-medium' : 'text-white font-medium'} sensitive />
+          <AmountDisplay amount={Math.max(0, remaining)} className={remaining <= 0 ? 'text-green-400 font-medium' : 'text-white font-medium'} />
         </div>
       </div>
 
@@ -83,7 +83,7 @@ export default function TargetCashflow({
                 <span className="text-sm text-ledger-muted ml-2">({monthsNeeded} 个月)</span>
               </div>
               <div className="text-xs text-ledger-muted mt-1">
-                每月盈余 <AmountDisplay amount={surplus} className="text-ledger-success" sensitive /> × {monthsNeeded} 月 = <AmountDisplay amount={surplus * monthsNeeded} className="text-white" sensitive />
+                每月盈余 <AmountDisplay amount={surplus} className="text-ledger-success" /> × {monthsNeeded} 月 = <AmountDisplay amount={surplus * monthsNeeded} className="text-white" />
               </div>
             </div>
           )}

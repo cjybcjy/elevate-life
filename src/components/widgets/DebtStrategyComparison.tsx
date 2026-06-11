@@ -122,7 +122,7 @@ export default function DebtStrategyComparison({ liabilities }: DebtStrategyComp
           <div className="space-y-1 text-xs">
             <div className="flex justify-between">
               <span className="text-ledger-muted">总利息</span>
-              <AmountDisplay amount={avalancheTotalInterest} className="text-white" sensitive />
+              <AmountDisplay amount={avalancheTotalInterest} className="text-white" />
             </div>
             <div className="flex justify-between">
               <span className="text-ledger-muted">还清时间</span>
@@ -147,7 +147,7 @@ export default function DebtStrategyComparison({ liabilities }: DebtStrategyComp
           <div className="space-y-1 text-xs">
             <div className="flex justify-between">
               <span className="text-ledger-muted">总利息</span>
-              <AmountDisplay amount={snowballTotalInterest} className="text-white" sensitive />
+              <AmountDisplay amount={snowballTotalInterest} className="text-white" />
             </div>
             <div className="flex justify-between">
               <span className="text-ledger-muted">还清时间</span>
@@ -167,7 +167,7 @@ export default function DebtStrategyComparison({ liabilities }: DebtStrategyComp
       </div>
       <div className="mt-2 text-xs text-ledger-muted">
         {avalancheTotalInterest < snowballTotalInterest ? (
-          <>💡 雪崩法可多节省 <AmountDisplay amount={snowballTotalInterest - avalancheTotalInterest} className="text-green-400" sensitive /></>
+          <>💡 雪崩法可多节省 <AmountDisplay amount={snowballTotalInterest - avalancheTotalInterest} className="text-green-400" /></>
         ) : (
           <>💡 两种策略利息差异较小，可优先选择心理激励更强的雪球法</>
         )}

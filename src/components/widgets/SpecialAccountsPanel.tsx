@@ -26,7 +26,7 @@ export function ExpandableDetail({ cat, assets }: { cat: string; assets: any[] }
               <span className="truncate flex-1">{a.name}</span>
               {isGold && a.quantity > 0 && <span className="shrink-0">{Number(a.quantity).toFixed(2)}克</span>}
               {isGold && a.unitPrice > 0 && <span className="shrink-0 text-ledger-muted/60">¥{Number(a.unitPrice).toFixed(0)}/克</span>}
-              <AmountDisplay amount={parseFloat(a.balance || '0')} className="shrink-0" sensitive />
+              <AmountDisplay amount={parseFloat(a.balance || '0')} className="shrink-0" />
             </div>
           ))}
         </div>

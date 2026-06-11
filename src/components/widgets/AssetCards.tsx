@@ -13,7 +13,7 @@ export default function AssetCards({ assets, total }: { assets: any[]; total: nu
         <span>{icons[a.category] || '📦'}</span>
         <span className="text-white truncate flex-1">{a.name}</span>
         <span className="text-ledger-muted text-xs w-10 text-right">{pct}%</span>
-        <AmountDisplay amount={parseFloat(a.balance || '0')} className="text-sm w-24 text-right" sensitive />
+        <AmountDisplay amount={parseFloat(a.balance || '0')} className="text-sm w-24 text-right" />
       </div>
     );
   });

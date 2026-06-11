@@ -383,15 +383,15 @@ export default function LiabilityManager() {
                   </td>
                   <td className="px-4 py-3 text-ledger-muted">{liability.category}</td>
                   <td className="px-4 py-3 text-white">
-                    <AmountDisplay amount={principalVal} sensitive />
+                    <AmountDisplay amount={principalVal} />
                   </td>
                   <td className="px-4 py-3 text-white">
-                    <AmountDisplay amount={balanceVal} className="font-medium" sensitive />
+                    <AmountDisplay amount={balanceVal} className="font-medium" />
                   </td>
                   <td className="px-4 py-3">
                     {paidVal > 0 ? (
                       <div>
-                        <AmountDisplay amount={paidVal} className="text-green-400 text-xs" sensitive />
+                        <AmountDisplay amount={paidVal} className="text-green-400 text-xs" />
                         <div className="w-16 h-1.5 bg-ledger-bg rounded-full overflow-hidden mt-0.5">
                           <div
                             className="h-full bg-gradient-to-r from-green-500 to-green-400 rounded-full"

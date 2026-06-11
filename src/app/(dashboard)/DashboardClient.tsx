@@ -109,6 +109,15 @@ export default function DashboardClient({ currentDate }: { currentDate: string }
   const freedomProgress = Math.min(100, (netWorth / (20000 * 12 * 25)) * 100);
   const currentCash = assets.filter((a: any) => a.category === 'cash' || a.category === 'current_deposit').reduce((s: number, a: any) => s + parseFloat(a.balance || '0'), 0);
 
+  // Liquidity tiers
+  const tier1Categories = ['stock', 'current_deposit', 'cash'];
+  const tier1Assets = assets.filter((a: any) => tier1Categories.includes(a.category || ''));
+  const tier1Total = tier1Assets.reduce((s: number, a: any) => s + parseFloat(a.balance || '0'), 0);
+
+  const tier2Exclude = ['provident_fund', 'pension'];
+  const tier2Assets = assets.filter((a: any) => !tier2Exclude.includes(a.category || ''));
+  const tier2Total = tier2Assets.reduce((s: number, a: any) => s + parseFloat(a.balance || '0'), 0);
+
   return (
     <div style={{
       display: 'grid',
@@ -129,9 +138,28 @@ export default function DashboardClient({ currentDate }: { currentDate: string }
                 </div>
               </div>
               <div style={{ display: 'flex', gap: 20, fontSize: 13 }}>
-                <div><span style={{ color: 'var(--color-text-muted)' }}>总资产 </span><AmountDisplay amount={totalAssets.toNumber()} className="font-medium" sensitive /></div>
-                <div><span style={{ color: 'var(--color-text-muted)' }}>总负债 </span><AmountDisplay amount={totalLiabilities.toNumber()} className="font-medium" sensitive /></div>
+                <div><span style={{ color: 'var(--color-text-muted)' }}>总资产 </span><AmountDisplay amount={totalAssets.toNumber()} className="font-medium" /></div>
+                <div><span style={{ color: 'var(--color-text-muted)' }}>总负债 </span><AmountDisplay amount={totalLiabilities.toNumber()} className="font-medium" /></div>
                 <div><span style={{ color: 'var(--color-text-muted)' }}>净资产率 </span><span style={{ fontWeight: 500, color: 'var(--color-text-heading)' }}>{surplusRate.toFixed(1)}%</span></div>
+                <div style={{ width: 1, background: 'var(--border-tertiary)', margin: '2px 0' }} />
+                <div>
+                  <span style={{ color: 'var(--color-text-muted)', fontSize: 11 }}>一级流动性 </span>
+                  <span style={{ fontWeight: 500, color: 'var(--color-text-primary)', fontSize: 12 }}>
+                    ¥{tier1Total.toLocaleString('zh-CN', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+                  </span>
+                  <span style={{ color: 'var(--color-text-subdued)', fontSize: 10, marginLeft: 2 }}>
+                    {totalAssets.gt(0) ? (tier1Total / totalAssets.toNumber() * 100).toFixed(0) : 0}%
+                  </span>
+                </div>
+                <div>
+                  <span style={{ color: 'var(--color-text-muted)', fontSize: 11 }}>二级流动性 </span>
+                  <span style={{ fontWeight: 500, color: 'var(--color-text-primary)', fontSize: 12 }}>
+                    ¥{tier2Total.toLocaleString('zh-CN', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+                  </span>
+                  <span style={{ color: 'var(--color-text-subdued)', fontSize: 10, marginLeft: 2 }}>
+                    {totalAssets.gt(0) ? (tier2Total / totalAssets.toNumber() * 100).toFixed(0) : 0}%
+                  </span>
+                </div>
               </div>
             </div>
             <Link href="/management/assets" className="btn btn-outline btn-sm">管理</Link>
@@ -198,7 +226,7 @@ export default function DashboardClient({ currentDate }: { currentDate: string }
                       return <span style={{ color: 'var(--color-text-muted)', fontSize: 11, width: 48, textAlign: 'right' }}>{Number(grams).toFixed(0)}克</span>;
                     })()}
                     <span style={{ color: 'var(--color-text-muted)', fontSize: 11, width: 40, textAlign: 'right', marginLeft: 'auto' }}>{pct}%</span>
-                    <AmountDisplay amount={total} className="text-sm" sensitive />
+                    <AmountDisplay amount={total} className="text-sm" />
                   </div>
                 );
               })}
@@ -223,7 +251,7 @@ export default function DashboardClient({ currentDate }: { currentDate: string }
             </div>
             <div style={{ flex: 1, minWidth: 0 }}>
               <div style={{ fontSize: 13, color: 'var(--color-text-muted)', marginBottom: 8 }}>
-                总额 <AmountDisplay amount={totalLiabilities.toNumber()} className="font-bold" sensitive /> · WACR <span style={{ color: 'var(--color-primary)', fontWeight: 500 }}>{(wacr * 100).toFixed(2)}%</span>
+                总额 <AmountDisplay amount={totalLiabilities.toNumber()} className="font-bold" /> · WACR <span style={{ color: 'var(--color-primary)', fontWeight: 500 }}>{(wacr * 100).toFixed(2)}%</span>
               </div>
               <LiabilityCards liabilities={liabilities} transactions={transactions} />
             </div>
@@ -278,8 +306,8 @@ export default function DashboardClient({ currentDate }: { currentDate: string }
           </div>
           <div className="card-body">
             <div style={{ display: 'flex', gap: 16, fontSize: 13, marginBottom: 8 }}>
-              <span style={{ color: 'var(--color-text-muted)' }}>本月收入 <AmountDisplay amount={curIncome} className="font-medium" sensitive /></span>
-              <span style={{ color: 'var(--color-text-muted)' }}>支出 <AmountDisplay amount={curExpense} className="font-medium" sensitive /></span>
+              <span style={{ color: 'var(--color-text-muted)' }}>本月收入 <AmountDisplay amount={curIncome} className="font-medium" /></span>
+              <span style={{ color: 'var(--color-text-muted)' }}>支出 <AmountDisplay amount={curExpense} className="font-medium" /></span>
               <span style={{ color: 'var(--color-text-muted)' }}>盈余率 <span style={{ fontWeight: 500, color: 'var(--color-text-heading)' }}>{curIncome > 0 ? ((curIncome - curExpense) / curIncome * 100).toFixed(1) : '0'}%</span></span>
             </div>
             <ScissorChart months={months} income={incomeData} expense={expenseData} survivalLine={curIncome * 0.5} />

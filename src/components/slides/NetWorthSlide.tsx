@@ -28,11 +28,11 @@ export default function NetWorthSlide({ totalAssets, totalLiabilities, netWorth 
       <div className="grid grid-cols-3 gap-3">
         <div className="bg-ledger-surface rounded-lg p-3 text-center">
           <div className="text-xs text-ledger-muted">总资产</div>
-          <AmountDisplay amount={totalAssets} className="text-lg font-semibold text-ledger-success" sensitive />
+          <AmountDisplay amount={totalAssets} className="text-lg font-semibold text-ledger-success" />
         </div>
         <div className="bg-ledger-surface rounded-lg p-3 text-center">
           <div className="text-xs text-ledger-muted">总负债</div>
-          <AmountDisplay amount={totalLiabilities} className="text-lg font-semibold text-ledger-danger" sensitive />
+          <AmountDisplay amount={totalLiabilities} className="text-lg font-semibold text-ledger-danger" />
         </div>
         <div className="bg-ledger-surface rounded-lg p-3 text-center">
           <div className="text-xs text-ledger-muted">净资产率</div>

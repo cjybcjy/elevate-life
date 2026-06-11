@@ -56,9 +56,9 @@ export default function MonthFlow({
 
       {/* Summary bar */}
       <div className="flex items-center gap-4 text-sm mb-3">
-        <span className="text-ledger-muted">收入 <AmountDisplay amount={curIncome} className="text-ledger-success font-medium" sensitive /></span>
+        <span className="text-ledger-muted">收入 <AmountDisplay amount={curIncome} className="text-ledger-success font-medium" /></span>
         <span className="text-ledger-muted/30">|</span>
-        <span className="text-ledger-muted">支出 <AmountDisplay amount={curExpense} className="text-ledger-danger font-medium" sensitive /></span>
+        <span className="text-ledger-muted">支出 <AmountDisplay amount={curExpense} className="text-ledger-danger font-medium" /></span>
         <span className="text-ledger-muted/30">|</span>
         <span className="text-ledger-muted">盈余率 <span className="font-medium" style={{ color: 'var(--color-text-heading)' }}>{surplus}%</span></span>
       </div>

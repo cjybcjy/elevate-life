@@ -24,7 +24,7 @@ export default function DebtOverviewSlide({ liabilities }: { liabilities: Liabil
         <Link href="/management/liabilities" className="px-2.5 py-1 text-xs bg-ledger-surface border border-ledger-primary/20 rounded-md text-ledger-muted hover:text-white transition-colors">管理</Link>
       </div>
       <div className="flex items-center gap-4 mb-2 text-sm">
-        <AmountDisplay amount={totalBalance} className="text-xl font-bold text-white" sensitive />
+        <AmountDisplay amount={totalBalance} className="text-xl font-bold text-white" />
         <span className="text-ledger-muted">加权平均利率 <span className="text-ledger-accent font-medium">{(wacr * 100).toFixed(2)}%</span></span>
       </div>
       <div className="flex items-start gap-6">
@@ -44,7 +44,7 @@ export default function DebtOverviewSlide({ liabilities }: { liabilities: Liabil
                   <span className={`text-xs px-1.5 py-0.5 rounded ${l.interestRate > 0.06 ? 'bg-red-900/30 text-red-400' : l.interestRate > 0.05 ? 'bg-yellow-900/30 text-yellow-400' : 'bg-blue-900/30 text-blue-400'}`}>{(l.interestRate * 100).toFixed(2)}%</span>
                 </div>
                 <div className="flex justify-between text-xs text-ledger-muted">
-                  <span>剩余 <AmountDisplay amount={balance} className="text-white text-xs" sensitive /></span>
+                  <span>剩余 <AmountDisplay amount={balance} className="text-white text-xs" /></span>
                   <span>{remaining}期 · 已还{progress}%</span>
                 </div>
                 <div className="w-full h-1.5 bg-ledger-bg rounded-full overflow-hidden mt-1.5"><div className="h-full bg-gradient-to-r from-blue-500 to-green-500 rounded-full" style={{ width: `${progress}%` }} /></div>

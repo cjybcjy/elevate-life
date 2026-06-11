@@ -57,7 +57,7 @@ export default function AssetAllocationSlide({ assets }: { assets: Asset[] }) {
                 <span>{config.icon}</span>
                 <span className="text-white truncate flex-1">{asset.name}</span>
                 <span className="text-ledger-muted text-xs">{pct}%</span>
-                <AmountDisplay amount={value} className="text-sm font-medium" sensitive />
+                <AmountDisplay amount={value} className="text-sm font-medium" />
               </div>
             );
           })}

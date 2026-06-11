@@ -158,12 +158,12 @@ export default function AssetManager() {
                 <div key={cat} className="bg-ledger-bg rounded-lg p-3">
                   <div className="flex items-center justify-between mb-2">
                     <span className="text-sm font-medium text-white">{g.icon} {g.label}</span>
-                    <AmountDisplay amount={g.total} className="text-sm" sensitive />
+                    <AmountDisplay amount={g.total} className="text-sm" />
                   </div>
                   {g.assets.map((a: any) => (
                     <div key={a.id} className="flex justify-between text-xs text-ledger-muted py-0.5">
                       <span className="truncate flex-1">{a.name}</span>
-                      <AmountDisplay amount={parseFloat(a.balance || '0')} className="shrink-0" sensitive />
+                      <AmountDisplay amount={parseFloat(a.balance || '0')} className="shrink-0" />
                     </div>
                   ))}
                 </div>
