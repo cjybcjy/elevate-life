@@ -11,11 +11,21 @@ interface ForexRates {
 const CACHE_FILE = join(process.cwd(), '.forex-cache.json');
 const FALLBACK: ForexRates = { usdToCny: 7.25, hkdToCny: 0.92, jpyToCny: 0.048 };
 
+const CACHE_TTL = 60 * 60 * 1000; // 1 hour
+
+interface CacheEntry {
+  rates: ForexRates;
+  ts: number;
+}
+
 function loadCache(): ForexRates | null {
   try {
     if (existsSync(CACHE_FILE)) {
       const data = readFileSync(CACHE_FILE, 'utf-8');
-      return JSON.parse(data) as ForexRates;
+      const entry = JSON.parse(data) as CacheEntry;
+      // Discard if older than 1 hour
+      if (Date.now() - entry.ts > CACHE_TTL) return null;
+      return entry.rates;
     }
   } catch {}
   return null;
@@ -23,7 +33,7 @@ function loadCache(): ForexRates | null {
 
 function saveCache(rates: ForexRates): void {
   try {
-    writeFileSync(CACHE_FILE, JSON.stringify(rates), 'utf-8');
+    writeFileSync(CACHE_FILE, JSON.stringify({ rates, ts: Date.now() }), 'utf-8');
   } catch {}
 }
 
