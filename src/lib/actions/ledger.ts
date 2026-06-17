@@ -7,6 +7,163 @@ import { encryptValue, decryptValue } from '@/lib/crypto';
 import { revalidateTag } from 'next/cache';
 import Decimal from 'decimal.js';
 import { autoCategorize } from './category-rules';
+import type { Prisma } from '@prisma/client';
+
+type TransactionEffect = {
+  amount: Decimal;
+  fromAccountId: string | null;
+  toAccountId: string | null;
+  liabilityId: string | null;
+};
+
+function getErrorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : '操作失败';
+}
+
+async function adjustAssetBalance(
+  tx: Prisma.TransactionClient,
+  assetId: string,
+  userId: string,
+  derivedKey: string,
+  delta: Decimal,
+  missingMessage: string,
+  insufficientMessage: string,
+) {
+  const [asset] = await tx.$queryRaw<{ id: string; balance: string }[]>`
+    SELECT id, balance FROM "Asset"
+    WHERE id = ${assetId} AND user_id = ${userId}
+    FOR UPDATE
+  `;
+  if (!asset) throw new Error(missingMessage);
+
+  const currentBalance = new Decimal(
+    decryptValue(asset.balance, derivedKey, userId),
+  );
+  const newBalance = currentBalance.plus(delta);
+  if (newBalance.isNegative()) {
+    throw new Error(insufficientMessage);
+  }
+
+  await tx.asset.update({
+    where: { id: asset.id },
+    data: {
+      balance: encryptValue(newBalance.toFixed(4), derivedKey, userId),
+      isEncrypted: true,
+    },
+  });
+}
+
+async function adjustLiabilityBalance(
+  tx: Prisma.TransactionClient,
+  liabilityId: string,
+  userId: string,
+  derivedKey: string,
+  delta: Decimal,
+) {
+  const [liability] = await tx.$queryRaw<
+    { id: string; currentBalance: string }[]
+  >`
+    SELECT id, current_balance as "currentBalance" FROM "Liability"
+    WHERE id = ${liabilityId} AND user_id = ${userId}
+    FOR UPDATE
+  `;
+  if (!liability) throw new Error('Liability not found');
+
+  const currentBalance = new Decimal(
+    decryptValue(liability.currentBalance, derivedKey, userId),
+  );
+  const newBalance = currentBalance.plus(delta);
+
+  await tx.liability.update({
+    where: { id: liability.id },
+    data: {
+      currentBalance: encryptValue(newBalance.toFixed(4), derivedKey, userId),
+      isEncrypted: true,
+    },
+  });
+}
+
+async function applyTransactionEffects(
+  tx: Prisma.TransactionClient,
+  effect: TransactionEffect,
+  userId: string,
+  derivedKey: string,
+) {
+  if (effect.fromAccountId) {
+    await adjustAssetBalance(
+      tx,
+      effect.fromAccountId,
+      userId,
+      derivedKey,
+      effect.amount.negated(),
+      'Source asset not found',
+      'Insufficient balance',
+    );
+  }
+
+  if (effect.toAccountId) {
+    await adjustAssetBalance(
+      tx,
+      effect.toAccountId,
+      userId,
+      derivedKey,
+      effect.amount,
+      'Target asset not found',
+      'Insufficient balance',
+    );
+  }
+
+  if (effect.liabilityId) {
+    await adjustLiabilityBalance(
+      tx,
+      effect.liabilityId,
+      userId,
+      derivedKey,
+      effect.amount.negated(),
+    );
+  }
+}
+
+async function reverseTransactionEffects(
+  tx: Prisma.TransactionClient,
+  effect: TransactionEffect,
+  userId: string,
+  derivedKey: string,
+) {
+  if (effect.fromAccountId) {
+    await adjustAssetBalance(
+      tx,
+      effect.fromAccountId,
+      userId,
+      derivedKey,
+      effect.amount,
+      'Source asset not found',
+      'Insufficient balance',
+    );
+  }
+
+  if (effect.toAccountId) {
+    await adjustAssetBalance(
+      tx,
+      effect.toAccountId,
+      userId,
+      derivedKey,
+      effect.amount.negated(),
+      'Target asset not found',
+      'Insufficient balance to reverse',
+    );
+  }
+
+  if (effect.liabilityId) {
+    await adjustLiabilityBalance(
+      tx,
+      effect.liabilityId,
+      userId,
+      derivedKey,
+      effect.amount,
+    );
+  }
+}
 
 export async function getTransactions() {
   const session = await auth();
@@ -257,8 +414,8 @@ export async function createTransaction(data: {
 
     revalidateTag(`user-${userId}`, 'default');
     return { success: true };
-  } catch (error: any) {
-    return { success: false, error: error.message };
+  } catch (error: unknown) {
+    return { success: false, error: getErrorMessage(error) };
   }
 }
 
@@ -268,6 +425,9 @@ export async function updateTransaction(
     amount: string;
     categoryId: string;
     budgetId: string | null;
+    fromAccountId: string | null;
+    toAccountId: string | null;
+    liabilityId: string | null;
     description: string;
     occurredAt: string;
   }>
@@ -276,23 +436,82 @@ export async function updateTransaction(
   const userId = session?.user?.id;
   if (!userId) return { success: false, error: 'Unauthorized' };
 
-  try {
-    const updateData: any = {};
-    if (data.amount !== undefined) updateData.amount = new Decimal(data.amount);
-    if (data.categoryId !== undefined) updateData.categoryId = data.categoryId || null;
-    if (data.budgetId !== undefined) updateData.budgetId = data.budgetId || null;
-    if (data.description !== undefined) updateData.description = data.description;
-    if (data.occurredAt !== undefined) updateData.occurredAt = new Date(data.occurredAt);
+  const derivedKey = session?.user?.derivedKey || await getUserKey(userId);
+  if (!derivedKey) return { success: false, error: '会话密钥已过期，请退出重新登录' };
 
-    await prisma.transaction.updateMany({
-      where: { id, userId },
-      data: updateData,
+  try {
+    await prisma.$transaction(async (tx) => {
+      const existing = await tx.transaction.findFirst({
+        where: { id, userId },
+      });
+      if (!existing) throw new Error('Transaction not found');
+
+      const nextAmount = data.amount !== undefined
+        ? new Decimal(data.amount)
+        : existing.amount;
+      const nextEffect: TransactionEffect = {
+        amount: nextAmount,
+        fromAccountId: data.fromAccountId !== undefined
+          ? data.fromAccountId || null
+          : existing.fromAccountId,
+        toAccountId: data.toAccountId !== undefined
+          ? data.toAccountId || null
+          : existing.toAccountId,
+        liabilityId: data.liabilityId !== undefined
+          ? data.liabilityId || null
+          : existing.liabilityId,
+      };
+
+      const updateData: {
+        amount?: Decimal;
+        categoryId?: string | null;
+        budgetId?: string | null;
+        fromAccountId?: string | null;
+        toAccountId?: string | null;
+        liabilityId?: string | null;
+        description?: string;
+        occurredAt?: Date;
+      } = {};
+      if (data.amount !== undefined) updateData.amount = nextAmount;
+      if (data.categoryId !== undefined) updateData.categoryId = data.categoryId || null;
+      if (data.budgetId !== undefined) updateData.budgetId = data.budgetId || null;
+      if (data.fromAccountId !== undefined) updateData.fromAccountId = data.fromAccountId || null;
+      if (data.toAccountId !== undefined) updateData.toAccountId = data.toAccountId || null;
+      if (data.liabilityId !== undefined) updateData.liabilityId = data.liabilityId || null;
+      if (data.description !== undefined) updateData.description = data.description;
+      if (data.occurredAt !== undefined) updateData.occurredAt = new Date(data.occurredAt);
+
+      const effectsChanged =
+        data.amount !== undefined ||
+        data.fromAccountId !== undefined ||
+        data.toAccountId !== undefined ||
+        data.liabilityId !== undefined;
+
+      if (effectsChanged) {
+        await reverseTransactionEffects(
+          tx,
+          {
+            amount: existing.amount,
+            fromAccountId: existing.fromAccountId,
+            toAccountId: existing.toAccountId,
+            liabilityId: existing.liabilityId,
+          },
+          userId,
+          derivedKey,
+        );
+        await applyTransactionEffects(tx, nextEffect, userId, derivedKey);
+      }
+
+      await tx.transaction.updateMany({
+        where: { id, userId },
+        data: updateData,
+      });
     });
 
     revalidateTag(`user-${userId}`, 'default');
     return { success: true };
-  } catch (error: any) {
-    return { success: false, error: error.message };
+  } catch (error: unknown) {
+    return { success: false, error: getErrorMessage(error) };
   }
 }
 
@@ -308,8 +527,8 @@ export async function updateTransactionReconciled(id: string, reconciled: boolea
     });
     revalidateTag(`user-${userId}`, 'default');
     return { success: true };
-  } catch (error: any) {
-    return { success: false, error: error.message };
+  } catch (error: unknown) {
+    return { success: false, error: getErrorMessage(error) };
   }
 }
 
@@ -418,7 +637,7 @@ export async function deleteTransaction(id: string) {
 
     revalidateTag(`user-${userId}`, 'default');
     return { success: true };
-  } catch (error: any) {
-    return { success: false, error: error.message };
+  } catch (error: unknown) {
+    return { success: false, error: getErrorMessage(error) };
   }
 }

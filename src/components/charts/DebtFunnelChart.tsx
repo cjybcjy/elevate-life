@@ -15,7 +15,7 @@ const DOT_COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#8b5cf6', '#06b6d4', '#f97
 
 export default function DebtFunnelChart({ data }: Props) {
   if (data.length === 0) {
-    return <div className="h-[240px] flex items-center justify-center" style={{ color: 'var(--color-text-muted)' }}>暂无负债</div>;
+    return <div className="h-[240px] flex items-center justify-center" style={{ color: 'var(--color-text-secondary)' }}>暂无负债</div>;
   }
 
   const sorted = [...data].sort((a, b) => b.value - a.value);

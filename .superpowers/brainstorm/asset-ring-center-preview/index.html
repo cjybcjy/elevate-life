@@ -1,0 +1,301 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>资产圆环中心信息预览</title>
+    <style>
+      :root {
+        --bg: #f7f7f7;
+        --card: #ffffff;
+        --text: #171717;
+        --muted: #737373;
+        --subtle: #9e9e9e;
+        --line: #e7e7e7;
+        --blue: #3b82f6;
+        --green: #10b981;
+        --cyan: #06b6d4;
+        --violet: #8b5cf6;
+        --amber: #f59e0b;
+        --red: #ef4444;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        min-height: 100vh;
+        background: var(--bg);
+        color: var(--text);
+        font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      }
+
+      main {
+        max-width: 1120px;
+        margin: 0 auto;
+        padding: 28px;
+      }
+
+      h1 {
+        margin: 0 0 6px;
+        font-size: 22px;
+        font-weight: 700;
+      }
+
+      p {
+        margin: 0;
+        color: var(--muted);
+        font-size: 13px;
+      }
+
+      .grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 18px;
+        margin-top: 22px;
+      }
+
+      .card {
+        background: var(--card);
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        padding: 16px;
+      }
+
+      .card h2 {
+        margin: 0 0 14px;
+        font-size: 15px;
+        font-weight: 700;
+      }
+
+      .asset-body {
+        display: flex;
+        align-items: flex-start;
+        gap: 16px;
+      }
+
+      .chart-wrap {
+        position: relative;
+        width: 280px;
+        height: 280px;
+        flex: 0 0 auto;
+      }
+
+      .ring {
+        width: 280px;
+        height: 280px;
+        border-radius: 50%;
+        background:
+          conic-gradient(
+            var(--blue) 0 42%,
+            var(--green) 42% 58%,
+            var(--cyan) 58% 70%,
+            var(--violet) 70% 82%,
+            var(--amber) 82% 92%,
+            var(--red) 92% 100%
+          );
+        position: relative;
+      }
+
+      .ring::after {
+        content: "";
+        position: absolute;
+        inset: 58px;
+        border-radius: 50%;
+        background: var(--card);
+        box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.04);
+      }
+
+      .center {
+        position: absolute;
+        inset: 58px;
+        z-index: 1;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        text-align: center;
+        padding: 10px;
+      }
+
+      .label {
+        color: var(--muted);
+        font-size: 11px;
+        line-height: 1.2;
+      }
+
+      .total {
+        margin-top: 3px;
+        font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+        font-size: 20px;
+        font-weight: 800;
+        line-height: 1.15;
+      }
+
+      .liquidity-stack {
+        width: 100%;
+        margin-top: 9px;
+        padding-top: 8px;
+        border-top: 1px solid var(--line);
+        display: grid;
+        gap: 5px;
+      }
+
+      .metric {
+        display: grid;
+        grid-template-columns: 1fr auto;
+        align-items: baseline;
+        gap: 6px;
+        font-size: 10px;
+        color: var(--muted);
+      }
+
+      .metric strong {
+        color: var(--text);
+        font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+        font-size: 11px;
+        font-weight: 700;
+      }
+
+      .metric span {
+        justify-self: start;
+      }
+
+      .percent {
+        color: var(--subtle);
+      }
+
+      .compact .total {
+        font-size: 18px;
+      }
+
+      .compact .liquidity-stack {
+        grid-template-columns: 1fr 1fr;
+        gap: 8px;
+      }
+
+      .compact .metric {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+        text-align: center;
+      }
+
+      .legend {
+        flex: 1;
+        min-width: 0;
+        display: grid;
+        gap: 8px;
+        padding-top: 2px;
+      }
+
+      .legend-row {
+        display: grid;
+        grid-template-columns: 10px 1fr auto;
+        align-items: center;
+        gap: 8px;
+        color: var(--muted);
+        font-size: 12px;
+      }
+
+      .swatch {
+        width: 10px;
+        height: 10px;
+        border-radius: 3px;
+      }
+
+      .note {
+        margin-top: 14px;
+        padding-top: 12px;
+        border-top: 1px solid var(--line);
+        color: var(--muted);
+        font-size: 12px;
+        line-height: 1.6;
+      }
+
+      @media (max-width: 900px) {
+        .grid {
+          grid-template-columns: 1fr;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>资产配置圆环中心信息</h1>
+      <p>左侧是我推荐的比例：总资产作为主视觉，一级/二级流动性作为次级指标，放进圆环内但不抢图表颜色。</p>
+
+      <div class="grid">
+        <section class="card">
+          <h2>A. 推荐：主数字 + 两行流动性</h2>
+          <div class="asset-body">
+            <div class="chart-wrap">
+              <div class="ring"></div>
+              <div class="center">
+                <div class="label">总资产</div>
+                <div class="total">¥1,286,420</div>
+                <div class="liquidity-stack">
+                  <div class="metric">
+                    <span>一级流动性</span>
+                    <strong>¥286,000</strong>
+                    <span class="percent">22%</span>
+                  </div>
+                  <div class="metric">
+                    <span>二级流动性</span>
+                    <strong>¥746,000</strong>
+                    <span class="percent">58%</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="legend">
+              <div class="legend-row"><span class="swatch" style="background: var(--blue)"></span><span>房产</span><span>42.0%</span></div>
+              <div class="legend-row"><span class="swatch" style="background: var(--green)"></span><span>现金</span><span>16.0%</span></div>
+              <div class="legend-row"><span class="swatch" style="background: var(--cyan)"></span><span>公积金</span><span>12.0%</span></div>
+              <div class="legend-row"><span class="swatch" style="background: var(--violet)"></span><span>基金</span><span>12.0%</span></div>
+              <div class="legend-row"><span class="swatch" style="background: var(--amber)"></span><span>黄金</span><span>10.0%</span></div>
+              <div class="legend-row"><span class="swatch" style="background: var(--red)"></span><span>股票</span><span>8.0%</span></div>
+            </div>
+          </div>
+          <div class="note">优点：中心层级清楚，金额和比例都能读；文字留在圆环内，不会挤压右侧分类列表。</div>
+        </section>
+
+        <section class="card">
+          <h2>B. 更紧凑：流动性并排成两列</h2>
+          <div class="asset-body">
+            <div class="chart-wrap compact">
+              <div class="ring"></div>
+              <div class="center">
+                <div class="label">总资产</div>
+                <div class="total">¥1,286,420</div>
+                <div class="liquidity-stack">
+                  <div class="metric">
+                    <span>一级</span>
+                    <strong>¥286,000</strong>
+                    <span class="percent">22%</span>
+                  </div>
+                  <div class="metric">
+                    <span>二级</span>
+                    <strong>¥746,000</strong>
+                    <span class="percent">58%</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="legend">
+              <div class="legend-row"><span class="swatch" style="background: var(--blue)"></span><span>房产</span><span>42.0%</span></div>
+              <div class="legend-row"><span class="swatch" style="background: var(--green)"></span><span>现金</span><span>16.0%</span></div>
+              <div class="legend-row"><span class="swatch" style="background: var(--cyan)"></span><span>公积金</span><span>12.0%</span></div>
+              <div class="legend-row"><span class="swatch" style="background: var(--violet)"></span><span>基金</span><span>12.0%</span></div>
+              <div class="legend-row"><span class="swatch" style="background: var(--amber)"></span><span>黄金</span><span>10.0%</span></div>
+              <div class="legend-row"><span class="swatch" style="background: var(--red)"></span><span>股票</span><span>8.0%</span></div>
+            </div>
+          </div>
+          <div class="note">优点：更省高度；缺点：一级/二级标签被缩短，解释性弱一点。</div>
+        </section>
+      </div>
+    </main>
+  </body>
+</html>

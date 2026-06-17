@@ -1,0 +1,183 @@
+import { execFileSync } from 'node:child_process';
+import { existsSync, statSync } from 'node:fs';
+import { join } from 'node:path';
+import { loadEnvConfig } from '@next/env';
+
+type EnvMap = Record<string, string | undefined>;
+
+type AndroidReleaseBundleSignatureOptions = {
+  exists?: (path: string) => boolean;
+  fileSize?: (path: string) => number;
+  listEntries?: (path: string) => string[];
+  runJarsignerVerify?: (path: string) => string;
+  runKeytoolPrintCert?: (path: string) => string;
+};
+
+type AndroidReleaseBundleSignatureResult = {
+  ok: boolean;
+  errors: string[];
+  bundlePath?: string;
+  signerFingerprint?: string;
+};
+
+const SHA256_FINGERPRINT = /^([0-9a-f]{2}:){31}[0-9a-f]{2}$/i;
+
+function envValue(env: EnvMap, key: string) {
+  return (env[key] || '').trim();
+}
+
+function normalizeFingerprint(value: string) {
+  return value
+    .trim()
+    .replace(/\s+/g, '')
+    .replace(/-/g, ':')
+    .toUpperCase();
+}
+
+function candidateBundlePaths(env: EnvMap) {
+  const explicitPath = envValue(env, 'ANDROID_RELEASE_BUNDLE_PATH');
+  if (explicitPath) return [explicitPath];
+
+  const projectDir = envValue(env, 'ANDROID_NATIVE_PROJECT_DIR') || 'android';
+  return [
+    join(projectDir, 'app', 'build', 'outputs', 'bundle', 'release', 'app-release.aab'),
+    join(projectDir, 'app', 'release', 'app-release.aab'),
+  ];
+}
+
+function defaultListEntries(bundlePath: string) {
+  return execFileSync('jar', ['tf', bundlePath], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] })
+    .split(/\r?\n/)
+    .map((entry) => entry.trim())
+    .filter(Boolean);
+}
+
+function defaultRunJarsignerVerify(bundlePath: string) {
+  return execFileSync('jarsigner', ['-verify', bundlePath], {
+    encoding: 'utf8',
+    stdio: ['ignore', 'pipe', 'pipe'],
+  });
+}
+
+function defaultRunKeytoolPrintCert(bundlePath: string) {
+  return execFileSync('keytool', ['-printcert', '-jarfile', bundlePath], {
+    encoding: 'utf8',
+    stdio: ['ignore', 'pipe', 'pipe'],
+  });
+}
+
+function configuredFingerprints(env: EnvMap) {
+  return envValue(env, 'ANDROID_SHA256_CERT_FINGERPRINTS')
+    .split(',')
+    .map(normalizeFingerprint)
+    .filter(Boolean);
+}
+
+function outputFromError(error: unknown) {
+  if (error && typeof error === 'object') {
+    const candidate = error as { stdout?: Buffer | string; stderr?: Buffer | string; message?: string };
+    const stdout = candidate.stdout ? String(candidate.stdout) : '';
+    const stderr = candidate.stderr ? String(candidate.stderr) : '';
+    return [stdout, stderr, candidate.message || ''].filter(Boolean).join('\n');
+  }
+
+  return String(error);
+}
+
+export function parseAndroidBundleCertificateFingerprint(keytoolOutput: string) {
+  const match = keytoolOutput.match(/SHA256:\s*([0-9a-fA-F:\-\s]{95,})/);
+  if (!match) return undefined;
+  const fingerprint = normalizeFingerprint(match[1]);
+  return SHA256_FINGERPRINT.test(fingerprint) ? fingerprint : undefined;
+}
+
+export function validateAndroidReleaseBundleSignature(
+  env: EnvMap = process.env,
+  options: AndroidReleaseBundleSignatureOptions = {},
+): AndroidReleaseBundleSignatureResult {
+  const exists = options.exists ?? existsSync;
+  const fileSize = options.fileSize ?? ((path: string) => statSync(path).size);
+  const listEntries = options.listEntries ?? defaultListEntries;
+  const runJarsignerVerify = options.runJarsignerVerify ?? defaultRunJarsignerVerify;
+  const runKeytoolPrintCert = options.runKeytoolPrintCert ?? defaultRunKeytoolPrintCert;
+  const errors: string[] = [];
+
+  const bundlePath = candidateBundlePaths(env).find((path) => exists(path));
+  if (!bundlePath) {
+    errors.push('ANDROID_RELEASE_BUNDLE_PATH or the default app-release.aab path should point to an existing AAB.');
+    return { ok: false, errors };
+  }
+
+  if (!bundlePath.endsWith('.aab')) {
+    errors.push(`ANDROID_RELEASE_BUNDLE_PATH should point to an .aab file: ${bundlePath}.`);
+  }
+
+  if (fileSize(bundlePath) <= 0) {
+    errors.push(`Android release AAB should be non-empty: ${bundlePath}.`);
+  }
+
+  const expectedFingerprints = configuredFingerprints(env);
+  if (expectedFingerprints.length === 0) {
+    errors.push('ANDROID_SHA256_CERT_FINGERPRINTS should include the expected release/upload SHA-256 fingerprint.');
+  } else if (expectedFingerprints.some((fingerprint) => !SHA256_FINGERPRINT.test(fingerprint))) {
+    errors.push('ANDROID_SHA256_CERT_FINGERPRINTS should contain comma-separated SHA-256 fingerprints like AA:BB:...:99.');
+  }
+
+  let entries: string[] = [];
+  try {
+    entries = listEntries(bundlePath);
+  } catch (error) {
+    errors.push(`jar could not list entries in Android release AAB: ${outputFromError(error)}`);
+  }
+
+  const hasSignatureFile = entries.some((entry) => /^META-INF\/[^/]+\.(RSA|DSA|EC)$/i.test(entry));
+  const hasSignatureManifest = entries.some((entry) => /^META-INF\/[^/]+\.SF$/i.test(entry));
+  if (!hasSignatureFile || !hasSignatureManifest) {
+    errors.push('Android release AAB should include META-INF signature files generated by release signing.');
+  }
+
+  try {
+    const jarsignerOutput = runJarsignerVerify(bundlePath);
+    if (!jarsignerOutput.includes('jar verified')) {
+      errors.push('jarsigner did not report "jar verified" for Android release AAB.');
+    }
+  } catch (error) {
+    errors.push(`jarsigner failed to verify Android release AAB: ${outputFromError(error)}`);
+  }
+
+  let signerFingerprint: string | undefined;
+  try {
+    signerFingerprint = parseAndroidBundleCertificateFingerprint(runKeytoolPrintCert(bundlePath));
+    if (!signerFingerprint) {
+      errors.push('keytool did not report a SHA256 certificate fingerprint for Android release AAB.');
+    } else if (expectedFingerprints.length > 0 && !expectedFingerprints.includes(signerFingerprint)) {
+      errors.push(`ANDROID_SHA256_CERT_FINGERPRINTS should include signed AAB fingerprint ${signerFingerprint}.`);
+    }
+  } catch (error) {
+    errors.push(`keytool failed to inspect Android release AAB certificate: ${outputFromError(error)}`);
+  }
+
+  return { ok: errors.length === 0, errors, bundlePath, signerFingerprint };
+}
+
+function runCli() {
+  loadEnvConfig(process.cwd());
+  const result = validateAndroidReleaseBundleSignature(process.env);
+  if (!result.ok) {
+    console.error('Android release AAB signature is not ready:');
+    for (const error of result.errors) console.error(`- ${error}`);
+    process.exit(1);
+  }
+
+  console.log('Android release AAB signature looks ready.');
+  console.log(`AAB: ${result.bundlePath}`);
+  console.log(`Signer SHA-256: ${result.signerFingerprint}`);
+  console.log('Note: jarsigner -strict may warn for a self-signed upload certificate; Play upload keys are commonly self-signed.');
+}
+
+if (
+  process.argv[1]?.endsWith('validate-android-release-bundle-signature.ts') ||
+  process.argv[1]?.endsWith('validate-android-release-bundle-signature.js')
+) {
+  runCli();
+}

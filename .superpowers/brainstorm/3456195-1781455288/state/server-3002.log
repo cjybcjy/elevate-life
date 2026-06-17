@@ -1,0 +1,2 @@
+{"type":"server-started","port":3002,"host":"0.0.0.0","url_host":"localhost","url":"http://localhost:3002","screen_dir":"/home/kyrie/workspace/elevate-life/.superpowers/brainstorm/3456195-1781455288/content","state_dir":"/home/kyrie/workspace/elevate-life/.superpowers/brainstorm/3456195-1781455288/state"}
+{"type":"server-stopped","reason":"idle timeout"}

@@ -1,0 +1,42 @@
+{
+  "packageId": "APP_PACKAGE_ID",
+  "host": "APP_HOST",
+  "name": "Elevate Life 家庭账本",
+  "launcherName": "家庭账本",
+  "display": "standalone",
+  "themeColor": "#111827",
+  "themeColorDark": "#111827",
+  "navigationColor": "#111827",
+  "navigationColorDark": "#111827",
+  "navigationDividerColor": "#111827",
+  "navigationDividerColorDark": "#111827",
+  "backgroundColor": "#f7f3ec",
+  "enableNotifications": false,
+  "startUrl": "/",
+  "iconUrl": "https://APP_HOST/icon-512.png",
+  "maskableIconUrl": "https://APP_HOST/icon-512.png",
+  "splashScreenFadeOutDuration": 300,
+  "signingKey": {
+    "path": "TWA_SIGNING_KEY_PATH",
+    "alias": "TWA_SIGNING_KEY_ALIAS"
+  },
+  "appVersionName": "0.1.0",
+  "appVersionCode": 1,
+  "shortcuts": [],
+  "generatorApp": "bubblewrap-cli",
+  "webManifestUrl": "https://APP_HOST/manifest.webmanifest",
+  "fallbackType": "customtabs",
+  "features": {},
+  "alphaDependencies": {
+    "enabled": false
+  },
+  "enableSiteSettingsShortcut": true,
+  "isChromeOSOnly": false,
+  "isMetaQuest": false,
+  "minSdkVersion": 23,
+  "orientation": "portrait",
+  "fingerprints": [],
+  "additionalTrustedOrigins": [],
+  "retainedBundles": [],
+  "appVersion": "0.1.0"
+}

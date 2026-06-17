@@ -47,9 +47,10 @@ fi
 
 # 启动 Next.js 开发服务器
 echo "[4/4] 启动 Next.js 开发服务器..."
-npm run dev &
+setsid npm run dev > frontend.log 2>&1 &
 echo "  进程 PID: $!"
 echo $! > dev.pid
+echo "  日志文件: frontend.log"
 
 sleep 3
 

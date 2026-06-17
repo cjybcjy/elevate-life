@@ -3,6 +3,15 @@
 import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import Decimal from 'decimal.js';
+import { fetchForexRates } from '@/lib/services/price/sources/forex';
+
+type CashflowMonth = {
+  month: string;
+  projectedIncome: string;
+  projectedExpense: string;
+  projectedSurplus: string;
+  cumulativeSurplus: string;
+};
 
 export async function simulateCashflow(data: {
   monthlyIncome: string;
@@ -20,14 +29,14 @@ export async function simulateCashflow(data: {
   const baseIncome = new Decimal(data.monthlyIncome).mul(incomeAdj);
   const baseExpense = new Decimal(data.monthlyExpense);
 
-  const result: any[] = [];
+  const result: CashflowMonth[] = [];
   let cumulative = new Decimal(0);
   const now = new Date();
 
   for (let i = 0; i < months; i++) {
     const monthDate = new Date(now.getFullYear(), now.getMonth() + i + 1, 1);
     const monthKey = `${monthDate.getFullYear()}-${String(monthDate.getMonth() + 1).padStart(2, '0')}`;
-    let income = baseIncome;
+    const income = baseIncome;
     let expense = baseExpense;
 
     const oneOff = (data.oneOffExpenses || []).find((e) => e.month === i + 1);
@@ -59,11 +68,13 @@ export async function simulateCashflow(data: {
 /**
  * Auto-derive monthly income/expense from recent transaction history.
  */
-export async function getAutoForecast(months: number = 12) {
+export async function getAutoForecast(_months: number = 12) {
   const session = await auth();
   const userId = session?.user?.id;
   if (!userId) return { success: false, error: 'Unauthorized' };
 
+  void _months;
+  const forexRatesPromise = fetchForexRates();
   const now = new Date();
   const threeMonthsAgo = new Date(now.getFullYear(), now.getMonth() - 3, 1);
 
@@ -78,8 +89,6 @@ export async function getAutoForecast(months: number = 12) {
 
   let totalIncome = new Decimal(0);
   let totalExpense = new Decimal(0);
-  let incomeMonths = 0;
-  let expenseMonths = 0;
 
   // Calculate monthly averages
   const monthSet = new Set<string>();
@@ -118,9 +127,11 @@ export async function getAutoForecast(months: number = 12) {
     .map(([, v]) => ({ amount: v.amount.toFixed(2), occurrences: v.count }))
     .sort((a, b) => b.occurrences - a.occurrences)
     .slice(0, 5);
+  const forexRates = await forexRatesPromise;
 
   return {
     success: true,
+    forexRates,
     data: {
       monthlyIncome,
       monthlyExpense,

@@ -30,7 +30,7 @@ export default function LoginPage() {
 
   return (
     <div className="w-full max-w-sm rounded-xl bg-ledger-surface p-8 shadow-lg">
-      <h1 className="mb-6 text-center text-2xl font-semibold text-white">
+      <h1 className="mb-6 text-center text-2xl font-semibold text-ledger-text">
         Sign In
       </h1>
 
@@ -55,7 +55,7 @@ export default function LoginPage() {
             onChange={(e) => setUsername(e.target.value)}
             required
             autoComplete="username"
-            className="w-full rounded-lg border border-ledger-muted/30 bg-ledger-bg px-4 py-2.5 text-white placeholder:text-ledger-muted/50 focus:border-ledger-accent focus:outline-none focus:ring-1 focus:ring-ledger-accent"
+            className="w-full rounded-lg border border-ledger-muted/30 bg-ledger-bg px-4 py-2.5 text-ledger-text placeholder:text-ledger-muted/50 focus:border-ledger-accent focus:outline-none focus:ring-1 focus:ring-ledger-accent"
             placeholder="Enter your username"
           />
         </div>
@@ -74,7 +74,7 @@ export default function LoginPage() {
             onChange={(e) => setPassword(e.target.value)}
             required
             autoComplete="current-password"
-            className="w-full rounded-lg border border-ledger-muted/30 bg-ledger-bg px-4 py-2.5 text-white placeholder:text-ledger-muted/50 focus:border-ledger-accent focus:outline-none focus:ring-1 focus:ring-ledger-accent"
+            className="w-full rounded-lg border border-ledger-muted/30 bg-ledger-bg px-4 py-2.5 text-ledger-text placeholder:text-ledger-muted/50 focus:border-ledger-accent focus:outline-none focus:ring-1 focus:ring-ledger-accent"
             placeholder="Enter your password"
           />
         </div>
@@ -82,7 +82,7 @@ export default function LoginPage() {
         <button
           type="submit"
           disabled={loading}
-          className="w-full rounded-lg bg-ledger-accent py-2.5 text-sm font-medium text-white transition hover:bg-blue-600 disabled:opacity-50"
+          className="w-full rounded-lg bg-ledger-accent py-2.5 text-sm font-medium text-ledger-bg transition hover:opacity-90 disabled:opacity-50"
         >
           {loading ? 'Signing in...' : 'Sign In'}
         </button>

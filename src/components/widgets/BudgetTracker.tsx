@@ -4,7 +4,6 @@ import { useState } from 'react';
 import { AmountDisplay } from '../common/AmountDisplay';
 import { createTransaction, updateTransaction, deleteTransaction } from '@/lib/actions/ledger';
 import { updateBudget } from '@/lib/actions/budget';
-import { useToast } from '@/components/common/Toast';
 import { useSWRConfig } from 'swr';
 
 interface BudgetProgress {
@@ -22,38 +21,70 @@ interface Transaction {
   id: string;
   amount: string;
   description?: string | null;
-  occurredAt: string;
+  occurredAt: string | Date;
   budgetId?: string | null;
   categoryId?: string | null;
+  fromAccountId?: string | null;
   type: string;
   budget?: { id: string; name: string } | null;
+  fromAsset?: { id: string; name: string } | null;
+}
+
+interface Asset {
+  id: string;
+  name: string;
+}
+
+type BudgetFocus = 'over' | 'create' | 'review' | null;
+type ExpandedBudgetId = string | '__none' | null;
+type TransactionsProp = Transaction[] | { data?: Transaction[] } | null | undefined;
+
+function normalizeTransactions(transactions: TransactionsProp): Transaction[] {
+  if (Array.isArray(transactions)) return transactions;
+  if (transactions && Array.isArray(transactions.data)) return transactions.data;
+  return [];
+}
+
+function formatDateInputValue(value: string | Date): string {
+  if (value instanceof Date) return value.toISOString().slice(0, 10);
+  const dateOnly = value.match(/^\d{4}-\d{2}-\d{2}/)?.[0];
+  if (dateOnly) return dateOnly;
+  return new Date(value).toISOString().slice(0, 10);
 }
 
 export default function BudgetTracker({
   progress,
   transactions,
+  assets = [],
+  focus = null,
 }: {
   progress: BudgetProgress[];
-  transactions?: Transaction[];
+  transactions?: TransactionsProp;
+  assets?: Asset[];
+  focus?: BudgetFocus;
 }) {
   const { mutate } = useSWRConfig();
-  const [expandedId, setExpandedId] = useState<string | null>(null);
-  const [form, setForm] = useState({ amount: '', description: '' });
+  const [expandedId, setExpandedId] = useState<ExpandedBudgetId>(null);
+  const [form, setForm] = useState({ amount: '', description: '', fromAccountId: '' });
   const [editingTxId, setEditingTxId] = useState<string | null>(null);
-  const [editForm, setEditForm] = useState({ amount: '', description: '' });
+  const [editForm, setEditForm] = useState({ amount: '', description: '', fromAccountId: '', occurredAt: '' });
   const [editingBudgetId, setEditingBudgetId] = useState<string | null>(null);
   const [editBudgetAmount, setEditBudgetAmount] = useState('');
   const [error, setError] = useState('');
+  const focusedOverBudgetId = focus === 'over'
+    ? progress.find((p) => p.isOverBudget)?.id ?? null
+    : null;
+  const activeExpandedId = expandedId === '__none'
+    ? null
+    : expandedId ?? focusedOverBudgetId;
 
   if (progress.length === 0) return null;
 
-  const txs = transactions || [];
+  const txs = normalizeTransactions(transactions);
 
-  async function handleAddExpense(budgetId: string, categoryName: string) {
+  async function handleAddExpense(budgetId: string) {
     if (!form.amount) return;
     setError('');
-    // Find the budget to get its category
-    const budget = progress.find(p => p.id === budgetId);
     const linkedTx = txs.find(t => t.budgetId === budgetId);
     const categoryId = linkedTx?.categoryId || undefined;
     const result = await createTransaction({
@@ -61,12 +92,13 @@ export default function BudgetTracker({
       amount: form.amount,
       budgetId,
       categoryId,
+      fromAccountId: form.fromAccountId || undefined,
       description: form.description || undefined,
       occurredAt: new Date().toISOString().slice(0, 10),
     });
     if (result.success) {
-      setForm({ amount: '', description: '' });
-      mutate('budgets'); mutate('transactions');
+      setForm({ amount: '', description: '', fromAccountId: '' });
+      mutate(key => typeof key === 'string' && (key.startsWith('budgets') || key === 'budgets-list')); mutate('transactions');
     } else {
       setError(result.error || '添加失败');
     }
@@ -77,10 +109,12 @@ export default function BudgetTracker({
     const result = await updateTransaction(txId, {
       amount: editForm.amount || undefined,
       description: editForm.description || undefined,
+      fromAccountId: editForm.fromAccountId || null,
+      occurredAt: editForm.occurredAt || undefined,
     });
     if (result.success) {
       setEditingTxId(null);
-      mutate('budgets'); mutate('transactions');
+      mutate(key => typeof key === 'string' && (key.startsWith('budgets') || key === 'budgets-list')); mutate('transactions');
     } else {
       setError(result.error || '更新失败');
     }
@@ -90,7 +124,7 @@ export default function BudgetTracker({
     if (!confirm('确认删除这笔支出？')) return;
     const result = await deleteTransaction(txId);
     if (result.success) {
-      mutate('budgets'); mutate('transactions');
+      mutate(key => typeof key === 'string' && (key.startsWith('budgets') || key === 'budgets-list')); mutate('transactions');
     } else {
       setError(result.error || '删除失败');
     }
@@ -101,12 +135,14 @@ export default function BudgetTracker({
     setEditForm({
       amount: tx.amount?.toString() || '',
       description: tx.description || '',
+      fromAccountId: tx.fromAccountId || '',
+      occurredAt: formatDateInputValue(tx.occurredAt),
     });
   }
 
   return (
     <div className="bg-ledger-surface rounded-xl p-4">
-      <h2 className="text-base font-bold text-white mb-3">预算执行</h2>
+      <h2 className="text-base font-bold mb-3" style={{ color: 'var(--color-text-primary)' }}>预算执行</h2>
 
       {error && (
         <div className="mb-3 flex items-center justify-between rounded-lg bg-red-500/10 px-3 py-2 text-xs text-ledger-danger">
@@ -117,22 +153,22 @@ export default function BudgetTracker({
 
       <div className="space-y-3">
         {progress.map(p => {
-          const isExpanded = expandedId === p.id;
+          const isExpanded = activeExpandedId === p.id;
           const budgetTxs = txs.filter(t => t.budgetId === p.id).sort((a, b) => new Date(b.occurredAt).getTime() - new Date(a.occurredAt).getTime());
 
           return (
             <div key={p.id}>
               <div
                 className="flex items-center justify-between text-sm mb-1 cursor-pointer hover:bg-ledger-bg/30 rounded px-1 -mx-1 py-0.5 transition-colors"
-                onClick={() => setExpandedId(isExpanded ? null : p.id)}
+                onClick={() => setExpandedId(isExpanded ? '__none' : p.id)}
               >
                 <div className="flex items-center gap-2">
                   <span className="text-xs px-1.5 py-0.5 rounded bg-ledger-bg text-ledger-muted">{isExpanded ? '收起' : '记录'}</span>
-                  <span className="text-white">{p.name}</span>
+                  <span style={{ color: 'var(--color-text-primary)' }}>{p.name}</span>
                   <span className="text-xs text-ledger-muted">{p.categoryName}</span>
                 </div>
                 <div className="flex items-center gap-3 text-xs">
-                  <AmountDisplay amount={p.spent} className="text-white" />
+                  <AmountDisplay amount={p.spent} className="text-[var(--color-text-primary)]" />
                   <span className="text-ledger-muted">/</span>
                   {editingBudgetId === p.id ? (
                     <span className="inline-flex items-center gap-1">
@@ -145,7 +181,7 @@ export default function BudgetTracker({
                           if (e.key === 'Enter') {
                             await updateBudget(p.id, { amount: editBudgetAmount || undefined });
                             setEditingBudgetId(null);
-                            mutate('budgets'); mutate('transactions');
+                            mutate(key => typeof key === 'string' && (key.startsWith('budgets') || key === 'budgets-list')); mutate('transactions');
                           }
                           if (e.key === 'Escape') setEditingBudgetId(null);
                         }}
@@ -153,12 +189,13 @@ export default function BudgetTracker({
                           if (editBudgetAmount) {
                             await updateBudget(p.id, { amount: editBudgetAmount });
                             setEditingBudgetId(null);
-                            mutate('budgets'); mutate('transactions');
+                            mutate(key => typeof key === 'string' && (key.startsWith('budgets') || key === 'budgets-list')); mutate('transactions');
                           } else {
                             setEditingBudgetId(null);
                           }
                         }}
-                        className="w-20 rounded bg-ledger-bg border border-ledger-accent px-2 py-0.5 text-xs text-white focus:outline-none"
+                        className="w-20 rounded bg-white dark:bg-ledger-bg border border-ledger-accent px-2 py-0.5 text-xs focus:outline-none"
+                        style={{ color: 'var(--color-text-primary)' }}
                         autoFocus
                       />
                     </span>
@@ -209,10 +246,25 @@ export default function BudgetTracker({
                         step="0.01"
                         value={form.amount}
                         onChange={e => setForm(f => ({ ...f, amount: e.target.value }))}
-                        onKeyDown={e => { if (e.key === 'Enter') handleAddExpense(p.id, p.categoryName); }}
-                        className="w-24 rounded-md bg-ledger-surface border border-ledger-bg px-2 py-1 text-xs text-white focus:outline-none focus:border-ledger-accent"
+                        onKeyDown={e => { if (e.key === 'Enter') handleAddExpense(p.id); }}
+                        className="w-24 rounded-md bg-ledger-surface border border-ledger-bg px-2 py-1 text-xs focus:outline-none focus:border-ledger-accent"
+                        style={{ color: 'var(--color-text-primary)' }}
                         placeholder="0.00"
                       />
+                    </div>
+                    <div>
+                      <label className="block text-xs text-ledger-muted mb-1">来源资金账户</label>
+                      <select
+                        value={form.fromAccountId}
+                        onChange={e => setForm(f => ({ ...f, fromAccountId: e.target.value }))}
+                        className="w-32 rounded-md bg-ledger-surface border border-ledger-bg px-2 py-1 text-xs focus:outline-none focus:border-ledger-accent"
+                        style={{ color: 'var(--color-text-primary)' }}
+                      >
+                        <option value="">不指定（只记总收支）</option>
+                        {assets.map(asset => (
+                          <option key={asset.id} value={asset.id}>{asset.name}</option>
+                        ))}
+                      </select>
                     </div>
                     <div>
                       <label className="block text-xs text-ledger-muted mb-1">备注</label>
@@ -220,16 +272,18 @@ export default function BudgetTracker({
                         type="text"
                         value={form.description}
                         onChange={e => setForm(f => ({ ...f, description: e.target.value }))}
-                        onKeyDown={e => { if (e.key === 'Enter') handleAddExpense(p.id, p.categoryName); }}
-                        className="w-36 rounded-md bg-ledger-surface border border-ledger-bg px-2 py-1 text-xs text-white focus:outline-none focus:border-ledger-accent"
+                        onKeyDown={e => { if (e.key === 'Enter') handleAddExpense(p.id); }}
+                        className="w-36 rounded-md bg-ledger-surface border border-ledger-bg px-2 py-1 text-xs focus:outline-none focus:border-ledger-accent"
+                        style={{ color: 'var(--color-text-primary)' }}
                         placeholder="备注"
                       />
                     </div>
                     <button
                       type="button"
-                      onClick={() => handleAddExpense(p.id, p.categoryName)}
+                      onClick={() => handleAddExpense(p.id)}
                       disabled={!form.amount}
-                      className="rounded-md bg-ledger-accent px-3 py-1 text-xs font-medium text-white hover:opacity-90 disabled:opacity-50"
+                      className="rounded-md bg-ledger-accent px-3 py-1 text-xs font-medium hover:opacity-90 disabled:opacity-50"
+                      style={{ color: 'var(--color-text-inverse)' }}
                     >
                       添加
                     </button>
@@ -243,14 +297,25 @@ export default function BudgetTracker({
                       {budgetTxs.slice(0, 20).map(tx => (
                         <div key={tx.id}>
                           {editingTxId === tx.id ? (
-                            <div className="flex items-end gap-2 bg-ledger-surface/50 rounded px-2 py-1.5">
+                            <div className="flex flex-wrap items-end gap-2 bg-ledger-surface/50 rounded px-2 py-1.5">
                               <div>
                                 <input
                                   type="number"
                                   step="0.01"
                                   value={editForm.amount}
                                   onChange={e => setEditForm(f => ({ ...f, amount: e.target.value }))}
-                                  className="w-20 rounded bg-ledger-bg border border-ledger-bg px-2 py-0.5 text-xs text-white focus:outline-none focus:border-ledger-accent"
+                                  className="w-20 rounded border px-2 py-0.5 text-xs focus:outline-none focus:border-ledger-accent bg-white dark:bg-ledger-bg"
+                                  style={{ color: 'var(--color-text-primary)' }}
+                                />
+                              </div>
+                              <div>
+                                <input
+                                  type="date"
+                                  value={editForm.occurredAt}
+                                  onChange={e => setEditForm(f => ({ ...f, occurredAt: e.target.value }))}
+                                  className="w-32 rounded border px-2 py-0.5 text-xs focus:outline-none focus:border-ledger-accent bg-white dark:bg-ledger-bg"
+                                  style={{ color: 'var(--color-text-primary)' }}
+                                  aria-label="支出日期"
                                 />
                               </div>
                               <div>
@@ -258,8 +323,23 @@ export default function BudgetTracker({
                                   type="text"
                                   value={editForm.description}
                                   onChange={e => setEditForm(f => ({ ...f, description: e.target.value }))}
-                                  className="w-28 rounded bg-ledger-bg border border-ledger-bg px-2 py-0.5 text-xs text-white focus:outline-none focus:border-ledger-accent"
+                                  className="w-28 rounded border px-2 py-0.5 text-xs focus:outline-none focus:border-ledger-accent bg-white dark:bg-ledger-bg"
+                                  style={{ color: 'var(--color-text-primary)' }}
                                 />
+                              </div>
+                              <div>
+                                <select
+                                  value={editForm.fromAccountId}
+                                  onChange={e => setEditForm(f => ({ ...f, fromAccountId: e.target.value }))}
+                                  className="w-32 rounded border px-2 py-0.5 text-xs focus:outline-none focus:border-ledger-accent bg-white dark:bg-ledger-bg"
+                                  style={{ color: 'var(--color-text-primary)' }}
+                                  aria-label="来源资金账户"
+                                >
+                                  <option value="">不指定（只记总收支）</option>
+                                  {assets.map(asset => (
+                                    <option key={asset.id} value={asset.id}>{asset.name}</option>
+                                  ))}
+                                </select>
                               </div>
                               <button onClick={() => handleUpdateTx(tx.id)} className="text-xs text-green-400 hover:text-green-300">保存</button>
                               <button onClick={() => setEditingTxId(null)} className="text-xs text-ledger-muted hover:text-white">取消</button>
@@ -269,7 +349,10 @@ export default function BudgetTracker({
                               <span className="text-ledger-muted w-16 shrink-0">
                                 {new Date(tx.occurredAt).toLocaleDateString('zh-CN', { month: '2-digit', day: '2-digit' })}
                               </span>
-                              <AmountDisplay amount={parseFloat(tx.amount || '0')} className="text-white w-20 shrink-0" />
+                              <AmountDisplay amount={parseFloat(tx.amount || '0')} className="text-[var(--color-text-primary)] w-20 shrink-0" />
+                              <span className="text-ledger-muted w-24 shrink-0 truncate" title={tx.fromAsset?.name || '未指定来源资金账户'}>
+                                {tx.fromAsset?.name || '未指定账户'}
+                              </span>
                               <span className="text-ledger-muted flex-1 truncate">{tx.description || '--'}</span>
                               <button onClick={() => startEdit(tx)} className="text-ledger-muted hover:text-white shrink-0">编辑</button>
                               <button onClick={() => handleDeleteTx(tx.id)} className="text-ledger-danger hover:underline shrink-0">删除</button>

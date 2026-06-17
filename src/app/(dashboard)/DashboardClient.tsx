@@ -4,13 +4,13 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import Decimal from 'decimal.js';
 import { ErrorBoundary } from '@/components/common/ErrorBoundary';
-import { AnimatedNumber } from '@/components/common/AnimatedNumber';
 import { AmountDisplay } from '@/components/common/AmountDisplay';
 import AssetRingChart from '@/components/charts/AssetRingChart';
 import DebtFunnelChart from '@/components/charts/DebtFunnelChart';
 import ScissorChart from '@/components/charts/ScissorChart';
 import CashflowForecastChart from '@/components/charts/CashflowForecastChart';
 import TargetCashflow from '@/components/widgets/TargetCashflow';
+import FamilySafetySummary from '@/components/widgets/FamilySafetySummary';
 import StockTable from '@/components/widgets/StockTable';
 import LiabilityCards from '@/components/widgets/LiabilityCards';
 import BudgetTracker from '@/components/widgets/BudgetTracker';
@@ -147,57 +147,26 @@ export default function DashboardClient({ currentDate }: { currentDate: string }
   return (
     <div style={{
       display: 'grid',
-      gridTemplateColumns: 'repeat(2, 1fr)',
+      gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 520px), 1fr))',
       gap: '16px',
       maxWidth: 1400,
       margin: '0 auto',
     }}>
-      {/* Net Worth — full width */}
-      <ErrorBoundary name="NetWorth">
-        <div className="card" style={{ gridColumn: '1 / -1' }}>
-          <div className="card-body" style={{ padding: '16px 20px' }}>
-            {/* Top row: 净资产 + 管理 button */}
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-              <div>
-                <div style={{ fontSize: 11, color: 'var(--color-text-secondary)', textTransform: 'uppercase', letterSpacing: 0.3 }}>净资产</div>
-                <div style={{ fontSize: 26, fontWeight: 700, color: 'var(--color-text-primary)' }}>
-                  <AnimatedNumber value={netWorth} prefix="¥" />
-                </div>
-              </div>
-              <Link href="/management/assets" className="btn btn-outline btn-sm">管理</Link>
-            </div>
-            {/* Stats row: 总资产 / 总负债 / 净资产率 */}
-            <div style={{ display: 'flex', gap: 20, fontSize: 13, marginTop: 12 }}>
-              <div>
-                <span style={{ color: 'var(--color-text-secondary)' }}>总资产 </span>
-                <AmountDisplay amount={totalAssets.toNumber()} className="font-medium" />
-                {/* Liquidity sub-labels under 总资产 */}
-                <div style={{ display: 'flex', gap: 12, marginTop: 4 }}>
-                  <span style={{ fontSize: 11, color: 'var(--color-text-subdued)' }}>
-                    一级流动性{' '}
-                    <span style={{ fontWeight: 500, color: 'var(--color-text-secondary)' }}>
-                      ¥{tier1Total.toLocaleString('zh-CN', { minimumFractionDigits: 2 })}
-                    </span>
-                    <span style={{ color: 'var(--color-text-subdued)', fontSize: 10 }}>
-                      {' '}({totalAssets.gt(0) ? (tier1Total / totalAssets.toNumber() * 100).toFixed(0) : 0}%)
-                    </span>
-                  </span>
-                  <span style={{ fontSize: 11, color: 'var(--color-text-subdued)' }}>
-                    二级{' '}
-                    <span style={{ fontWeight: 500, color: 'var(--color-text-secondary)' }}>
-                      ¥{tier2Total.toLocaleString('zh-CN', { minimumFractionDigits: 2 })}
-                    </span>
-                    <span style={{ color: 'var(--color-text-subdued)', fontSize: 10 }}>
-                      {' '}({totalAssets.gt(0) ? (tier2Total / totalAssets.toNumber() * 100).toFixed(0) : 0}%)
-                    </span>
-                  </span>
-                </div>
-              </div>
-              <div><span style={{ color: 'var(--color-text-secondary)' }}>总负债 </span><AmountDisplay amount={totalLiabilities.toNumber()} className="font-medium" /></div>
-              <div><span style={{ color: 'var(--color-text-secondary)' }}>净资产率 </span><span style={{ fontWeight: 500, color: 'var(--color-text-primary)' }}>{surplusRate.toFixed(1)}%</span></div>
-            </div>
-          </div>
-        </div>
+      {/* Family safety — first-screen answer */}
+      <ErrorBoundary name="FamilySafety">
+        <FamilySafetySummary
+          currentDate={currentDate}
+          netWorth={netWorth}
+          totalAssets={totalAssets.toNumber()}
+          totalLiabilities={totalLiabilities.toNumber()}
+          surplusRate={surplusRate}
+          tier1Total={tier1Total}
+          currentIncome={curIncome}
+          currentExpense={curExpense}
+          budgetProgress={budgetProgress}
+          transactions={transactions}
+          pricesStale={pricesStale}
+        />
       </ErrorBoundary>
 
       {/* MonthFlow + Budget — side by side */}
@@ -213,7 +182,7 @@ export default function DashboardClient({ currentDate }: { currentDate: string }
               <Link href="/management/budget" className="btn btn-outline btn-sm">管理</Link>
             </div>
             <div className="card-body">
-              <BudgetTracker progress={budgetProgress} transactions={transactions as any} />
+              <BudgetTracker progress={budgetProgress} transactions={transactions as any} assets={assets} />
             </div>
           </div>
         </ErrorBoundary>
@@ -221,7 +190,7 @@ export default function DashboardClient({ currentDate }: { currentDate: string }
         <ErrorBoundary name="BudgetEmpty">
           <div className="card">
             <div className="card-header"><span>预算追踪</span></div>
-            <div className="card-body" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: 120, color: 'var(--color-text-muted)', fontSize: 13 }}>
+            <div className="card-body" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: 120, color: 'var(--color-text-secondary)', fontSize: 13 }}>
               暂无预算 · <Link href="/management/budget" className="btn btn-outline btn-sm" style={{ marginLeft: 8 }}>创建</Link>
             </div>
           </div>
@@ -237,8 +206,17 @@ export default function DashboardClient({ currentDate }: { currentDate: string }
           </div>
           <div className="card-body" style={{ display: 'flex', gap: 16, alignItems: 'flex-start' }}>
             <div style={{ flexShrink: 0 }}>
-              {ringData.length > 0 ? <AssetRingChart data={ringData} /> : (
-                <div style={{ width: 260, height: 260, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--color-text-muted)' }}>暂无数据</div>
+              {ringData.length > 0 ? (
+                <AssetRingChart
+                  data={ringData}
+                  centerMetrics={{
+                    totalAssets: totalAssets.toNumber(),
+                    tier1Total,
+                    tier2Total,
+                  }}
+                />
+              ) : (
+                <div style={{ width: 260, height: 260, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--color-text-secondary)' }}>暂无数据</div>
               )}
             </div>
             <div style={{ flex: 1, minWidth: 0 }}>
@@ -255,18 +233,18 @@ export default function DashboardClient({ currentDate }: { currentDate: string }
                       display: 'inline-block', width: 10, height: 10, borderRadius: 2.5,
                       background: cfg.color, flexShrink: 0,
                     }} />
-                    <span style={{ color: 'var(--color-text)' }}>{cfg.label}</span>
-                    {!isCollapsible && count > 1 && <span style={{ color: 'var(--color-text-muted)', fontSize: 11 }}>({count}项)</span>}
+                    <span style={{ color: 'var(--color-text-primary)' }}>{cfg.label}</span>
+                    {!isCollapsible && count > 1 && <span style={{ color: 'var(--color-text-secondary)', fontSize: 11 }}>({count}项)</span>}
                     {isGoldCat && (() => {
                       const grams = assets.filter((a: any) => (a.category||'other') === cat).reduce((s: number, a: any) => s + (a.quantity || 0), 0);
-                      return <span style={{ color: 'var(--color-text-muted)', fontSize: 11, width: 48, textAlign: 'right' }}>{Number(grams).toFixed(0)}克</span>;
+                      return <span style={{ color: 'var(--color-text-secondary)', fontSize: 11, width: 48, textAlign: 'right' }}>{Number(grams).toFixed(0)}克</span>;
                     })()}
-                    <span style={{ color: 'var(--color-text-muted)', fontSize: 11, width: 40, textAlign: 'right', marginLeft: 'auto' }}>{pct}%</span>
+                    <span style={{ color: 'var(--color-text-secondary)', fontSize: 11, width: 40, textAlign: 'right', marginLeft: 'auto' }}>{pct}%</span>
                     <AmountDisplay amount={total} className="text-sm" />
                   </div>
                 );
               })}
-              {assets.length === 0 && <div style={{ color: 'var(--color-text-muted)', fontSize: 13, padding: '16px 0', textAlign: 'center' }}>暂无资产</div>}
+              {assets.length === 0 && <div style={{ color: 'var(--color-text-secondary)', fontSize: 13, padding: '16px 0', textAlign: 'center' }}>暂无资产</div>}
             </div>
           </div>
         </div>
@@ -282,12 +260,12 @@ export default function DashboardClient({ currentDate }: { currentDate: string }
           <div className="card-body" style={{ display: 'flex', gap: 20, alignItems: 'flex-start' }}>
             <div style={{ flexShrink: 0 }}>
               {funnelData.length > 0 ? <DebtFunnelChart data={funnelData} /> : (
-                <div style={{ width: 220, height: 220, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--color-text-muted)', fontSize: 13 }}>暂无负债</div>
+                <div style={{ width: 220, height: 220, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--color-text-secondary)', fontSize: 13 }}>暂无负债</div>
               )}
             </div>
             <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ fontSize: 13, color: 'var(--color-text-muted)', marginBottom: 8 }}>
-                总额 <AmountDisplay amount={totalLiabilities.toNumber()} className="font-bold" /> · WACR <span style={{ color: 'var(--color-primary)', fontWeight: 500 }}>{(wacr * 100).toFixed(2)}%</span>
+              <div style={{ fontSize: 13, color: 'var(--color-text-secondary)', marginBottom: 8 }}>
+                总额 <AmountDisplay amount={totalLiabilities.toNumber()} className="font-bold" /> · WACR <span style={{ color: 'var(--color-text-primary)', fontWeight: 500 }}>{(wacr * 100).toFixed(2)}%</span>
               </div>
               <LiabilityCards liabilities={liabilities} transactions={transactions} />
             </div>
@@ -331,9 +309,9 @@ export default function DashboardClient({ currentDate }: { currentDate: string }
           </div>
           <div className="card-body">
             <div style={{ display: 'flex', gap: 16, fontSize: 13, marginBottom: 8 }}>
-              <span style={{ color: 'var(--color-text-muted)' }}>本月收入 <AmountDisplay amount={curIncome} className="font-medium" /></span>
-              <span style={{ color: 'var(--color-text-muted)' }}>支出 <AmountDisplay amount={curExpense} className="font-medium" /></span>
-              <span style={{ color: 'var(--color-text-muted)' }}>盈余率 <span style={{ fontWeight: 500, color: 'var(--color-text-heading)' }}>{curIncome > 0 ? ((curIncome - curExpense) / curIncome * 100).toFixed(1) : '0'}%</span></span>
+              <span style={{ color: 'var(--color-text-secondary)' }}>本月收入 <AmountDisplay amount={curIncome} className="font-medium" /></span>
+              <span style={{ color: 'var(--color-text-secondary)' }}>支出 <AmountDisplay amount={curExpense} className="font-medium" /></span>
+              <span style={{ color: 'var(--color-text-secondary)' }}>盈余率 <span style={{ fontWeight: 500, color: 'var(--color-text-primary)' }}>{curIncome > 0 ? ((curIncome - curExpense) / curIncome * 100).toFixed(1) : '0'}%</span></span>
             </div>
             <ScissorChart months={months} income={incomeData} expense={expenseData} survivalLine={curIncome * 0.5} />
           </div>
@@ -345,10 +323,10 @@ export default function DashboardClient({ currentDate }: { currentDate: string }
         <div className="card">
           <div className="card-header">
             <span>现金流预测</span>
-            <div style={{ display: 'flex', gap: 16, fontSize: 12, color: 'var(--color-text-muted)' }}>
-              <span>生存月数 <span style={{ color: 'var(--color-primary)', fontWeight: 700 }}>{runwayMonths}</span></span>
-              <span>财务自由 <span style={{ color: 'var(--color-primary)', fontWeight: 700 }}>{freedomProgress.toFixed(1)}%</span></span>
-              <span>预警 <span style={{ fontWeight: 700, color: forecast.warningLevel === 'red' ? 'var(--color-danger)' : forecast.warningLevel === 'yellow' ? 'var(--color-warning)' : 'var(--color-text-heading)' }}>{forecast.warningLevel === 'red' ? '危险' : forecast.warningLevel === 'yellow' ? '预警' : '健康'}</span></span>
+            <div style={{ display: 'flex', gap: 16, fontSize: 12, color: 'var(--color-text-secondary)' }}>
+              <span>生存月数 <span style={{ color: 'var(--color-text-primary)', fontWeight: 700 }}>{runwayMonths}</span></span>
+              <span>财务自由 <span style={{ color: 'var(--color-text-primary)', fontWeight: 700 }}>{freedomProgress.toFixed(1)}%</span></span>
+              <span>预警 <span style={{ fontWeight: 700, color: forecast.warningLevel === 'red' ? 'var(--color-danger)' : forecast.warningLevel === 'yellow' ? 'var(--color-warning)' : 'var(--color-text-primary)' }}>{forecast.warningLevel === 'red' ? '危险' : forecast.warningLevel === 'yellow' ? '预警' : '健康'}</span></span>
             </div>
           </div>
           <div className="card-body">

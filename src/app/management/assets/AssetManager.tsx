@@ -1,25 +1,130 @@
 'use client';
 
-import { useState, useOptimistic } from 'react';
+import { useMemo, useState } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { AmountDisplay } from '@/components/common/AmountDisplay';
 import { createAsset, updateAsset, deleteAsset } from '@/lib/actions/assets';
 import { AssetTable } from './AssetTable';
 import { PriceRefresher } from '@/components/widgets/PriceRefresher';
+import AccountViewLayer from '@/components/widgets/AccountViewLayer';
 import { useAssets } from '@/hooks/useAssets';
+import { useTransactions } from '@/hooks/useTransactions';
 import { useToast } from '@/components/common/Toast';
 import { useSWRConfig } from 'swr';
 
+type AssetFocus = 'liquidity' | 'prices' | null;
+
+interface AssetRow {
+  id: string;
+  name: string;
+  category?: string | null;
+  balance?: string | null;
+  currency?: string | null;
+  liquidityTier?: string | null;
+}
+
+function parseAssetBalance(value: unknown) {
+  if (typeof value === 'number') return value;
+  if (typeof value === 'string') {
+    const parsed = Number.parseFloat(value);
+    return Number.isFinite(parsed) ? parsed : 0;
+  }
+  return 0;
+}
+
+const liquidityTierRank: Record<string, number> = {
+  tier1: 0,
+  tier2: 1,
+  tier3: 2,
+  long_term: 2,
+  illiquid: 3,
+};
+
+const categoryLiquidityRank: Record<string, number> = {
+  cash: 0,
+  current_deposit: 0,
+  fund: 0,
+  stock: 1,
+  bond: 1,
+  gold_paper: 1,
+  gold_physical: 1,
+  provident_fund: 2,
+  pension: 2,
+  real_estate: 3,
+  vehicle: 3,
+  other: 4,
+};
+
+const emptyAssets: AssetRow[] = [];
+
+function getLiquidityRank(asset: AssetRow) {
+  if (asset.liquidityTier && asset.liquidityTier in liquidityTierRank) {
+    return liquidityTierRank[asset.liquidityTier];
+  }
+  if (asset.category && asset.category in categoryLiquidityRank) {
+    return categoryLiquidityRank[asset.category];
+  }
+  return categoryLiquidityRank.other;
+}
+
 export default function AssetManager() {
-  const { data, isLoading, error: fetchError } = useAssets();
+  const searchParams = useSearchParams();
+  const focusParam = searchParams.get('focus');
+  const assetFocus: AssetFocus =
+    focusParam === 'liquidity' || focusParam === 'prices'
+      ? focusParam
+      : null;
+  const { data } = useAssets();
+  const { data: transactionData } = useTransactions();
   const { mutate } = useSWRConfig();
   const toast = useToast();
 
-  const assets = data?.data ?? [];
+  const assets: AssetRow[] = data?.data ?? emptyAssets;
+  const sortedAssets = useMemo(() => (
+    assets
+      .map((asset, index) => ({ asset, index }))
+      .sort((a, b) => getLiquidityRank(a.asset) - getLiquidityRank(b.asset) || a.index - b.index)
+      .map(({ asset }) => asset)
+  ), [assets]);
+  const accountTransactions = transactionData?.data ?? [];
   const pricesStale = data?.pricesStale ?? false;
 
-  const [optimisticAssets, addOptimistic] = useOptimistic(assets, (state: any[], newAsset: any) => [newAsset, ...state]);
+  const optimisticAssets = sortedAssets;
   const [error, setError] = useState('');
   const [showDepreciation, setShowDepreciation] = useState(false);
+  const tier1Categories = ['cash', 'current_deposit', 'stock'];
+  const tier1Assets = optimisticAssets.filter((asset) => tier1Categories.includes(asset.category || ''));
+  const tier1Total = tier1Assets.reduce((sum, asset) => sum + parseAssetBalance(asset.balance), 0);
+  const marketPricedAssets = optimisticAssets.filter((asset) => (
+    asset.category === 'stock' ||
+    asset.category === 'fund' ||
+    asset.category === 'gold_physical' ||
+    asset.category === 'gold_paper'
+  ));
+  const assetFocusCopy = assetFocus === 'liquidity'
+    ? {
+        title: '补足一级流动性',
+        detail: `当前一级流动性约 ${tier1Total.toLocaleString('zh-CN', { maximumFractionDigits: 0 })} 元，来自 ${tier1Assets.length} 个资金账户。优先新增现金、银行活期，或把可随时取用的资产整理到一级流动性。`,
+        cta: '新增流动资金账户',
+        href: '#create-form',
+      }
+    : {
+        title: '刷新资产价格',
+        detail: pricesStale
+          ? `${marketPricedAssets.length} 个股票、基金或黄金资产可能使用了旧价格；先点右上角刷新价格，再检查资产列表。`
+          : `${marketPricedAssets.length} 个市场定价资产当前没有明显过期价格；仍可手动刷新后复核。`,
+        cta: '检查资产列表',
+        href: '#asset-table',
+      };
+  const createAssetDefaults = assetFocus === 'liquidity'
+    ? {
+        category: 'current_deposit',
+        namePlaceholder: '如：家庭备用金 / 招行活期',
+      }
+    : {
+        category: '',
+        namePlaceholder: '资产名称',
+      };
 
   async function handleCreate(formData: FormData) {
     setError('');
@@ -134,6 +239,27 @@ export default function AssetManager() {
         </div>
       )}
 
+      {assetFocus && (
+        <section className="mb-6 rounded-xl border border-ledger-accent/20 bg-ledger-surface p-4">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <div className="text-xs font-semibold text-ledger-muted">资产行动</div>
+              <h2 className="mt-1 text-lg font-bold" style={{ color: 'var(--color-text-primary)' }}>
+                {assetFocusCopy.title}
+              </h2>
+              <p className="mt-1 text-sm text-ledger-muted">
+                {assetFocusCopy.detail}
+              </p>
+            </div>
+            <a href={assetFocusCopy.href} className="btn btn-outline btn-sm">
+              {assetFocusCopy.cta}
+            </a>
+          </div>
+        </section>
+      )}
+
+      <AccountViewLayer assets={optimisticAssets} transactions={accountTransactions} />
+
       {/* 专项账户总览 */}
       {(() => {
         const specialMap: Record<string, { icon: string; label: string }> = {
@@ -141,14 +267,16 @@ export default function AssetManager() {
           pension: { icon: '🏛️', label: '养老保险' },
           current_deposit: { icon: '💳', label: '银行活期' },
         };
-        const specialAssets = assets.filter((a: any) => specialMap[a.category]);
+        const specialAssets = assets.filter((a) => Boolean(a.category && specialMap[a.category]));
         if (specialAssets.length === 0) return null;
-        const groups: Record<string, { icon: string; label: string; assets: any[]; total: number }> = {};
+        const groups: Record<string, { icon: string; label: string; assets: AssetRow[]; total: number }> = {};
         for (const a of specialAssets) {
-          const cfg = specialMap[a.category];
-          if (!groups[a.category]) groups[a.category] = { ...cfg, assets: [], total: 0 };
-          groups[a.category].assets.push(a);
-          groups[a.category].total += parseFloat(a.balance || '0');
+          const category = a.category || 'other';
+          const cfg = specialMap[category];
+          if (!cfg) continue;
+          if (!groups[category]) groups[category] = { ...cfg, assets: [], total: 0 };
+          groups[category].assets.push(a);
+          groups[category].total += parseAssetBalance(a.balance);
         }
         return (
           <div className="mb-6 rounded-xl bg-ledger-surface p-4">
@@ -157,20 +285,20 @@ export default function AssetManager() {
               {Object.entries(groups).map(([cat, g]) => (
                 <div key={cat} className="bg-ledger-bg rounded-lg p-3">
                   <div className="flex items-center justify-between mb-2">
-                    <span className="text-sm font-medium text-white">{g.icon} {g.label}</span>
+                    <span className="text-sm font-medium" style={{ color: 'var(--color-text-primary)' }}>{g.icon} {g.label}</span>
                     <AmountDisplay amount={g.total} className="text-sm" />
                   </div>
-                  {g.assets.map((a: any) => (
+                  {g.assets.map((a) => (
                     <div key={a.id} className="flex justify-between text-xs text-ledger-muted py-0.5">
                       <span className="truncate flex-1">{a.name}</span>
-                      <AmountDisplay amount={parseFloat(a.balance || '0')} className="shrink-0" />
+                      <AmountDisplay amount={parseAssetBalance(a.balance)} className="shrink-0" />
                     </div>
                   ))}
                 </div>
               ))}
             </div>
             <div className="mt-3 pt-3 border-t border-ledger-bg text-xs text-ledger-muted">
-              小计 ¥{groups && Object.values(groups).reduce((s: number, g: any) => s + g.total, 0).toLocaleString('zh-CN', { minimumFractionDigits: 2 })}
+              小计 ¥{Object.values(groups).reduce((sum, group) => sum + group.total, 0).toLocaleString('zh-CN', { minimumFractionDigits: 2 })}
             </div>
           </div>
         );
@@ -187,7 +315,7 @@ export default function AssetManager() {
             name="name"
             required
             className="rounded-md bg-ledger-bg border border-ledger-bg px-3 py-2 text-sm placeholder-ledger-muted focus:outline-none focus:border-ledger-accent"
-            placeholder="资产名称"
+            placeholder={createAssetDefaults.namePlaceholder}
           />
         </div>
         <div>
@@ -195,6 +323,7 @@ export default function AssetManager() {
           <select
             name="category"
             required
+            defaultValue={createAssetDefaults.category}
             className="rounded-md bg-ledger-bg border border-ledger-bg px-3 py-2 text-sm focus:outline-none focus:border-ledger-accent"
           >
             <option value="">选择分类</option>
@@ -335,7 +464,9 @@ export default function AssetManager() {
         </button>
       </form>
 
-      <AssetTable assets={optimisticAssets} handleDelete={handleDelete} handleUpdate={handleUpdate} />
+      <div id="asset-table">
+        <AssetTable assets={optimisticAssets} handleDelete={handleDelete} handleUpdate={handleUpdate} />
+      </div>
     </div>
   );
 }

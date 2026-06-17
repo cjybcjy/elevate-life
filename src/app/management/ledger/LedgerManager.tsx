@@ -1,6 +1,8 @@
 'use client';
 
-import { useState, useEffect, useCallback, useOptimistic } from 'react';
+import { useState, useEffect, useCallback } from 'react';
+import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
 import { createTransaction, deleteTransaction, updateTransactionReconciled, updateTransaction } from '@/lib/actions/ledger';
 import {
   getRecurringRules,
@@ -18,6 +20,22 @@ interface Template {
   fromAccountId: string;
   toAccountId: string;
   description: string;
+}
+
+interface RecurringRule {
+  id: string;
+  name: string;
+  type: string;
+  amount: string;
+  currency?: string | null;
+  categoryId?: string | null;
+  fromAccountId?: string | null;
+  toAccountId?: string | null;
+  description?: string | null;
+  frequency: string;
+  interval: number;
+  nextDueDate: string | Date;
+  isActive: boolean;
 }
 
 const TEMPLATES_KEY = 'ledger-templates';
@@ -73,6 +91,9 @@ import { getCategories } from '@/lib/actions/categories';
 // ... (keep all existing type definitions and utility functions above)
 
 export default function LedgerManager() {
+  const searchParams = useSearchParams();
+  const needsSourceFromQuery = searchParams.get('needsSource') === '1';
+  const isCreateFocus = searchParams.get('focus') === 'create';
   const { data: txData, isLoading: txLoading } = useTransactions();
   const transactions = txData?.data ?? [];
   const { data: assetData } = useAssets();
@@ -83,7 +104,6 @@ export default function LedgerManager() {
   const categories = catData ?? [];
 
   const [activeTab, setActiveTab] = useState<'transactions' | 'recurring'>('transactions');
-  const [recurringRules, setRecurringRules] = useState<any[]>([]);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [templates, setTemplates] = useState<Template[]>([]);
@@ -96,7 +116,7 @@ export default function LedgerManager() {
   const [reconCandidates, setReconCandidates] = useState<any[]>([]);
   const [editingTxId, setEditingTxId] = useState<string | null>(null);
   const [budgetOptions, setBudgetOptions] = useState<any[]>([]);
-  const [editTxForm, setEditTxForm] = useState({ amount: '', categoryId: '', budgetId: '', description: '', occurredAt: '' });
+  const [editTxForm, setEditTxForm] = useState({ amount: '', categoryId: '', budgetId: '', fromAccountId: '', description: '', occurredAt: '' });
   const [editingRecurringId, setEditingRecurringId] = useState<string | null>(null);
   const [editRecurringForm, setEditRecurringForm] = useState({
     name: '', amount: '', frequency: 'monthly', interval: 1, nextDueDate: '', categoryId: '', fromAccountId: '', toAccountId: '',
@@ -127,14 +147,35 @@ export default function LedgerManager() {
     interval: 1,
     startDate: new Date().toISOString().split('T')[0],
   });
+  const { data: recurringRules = [], mutate: mutateRecurringRules } = useSWR<RecurringRule[]>(
+    activeTab === 'recurring' ? 'recurring-rules' : null,
+    async () => {
+      const result = await getRecurringRules();
+      if (result.success) return result.data ?? [];
+      if (result.error?.includes('会话密钥')) {
+        window.location.href = '/login';
+        return [];
+      }
+      throw new Error(result.error || '获取周期交易失败');
+    },
+    {
+      onError(error) {
+        setError(error instanceof Error ? error.message : '获取周期交易失败');
+      },
+    },
+  );
 
   useEffect(() => {
     setTemplates(loadTemplates());
+    if (needsSourceFromQuery || isCreateFocus) {
+      setActiveTab('transactions');
+      return;
+    }
     try {
       const tab = localStorage.getItem('ledger-tab');
       if (tab === 'recurring' || tab === 'transactions') setActiveTab(tab);
     } catch {}
-  }, []);
+  }, [needsSourceFromQuery, isCreateFocus]);
 
   // Fetch budget options when category or date changes
   useEffect(() => {
@@ -287,6 +328,7 @@ export default function LedgerManager() {
         interval: 1,
         startDate: new Date().toISOString().split('T')[0],
       });
+      await mutateRecurringRules();
       mutate('transactions'); toast.success('操作成功');
     } else if (result.error?.includes('会话密钥')) {
       window.location.href = '/login';
@@ -297,19 +339,27 @@ export default function LedgerManager() {
   }
 
   async function handleToggleRecurring(ruleId: string) {
-    setRecurringRules(prev => prev.map(r =>
+    mutateRecurringRules(prev => (prev ?? []).map(r =>
       r.id === ruleId ? { ...r, isActive: !r.isActive } : r
-    ));
-    await toggleRecurringRule(ruleId);
-    mutate('transactions'); toast.success('操作成功');
+    ), false);
+    const result = await toggleRecurringRule(ruleId);
+    if (result.success) {
+      await mutateRecurringRules();
+      mutate('transactions'); toast.success('操作成功');
+    } else {
+      await mutateRecurringRules();
+      setError(result.error || '更新失败');
+    }
   }
 
   async function handleDeleteRecurring(ruleId: string) {
-    setRecurringRules(prev => prev.filter(r => r.id !== ruleId));
+    mutateRecurringRules(prev => (prev ?? []).filter(r => r.id !== ruleId), false);
     const result = await deleteRecurringRule(ruleId);
     if (result.success) {
+      await mutateRecurringRules();
       mutate('transactions');
     } else {
+      await mutateRecurringRules();
       setError(result.error || '删除失败');
     }
   }
@@ -322,6 +372,7 @@ export default function LedgerManager() {
       amount: editTxForm.amount || undefined,
       categoryId: editTxForm.categoryId || undefined,
       budgetId: editTxForm.budgetId || undefined,
+      fromAccountId: editTxForm.fromAccountId || undefined,
       description: editTxForm.description || undefined,
       occurredAt: editTxForm.occurredAt || undefined,
     });
@@ -339,6 +390,7 @@ export default function LedgerManager() {
       amount: tx.amount?.toString() || '',
       categoryId: tx.categoryId || '',
       budgetId: tx.budgetId || '',
+      fromAccountId: tx.fromAccountId || '',
       description: tx.description || '',
       occurredAt: new Date(tx.occurredAt).toISOString().split('T')[0],
     });
@@ -367,6 +419,7 @@ export default function LedgerManager() {
     });
     if (result.success) {
       setEditingRecurringId(null);
+      await mutateRecurringRules();
       mutate('transactions'); toast.success('操作成功');
     } else {
       setError(result.error || '更新失败');
@@ -386,6 +439,12 @@ export default function LedgerManager() {
       nextDueDate: new Date(r.nextDueDate).toISOString().split('T')[0],
     });
   }
+
+  const needsSourceTransactions = transactions.filter((t: any) => (
+    String(t.type).toUpperCase() === 'EXPENSE' && !t.fromAccountId
+  ));
+  const showNeedsSourceOnly = needsSourceFromQuery;
+  const visibleTransactions = showNeedsSourceOnly ? needsSourceTransactions : transactions;
 
   return (
     <div>
@@ -451,11 +510,25 @@ export default function LedgerManager() {
             </div>
           )}
 
+          {isCreateFocus && (
+            <section className="mb-4 rounded-xl border border-ledger-accent/20 bg-ledger-surface p-4">
+              <div className="text-xs font-semibold text-ledger-muted">流水行动</div>
+              <h2 className="mt-1 text-lg font-bold" style={{ color: 'var(--color-text-primary)' }}>
+                先补齐本月流水
+              </h2>
+              <p className="mt-1 text-sm text-ledger-muted">
+                先把本月收入、固定支出和最近几笔消费记进来；首页才能判断现金流、预算和流动性是否安全。
+              </p>
+            </section>
+          )}
+
           {/* Create form */}
           <form
             id="create-form"
             action={handleCreate}
-            className="mb-4 rounded-xl bg-ledger-surface p-4 flex flex-wrap gap-3 items-end"
+            className={`mb-4 rounded-xl bg-ledger-surface p-4 flex flex-wrap gap-3 items-end ${
+              isCreateFocus ? 'border border-ledger-accent/30' : ''
+            }`}
           >
             <div>
               <label className="block text-xs text-ledger-muted mb-1">类型</label>
@@ -529,21 +602,21 @@ export default function LedgerManager() {
               </div>
             )}
             <div>
-              <label className="block text-xs text-ledger-muted mb-1">来源账户</label>
+              <label className="block text-xs text-ledger-muted mb-1">来源资金账户</label>
               <select
                 name="fromAccountId"
                 value={formValues.fromAccountId}
                 onChange={e => setFormValues(prev => ({ ...prev, fromAccountId: e.target.value }))}
                 className="rounded-md bg-ledger-bg border border-ledger-bg px-3 py-2 text-sm focus:outline-none focus:border-ledger-accent"
               >
-                <option value="">--</option>
+                <option value="">不指定（只记总收支）</option>
                 {assets.map((a: any) => (
                   <option key={a.id} value={a.id}>{a.name}</option>
                 ))}
               </select>
             </div>
             <div>
-              <label className="block text-xs text-ledger-muted mb-1">目标账户</label>
+              <label className="block text-xs text-ledger-muted mb-1">目标资金账户</label>
               <select
                 name="toAccountId"
                 value={formValues.toAccountId}
@@ -714,6 +787,37 @@ export default function LedgerManager() {
             )}
           </div>
 
+          <div className="mb-4 rounded-xl bg-ledger-surface p-3 border border-ledger-primary/20">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <div className="text-sm font-semibold" style={{ color: 'var(--color-text-primary)' }}>待补来源资金账户</div>
+                <p className="mt-1 text-xs text-ledger-muted">
+                  {needsSourceTransactions.length} 笔支出还没有选择来源资金账户，补齐后会自动更新对应资金账户余额。
+                </p>
+              </div>
+              <div className="flex items-center gap-2">
+                <Link
+                  href="/management/ledger?needsSource=1"
+                  className={`text-xs px-3 py-1.5 rounded-md border transition-colors ${
+                    showNeedsSourceOnly
+                      ? 'bg-ledger-accent/20 border-ledger-accent text-ledger-accent'
+                      : 'bg-ledger-bg border-ledger-bg text-ledger-muted hover:text-white'
+                  }`}
+                >
+                  只看待补来源
+                </Link>
+                {showNeedsSourceOnly && (
+                  <Link
+                    href="/management/ledger"
+                    className="text-xs px-3 py-1.5 rounded-md border border-ledger-bg bg-ledger-bg text-ledger-muted hover:text-white"
+                  >
+                    显示全部流水
+                  </Link>
+                )}
+              </div>
+            </div>
+          </div>
+
           {/* Table */}
           <div className="rounded-xl bg-ledger-surface overflow-hidden">
             <table className="w-full text-sm">
@@ -732,14 +836,14 @@ export default function LedgerManager() {
                 </tr>
               </thead>
               <tbody>
-                {transactions.length === 0 && (
+                {visibleTransactions.length === 0 && (
                   <tr>
                     <td colSpan={10} className="px-4 py-8 text-center text-ledger-muted">
-                      暂无流水
+                      {showNeedsSourceOnly ? '暂无待补来源资金账户的支出' : '暂无流水'}
                     </td>
                   </tr>
                 )}
-                {transactions.map((t: any) => (
+                {visibleTransactions.map((t: any) => (
                   <tr key={t.id} className="border-b border-ledger-bg last:border-0">
                     <td className="px-4 py-3">
                       <span className={`inline-block rounded-full px-2 py-0.5 text-xs font-medium ${typeBadgeClass(t.type)}`}>
@@ -818,6 +922,19 @@ export default function LedgerManager() {
                                 </select>
                               </div>
                             )}
+                            <div>
+                              <label className="block text-xs text-ledger-muted mb-1">来源资金账户</label>
+                              <select
+                                value={editTxForm.fromAccountId}
+                                onChange={e => setEditTxForm(p => ({ ...p, fromAccountId: e.target.value }))}
+                                className="rounded-md bg-ledger-surface border border-ledger-bg px-2 py-1.5 text-xs focus:outline-none focus:border-ledger-accent"
+                              >
+                                <option value="">不指定（只记总收支）</option>
+                                {assets.map((a: any) => (
+                                  <option key={a.id} value={a.id}>{a.name}</option>
+                                ))}
+                              </select>
+                            </div>
                             <div>
                               <label className="block text-xs text-ledger-muted mb-1">日期</label>
                               <input
@@ -929,21 +1046,21 @@ export default function LedgerManager() {
               </select>
             </div>
             <div>
-              <label className="block text-xs text-ledger-muted mb-1">来源账户</label>
+              <label className="block text-xs text-ledger-muted mb-1">来源资金账户</label>
               <select
                 name="fromAccountId"
                 value={recurringForm.fromAccountId}
                 onChange={e => setRecurringForm(prev => ({ ...prev, fromAccountId: e.target.value }))}
                 className="rounded-md bg-ledger-bg border border-ledger-bg px-3 py-2 text-sm focus:outline-none focus:border-ledger-accent"
               >
-                <option value="">--</option>
+                <option value="">不指定（只记总收支）</option>
                 {assets.map((a: any) => (
                   <option key={a.id} value={a.id}>{a.name}</option>
                 ))}
               </select>
             </div>
             <div>
-              <label className="block text-xs text-ledger-muted mb-1">目标账户</label>
+              <label className="block text-xs text-ledger-muted mb-1">目标资金账户</label>
               <select
                 name="toAccountId"
                 value={recurringForm.toAccountId}
@@ -1109,18 +1226,18 @@ export default function LedgerManager() {
                               </select>
                             </div>
                             <div>
-                              <label className="block text-xs text-ledger-muted mb-1">来源账户</label>
+                              <label className="block text-xs text-ledger-muted mb-1">来源资金账户</label>
                               <select value={editRecurringForm.fromAccountId}
                                 onChange={e => setEditRecurringForm(p => ({ ...p, fromAccountId: e.target.value }))}
                                 className="rounded-md bg-ledger-surface border border-ledger-bg px-2 py-1.5 text-xs focus:outline-none focus:border-ledger-accent">
-                                <option value="">--</option>
+                                <option value="">不指定（只记总收支）</option>
                                 {assets.map((a: any) => (
                                   <option key={a.id} value={a.id}>{a.name}</option>
                                 ))}
                               </select>
                             </div>
                             <div>
-                              <label className="block text-xs text-ledger-muted mb-1">目标账户</label>
+                              <label className="block text-xs text-ledger-muted mb-1">目标资金账户</label>
                               <select value={editRecurringForm.toAccountId}
                                 onChange={e => setEditRecurringForm(p => ({ ...p, toAccountId: e.target.value }))}
                                 className="rounded-md bg-ledger-surface border border-ledger-bg px-2 py-1.5 text-xs focus:outline-none focus:border-ledger-accent">

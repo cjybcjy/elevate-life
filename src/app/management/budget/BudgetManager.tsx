@@ -1,12 +1,14 @@
 'use client';
 
-import { useState, useOptimistic } from 'react';
+import { useState } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { createBudget, updateBudget, deleteBudget, getBudgets } from '@/lib/actions/budget';
 import { createTransaction } from '@/lib/actions/ledger';
 import { getCategories } from '@/lib/actions/categories';
 import BudgetTracker from '@/components/widgets/BudgetTracker';
 import { useBudgets } from '@/hooks/useBudgets';
-import { useToast } from '@/components/common/Toast';
+import { useTransactions } from '@/hooks/useTransactions';
+import { useAssets } from '@/hooks/useAssets';
 import { useSWRConfig } from 'swr';
 import useSWR from 'swr';
 
@@ -20,21 +22,25 @@ interface Budget {
   category?: { id: string; name: string } | null;
 }
 
-interface BudgetProgress {
+interface Asset {
   id: string;
   name: string;
-  categoryName: string;
-  budgetAmount: number;
-  spent: number;
-  remaining: number;
-  pct: number;
-  isOverBudget: boolean;
 }
 
-function parseAmount(v: any): number {
+interface Category {
+  id: string;
+  name: string;
+}
+
+type BudgetFocus = 'over' | 'create' | 'review' | null;
+
+function parseAmount(v: unknown): number {
   if (typeof v === 'number') return v;
   if (typeof v === 'string') return parseFloat(v);
-  return parseFloat(v?.toString?.() || '0');
+  if (v && typeof v === 'object' && 'toString' in v && typeof v.toString === 'function') {
+    return parseFloat(v.toString());
+  }
+  return 0;
 }
 
 function fmtDate(d: string | Date | undefined): string {
@@ -43,14 +49,23 @@ function fmtDate(d: string | Date | undefined): string {
 }
 
 export default function BudgetManager({ currentDate }: { currentDate: string }) {
-  const { data: budgetData, isLoading: budgetLoading } = useBudgets(currentDate);
+  const searchParams = useSearchParams();
+  const focusParam = searchParams.get('focus');
+  const budgetFocus: BudgetFocus =
+    focusParam === 'over' || focusParam === 'create' || focusParam === 'review'
+      ? focusParam
+      : null;
+  const { data: budgetData } = useBudgets(currentDate);
   const progress = budgetData?.data ?? [];
   const { data: budgetsData } = useSWR('budgets-list', () => getBudgets().then(r => r.success ? (r.data ?? []) : []));
   const budgets: Budget[] = budgetsData ?? [];
   const { data: catData } = useSWR('categories', () => getCategories().then(r => r.success ? (r.data ?? []) : []));
   const categories = catData ?? [];
+  const { data: assetData } = useAssets();
+  const assets: Asset[] = assetData?.data ?? [];
+  const { data: txData } = useTransactions();
+  const transactions = txData?.data ?? [];
   const { mutate } = useSWRConfig();
-  const toast = useToast();
 
   const [error, setError] = useState('');
   const [successMsg, setSuccessMsg] = useState('');
@@ -58,7 +73,45 @@ export default function BudgetManager({ currentDate }: { currentDate: string }) 
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editForm, setEditForm] = useState({ name: '', amount: '', startDate: '', endDate: '' });
   const [expenseRowId, setExpenseRowId] = useState<string | null>(null);
-  const [expenseForm, setExpenseForm] = useState({ amount: '', description: '', date: currentDate });
+  const [expenseForm, setExpenseForm] = useState({
+    amount: '',
+    description: '',
+    date: currentDate,
+    fromAccountId: '',
+  });
+  const overBudgetCount = progress.filter((item) => item.isOverBudget).length;
+  const totalRemaining = progress.reduce((sum, item) => sum + item.remaining, 0);
+
+  const budgetFocusCopy = (() => {
+    if (budgetFocus === 'over') {
+      return {
+        title: '先处理超支预算',
+        detail: overBudgetCount > 0
+          ? `已自动展开第一项超支预算；先补来源资金账户、删错账或调预算。当前有 ${overBudgetCount} 项超支。`
+          : '当前没有超支预算，可以继续检查本月预算执行。',
+        cta: '查看预算执行',
+        href: '#budget-progress',
+      };
+    }
+
+    if (budgetFocus === 'create') {
+      return {
+        title: '先建立本月预算',
+        detail: '给本月可支出金额设一个上限；之后首页才能判断预算是否安全。',
+        cta: '填写预算',
+        href: '#budget-form',
+      };
+    }
+
+    return {
+      title: '检查本月预算执行',
+      detail: progress.length > 0
+        ? `本月预算合计剩余 ${totalRemaining.toLocaleString('zh-CN', { maximumFractionDigits: 0 })} 元；顺手补录今天的支出。`
+        : '还没有本月预算，先创建一个总预算或常用分类预算。',
+      cta: progress.length > 0 ? '快速记录支出' : '创建预算',
+      href: progress.length > 0 ? '#budget-progress' : '#budget-form',
+    };
+  })();
 
   async function handleCreate(formData: FormData) {
     setError('');
@@ -73,7 +126,7 @@ export default function BudgetManager({ currentDate }: { currentDate: string }) 
     if (result.success) {
       (document.getElementById('budget-form') as HTMLFormElement)?.reset();
       setSuccessMsg('预算已创建');
-      mutate('budgets');
+      mutate(key => typeof key === 'string' && (key.startsWith('budgets') || key === 'budgets-list'));
       setTimeout(() => setSuccessMsg(''), 2500);
     } else {
       setError(result.error || '创建失败');
@@ -84,7 +137,7 @@ export default function BudgetManager({ currentDate }: { currentDate: string }) 
   async function handleDelete(formData: FormData) {
     const id = formData.get('id') as string;
     await deleteBudget(id);
-    mutate('budgets');
+    mutate(key => typeof key === 'string' && (key.startsWith('budgets') || key === 'budgets-list'));
   }
 
   async function handleUpdateBudget() {
@@ -97,7 +150,7 @@ export default function BudgetManager({ currentDate }: { currentDate: string }) 
       endDate: editForm.endDate || undefined,
     });
     setEditingId(null);
-    mutate('budgets');
+    mutate(key => typeof key === 'string' && (key.startsWith('budgets') || key === 'budgets-list'));
   }
 
   function startEdit(b: Budget) {
@@ -119,12 +172,14 @@ export default function BudgetManager({ currentDate }: { currentDate: string }) 
       amount: expenseForm.amount,
       categoryId: budget?.categoryId || undefined,
       budgetId: budgetId,
+      fromAccountId: expenseForm.fromAccountId || undefined,
       description: expenseForm.description || undefined,
       occurredAt: expenseForm.date,
     });
     if (result.success) {
       setExpenseRowId(null);
-            mutate('budgets');
+      mutate(key => typeof key === 'string' && (key.startsWith('budgets') || key === 'budgets-list'));
+      mutate('transactions');
     } else {
       setError(result.error || '记录失败');
     }
@@ -150,9 +205,28 @@ export default function BudgetManager({ currentDate }: { currentDate: string }) 
         </div>
       )}
 
+      {budgetFocus && (
+        <section className="mb-6 rounded-xl border border-ledger-accent/20 bg-ledger-surface p-4">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <div className="text-xs font-semibold text-ledger-muted">预算行动</div>
+              <h2 className="mt-1 text-lg font-bold" style={{ color: 'var(--color-text-primary)' }}>
+                {budgetFocusCopy.title}
+              </h2>
+              <p className="mt-1 text-sm text-ledger-muted">
+                {budgetFocusCopy.detail}
+              </p>
+            </div>
+            <a href={budgetFocusCopy.href} className="btn btn-outline btn-sm">
+              {budgetFocusCopy.cta}
+            </a>
+          </div>
+        </section>
+      )}
+
       {/* Budget Progress */}
-      <div className="mb-6">
-        <BudgetTracker progress={progress} />
+      <div id="budget-progress" className="mb-6">
+        <BudgetTracker progress={progress} transactions={transactions} assets={assets} focus={budgetFocus} />
       </div>
 
       {/* Create Form */}
@@ -177,7 +251,7 @@ export default function BudgetManager({ currentDate }: { currentDate: string }) 
             className="rounded-md bg-ledger-bg border border-ledger-bg px-3 py-2 text-sm focus:outline-none focus:border-ledger-accent"
           >
             <option value="">总预算</option>
-            {categories.map((c: any) => (
+            {categories.map((c: Category) => (
               <option key={c.id} value={c.id}>{c.name}</option>
             ))}
           </select>
@@ -219,7 +293,8 @@ export default function BudgetManager({ currentDate }: { currentDate: string }) 
         <button
           type="submit"
           disabled={loading}
-          className="rounded-md bg-ledger-accent text-[var(--color-text-inverse)] px-4 py-2 text-sm font-medium hover:opacity-90 transition-opacity disabled:opacity-50"
+          className="rounded-md bg-ledger-accent px-4 py-2 text-sm font-medium hover:opacity-90 transition-opacity disabled:opacity-50"
+          style={{ color: 'var(--color-text-inverse)' }}
         >
           {loading ? '创建中...' : '添加预算'}
         </button>
@@ -252,7 +327,7 @@ export default function BudgetManager({ currentDate }: { currentDate: string }) 
                 <td className="px-4 py-3 text-ledger-muted text-xs">
                   {new Date(b.startDate).toLocaleDateString('zh-CN')} ~ {new Date(b.endDate).toLocaleDateString('zh-CN')}
                 </td>
-                <td className="px-4 py-3 text-right text-white">
+                <td className="px-4 py-3 text-right" style={{ color: 'var(--color-text-primary)' }}>
                   ¥{parseAmount(b.amount).toLocaleString('zh-CN', { minimumFractionDigits: 2 })}
                 </td>
                 <td className="px-4 py-3">
@@ -262,7 +337,7 @@ export default function BudgetManager({ currentDate }: { currentDate: string }) 
                         type="button"
                         onClick={() => {
                           setExpenseRowId(expenseRowId === b.id ? null : b.id);
-                          setExpenseForm({ amount: '', description: '', date: currentDate });
+                          setExpenseForm({ amount: '', description: '', date: currentDate, fromAccountId: '' });
                         }}
                         className="text-xs px-2 py-0.5 rounded bg-ledger-accent/20 text-ledger-accent hover:bg-ledger-accent/30"
                       >
@@ -307,6 +382,20 @@ export default function BudgetManager({ currentDate }: { currentDate: string }) 
                             />
                           </div>
                           <div>
+                            <label className="block text-xs text-ledger-muted mb-1">来源资金账户</label>
+                            <select
+                              name="fromAccountId"
+                              value={expenseForm.fromAccountId}
+                              onChange={e => setExpenseForm(p => ({ ...p, fromAccountId: e.target.value }))}
+                              className="rounded-md bg-ledger-surface border border-ledger-bg px-2 py-1.5 text-xs focus:outline-none focus:border-ledger-accent"
+                            >
+                              <option value="">不指定（只记总收支）</option>
+                              {assets.map(asset => (
+                                <option key={asset.id} value={asset.id}>{asset.name}</option>
+                              ))}
+                            </select>
+                          </div>
+                          <div>
                             <label className="block text-xs text-ledger-muted mb-1">备注</label>
                             <input
                               type="text"
@@ -320,7 +409,8 @@ export default function BudgetManager({ currentDate }: { currentDate: string }) 
                             type="button"
                             onClick={() => handleRecordExpense(b.id)}
                             disabled={!expenseForm.amount}
-                            className="rounded-md bg-ledger-accent text-[var(--color-text-inverse)] px-2 py-1.5 text-xs font-medium hover:opacity-90 disabled:opacity-50"
+                            className="rounded-md bg-ledger-accent px-2 py-1.5 text-xs font-medium hover:opacity-90 disabled:opacity-50"
+                            style={{ color: 'var(--color-text-inverse)' }}
                           >
                             保存
                           </button>
@@ -366,7 +456,8 @@ export default function BudgetManager({ currentDate }: { currentDate: string }) 
                           </div>
                           <button
                             type="button" onClick={handleUpdateBudget}
-                            className="rounded-md bg-ledger-accent text-[var(--color-text-inverse)] px-2 py-1.5 text-xs font-medium hover:opacity-90"
+                            className="rounded-md bg-ledger-accent px-2 py-1.5 text-xs font-medium hover:opacity-90"
+                            style={{ color: 'var(--color-text-inverse)' }}
                           >
                             保存
                           </button>

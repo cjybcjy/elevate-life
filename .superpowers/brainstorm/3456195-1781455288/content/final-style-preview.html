@@ -1,0 +1,596 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>家庭账本视觉预览</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: #ece7de;
+      color: #24211e;
+    }
+    .stage {
+      min-height: 100vh;
+      padding: 24px;
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+      gap: 20px;
+    }
+    .app {
+      min-height: calc(100vh - 48px);
+      border-radius: 16px;
+      overflow: hidden;
+      display: grid;
+      grid-template-columns: 236px 1fr;
+      box-shadow: 0 20px 60px rgba(36, 33, 30, 0.12), 0 0 0 1px rgba(36, 33, 30, 0.08);
+      background: var(--bg);
+      color: var(--text);
+    }
+    .light {
+      --bg: #f7f4ee;
+      --sidebar: #f2eee6;
+      --surface: #fffdf8;
+      --surface-2: #f6f1e8;
+      --text: #24211e;
+      --muted: #7d756b;
+      --subtle: #a59b8f;
+      --line: rgba(36, 33, 30, 0.10);
+      --line-strong: rgba(36, 33, 30, 0.16);
+      --shadow: 0 1px 3px rgba(36, 33, 30, 0.06), 0 0 0 1px rgba(36, 33, 30, 0.05);
+      --accent: #a96f55;
+      --accent-soft: #f0d9cb;
+      --sage: #819172;
+      --sage-soft: #dfe6d6;
+      --blue: #6d8fa8;
+      --red: #b86e68;
+      --yellow: #b69158;
+    }
+    .dark {
+      --bg: #11100f;
+      --sidebar: #171513;
+      --surface: #1d1a17;
+      --surface-2: #26221e;
+      --text: #f5efe6;
+      --muted: #a79c90;
+      --subtle: #766e66;
+      --line: rgba(245, 239, 230, 0.10);
+      --line-strong: rgba(245, 239, 230, 0.17);
+      --shadow: 0 1px 6px rgba(0, 0, 0, 0.26), 0 0 0 1px rgba(245, 239, 230, 0.06);
+      --accent: #d39a7e;
+      --accent-soft: rgba(211, 154, 126, 0.18);
+      --sage: #a9b89a;
+      --sage-soft: rgba(169, 184, 154, 0.18);
+      --blue: #91abc0;
+      --red: #d08d87;
+      --yellow: #d1b06f;
+    }
+    aside {
+      background: var(--sidebar);
+      border-right: 1px solid var(--line);
+      padding: 18px 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 18px;
+    }
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 0 8px 8px;
+    }
+    .bird {
+      width: 36px;
+      height: 36px;
+      border-radius: 8px;
+      background: var(--surface);
+      box-shadow: var(--shadow);
+      display: grid;
+      place-items: center;
+      color: var(--accent);
+    }
+    .brand-title {
+      font-size: 15px;
+      font-weight: 680;
+      line-height: 1.15;
+      letter-spacing: 0;
+    }
+    .brand-sub {
+      margin-top: 2px;
+      font-size: 11px;
+      color: var(--muted);
+    }
+    .nav {
+      display: grid;
+      gap: 4px;
+    }
+    .nav-item {
+      height: 38px;
+      padding: 0 10px;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 540;
+    }
+    .nav-item svg { color: currentColor; }
+    .nav-item.active {
+      color: var(--text);
+      background: var(--surface);
+      box-shadow: var(--shadow);
+    }
+    .sidebar-bottom {
+      margin-top: auto;
+      border-top: 1px solid var(--line);
+      padding-top: 12px;
+      display: grid;
+      gap: 4px;
+    }
+    main {
+      padding: 22px;
+      overflow: hidden;
+    }
+    .topbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      margin-bottom: 16px;
+    }
+    .eyebrow {
+      color: var(--muted);
+      font-size: 12px;
+      margin-bottom: 5px;
+    }
+    h1 {
+      margin: 0;
+      font-size: 22px;
+      line-height: 1.2;
+      letter-spacing: 0;
+    }
+    .actions {
+      display: flex;
+      gap: 8px;
+    }
+    button {
+      height: 34px;
+      border: 1px solid var(--line-strong);
+      background: var(--surface);
+      color: var(--text);
+      border-radius: 8px;
+      padding: 0 12px;
+      font: inherit;
+      font-size: 13px;
+      font-weight: 570;
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      box-shadow: 0 1px 2px rgba(0,0,0,.03);
+    }
+    button.primary {
+      border-color: transparent;
+      color: #fffdf8;
+      background: var(--accent);
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: 1.1fr .9fr;
+      gap: 12px;
+    }
+    .card {
+      background: var(--surface);
+      border-radius: 8px;
+      box-shadow: var(--shadow);
+      overflow: hidden;
+    }
+    .card.pad { padding: 16px; }
+    .card-head {
+      min-height: 44px;
+      border-bottom: 1px solid var(--line);
+      padding: 0 14px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 13px;
+      font-weight: 640;
+    }
+    .muted { color: var(--muted); }
+    .stat-main {
+      grid-column: 1 / -1;
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 18px;
+      align-items: end;
+    }
+    .money {
+      font-size: 34px;
+      font-weight: 720;
+      line-height: 1.05;
+      letter-spacing: 0;
+    }
+    .stat-row {
+      margin-top: 14px;
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+    }
+    .mini-stat {
+      background: var(--surface-2);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 10px;
+    }
+    .mini-label { font-size: 11px; color: var(--muted); }
+    .mini-value { margin-top: 4px; font-size: 14px; font-weight: 660; }
+    .ring-wrap {
+      display: flex;
+      gap: 16px;
+      padding: 14px;
+      align-items: center;
+    }
+    .ring {
+      width: 150px;
+      height: 150px;
+      border-radius: 50%;
+      background: conic-gradient(var(--sage) 0 38%, var(--accent) 38% 59%, var(--blue) 59% 76%, var(--yellow) 76% 89%, var(--red) 89% 100%);
+      position: relative;
+      box-shadow: inset 0 0 0 1px var(--line);
+    }
+    .ring::after {
+      content: "";
+      position: absolute;
+      inset: 28px;
+      border-radius: 50%;
+      background: var(--surface);
+      box-shadow: inset 0 0 0 1px var(--line);
+    }
+    .legend {
+      min-width: 0;
+      flex: 1;
+      display: grid;
+      gap: 9px;
+      font-size: 12px;
+    }
+    .legend-line {
+      display: grid;
+      grid-template-columns: 12px 1fr auto;
+      gap: 8px;
+      align-items: center;
+    }
+    .dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 3px;
+      background: var(--c);
+    }
+    .chart-area {
+      height: 178px;
+      padding: 16px 14px;
+      display: grid;
+      align-items: end;
+      grid-template-columns: repeat(12, 1fr);
+      gap: 7px;
+    }
+    .bar {
+      border-radius: 7px 7px 3px 3px;
+      background: var(--sage);
+      height: var(--h);
+      opacity: .9;
+    }
+    .bar.alt { background: var(--accent); opacity: .82; }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 12px;
+    }
+    th, td {
+      padding: 10px 12px;
+      border-bottom: 1px solid var(--line);
+      text-align: left;
+      white-space: nowrap;
+    }
+    th {
+      color: var(--muted);
+      font-weight: 620;
+      background: var(--surface-2);
+    }
+    td:last-child, th:last-child { text-align: right; }
+    tr:last-child td { border-bottom: 0; }
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      height: 22px;
+      padding: 0 8px;
+      border-radius: 999px;
+      background: var(--sage-soft);
+      color: var(--sage);
+      font-size: 11px;
+      font-weight: 650;
+    }
+    .app.dark .badge { color: #dbe7cf; }
+    .spark {
+      height: 38px;
+      border-radius: 8px;
+      background:
+        linear-gradient(135deg, transparent 0 14%, var(--line) 14% 15%, transparent 15% 100%),
+        linear-gradient(155deg, transparent 0 42%, color-mix(in srgb, var(--accent) 58%, transparent) 42% 44%, transparent 44% 100%),
+        var(--surface-2);
+    }
+    .two-col {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      margin-top: 12px;
+    }
+    .kpi {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 0;
+      border-bottom: 1px solid var(--line);
+      font-size: 12px;
+    }
+    .kpi:last-child { border-bottom: 0; }
+    .theme-label {
+      position: absolute;
+      top: 16px;
+      right: 18px;
+      font-size: 11px;
+      color: var(--muted);
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      padding: 4px 8px;
+      background: var(--surface);
+      box-shadow: var(--shadow);
+    }
+    .app-wrap { position: relative; }
+    svg { display: block; }
+    .icon {
+      width: 16px;
+      height: 16px;
+      stroke: currentColor;
+      stroke-width: 2;
+      fill: none;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+    .bird svg {
+      width: 25px;
+      height: 25px;
+    }
+    @media (max-width: 1200px) {
+      .stage { grid-template-columns: 1fr; }
+      .app { min-height: 720px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="stage">
+    <div class="app-wrap">
+      <div class="theme-label">Light</div>
+      <section class="app light">
+        <aside>
+          <div class="brand">
+            <div class="bird">
+              <svg viewBox="0 0 48 48" aria-hidden="true">
+                <path d="M10 24c0-10 6.6-17 14.8-17 8.1 0 13.2 7.1 13.2 16.7 0 7.7-4.4 13.3-12.4 13.3H15.9C12.4 37 10 34.3 10 30.8V24Z" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"/>
+                <path d="M10.8 22.4 4.9 25.8 10.6 27.3" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"/>
+                <path d="M29.6 25.4c4.7 4.9 9.2 5.7 14.4 3.4" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round"/>
+                <path d="M17.4 24.5c2.7-4.9 9.4-4.9 12.1 0 2.7 4.8-.7 10.7-6.1 10.7s-8.7-5.9-6-10.7Z" fill="color-mix(in srgb, var(--accent) 18%, transparent)" stroke="currentColor" stroke-width="2.4"/>
+                <circle cx="23.3" cy="14.6" r="2.2" fill="currentColor"/>
+                <path d="M21.2 25.6h5.5M20.8 29.4h5.9M21.5 33h4.7" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                <path d="M17 37v6M27 37v6M15 43l2-4 2 4M25 43l2-4 2 4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+              </svg>
+            </div>
+            <div>
+              <div class="brand-title">家庭账本</div>
+              <div class="brand-sub">Home Ledger</div>
+            </div>
+          </div>
+          <nav class="nav">
+            <div class="nav-item active"><svg class="icon" viewBox="0 0 24 24"><path d="M3 13h8V3H3z"/><path d="M13 21h8V11h-8z"/><path d="M13 3h8v6h-8z"/><path d="M3 21h8v-6H3z"/></svg>仪表盘</div>
+            <div class="nav-item"><svg class="icon" viewBox="0 0 24 24"><path d="M4 19V5a2 2 0 0 1 2-2h12v18H6a2 2 0 0 1-2-2Z"/><path d="M8 7h6"/><path d="M8 11h8"/></svg>资产管理</div>
+            <div class="nav-item"><svg class="icon" viewBox="0 0 24 24"><path d="M8 2v4"/><path d="M16 2v4"/><rect x="4" y="4" width="16" height="18" rx="2"/><path d="M8 12h8"/><path d="M8 16h5"/></svg>流水管理</div>
+            <div class="nav-item"><svg class="icon" viewBox="0 0 24 24"><path d="M4 19h16"/><path d="M6 16V9"/><path d="M12 16V5"/><path d="M18 16v-4"/></svg>预算管理</div>
+          </nav>
+          <div class="sidebar-bottom">
+            <div class="nav-item"><svg class="icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.9 4.9 1.4 1.4"/><path d="m17.7 17.7 1.4 1.4"/><path d="M2 12h2"/><path d="M20 12h2"/></svg>切换主题</div>
+            <div class="nav-item"><svg class="icon" viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="M16 17l5-5-5-5"/><path d="M21 12H9"/></svg>退出登录</div>
+          </div>
+        </aside>
+        <main>
+          <div class="topbar">
+            <div>
+              <div class="eyebrow">2026 年 6 月</div>
+              <h1>家庭财务概览</h1>
+            </div>
+            <div class="actions">
+              <button><svg class="icon" viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-2.6-6.4"/><path d="M21 3v6h-6"/></svg>刷新价格</button>
+              <button class="primary"><svg class="icon" viewBox="0 0 24 24"><path d="M12 5v14"/><path d="M5 12h14"/></svg>记一笔</button>
+            </div>
+          </div>
+          <div class="grid">
+            <div class="card pad stat-main">
+              <div>
+                <div class="eyebrow">净资产</div>
+                <div class="money">¥ 1,248,680</div>
+                <div class="stat-row">
+                  <div class="mini-stat"><div class="mini-label">总资产</div><div class="mini-value">¥ 1,682,400</div></div>
+                  <div class="mini-stat"><div class="mini-label">总负债</div><div class="mini-value">¥ 433,720</div></div>
+                  <div class="mini-stat"><div class="mini-label">净资产率</div><div class="mini-value">74.2%</div></div>
+                </div>
+              </div>
+              <span class="badge">稳健增长</span>
+            </div>
+            <div class="card">
+              <div class="card-head"><span>资产配置</span><span class="muted">低饱和图表</span></div>
+              <div class="ring-wrap">
+                <div class="ring"></div>
+                <div class="legend">
+                  <div class="legend-line"><span class="dot" style="--c:var(--sage)"></span><span>房产</span><strong>38%</strong></div>
+                  <div class="legend-line"><span class="dot" style="--c:var(--accent)"></span><span>现金</span><strong>21%</strong></div>
+                  <div class="legend-line"><span class="dot" style="--c:var(--blue)"></span><span>股票基金</span><strong>17%</strong></div>
+                  <div class="legend-line"><span class="dot" style="--c:var(--yellow)"></span><span>黄金</span><strong>13%</strong></div>
+                  <div class="legend-line"><span class="dot" style="--c:var(--red)"></span><span>其他</span><strong>11%</strong></div>
+                </div>
+              </div>
+            </div>
+            <div class="card">
+              <div class="card-head"><span>月度现金流</span><span class="muted">收入 / 支出</span></div>
+              <div class="chart-area">
+                <div class="bar" style="--h:45%"></div><div class="bar alt" style="--h:30%"></div>
+                <div class="bar" style="--h:54%"></div><div class="bar alt" style="--h:39%"></div>
+                <div class="bar" style="--h:70%"></div><div class="bar alt" style="--h:43%"></div>
+                <div class="bar" style="--h:62%"></div><div class="bar alt" style="--h:52%"></div>
+                <div class="bar" style="--h:78%"></div><div class="bar alt" style="--h:48%"></div>
+                <div class="bar" style="--h:82%"></div><div class="bar alt" style="--h:55%"></div>
+              </div>
+            </div>
+            <div class="card">
+              <div class="card-head"><span>近期流水</span><button>查看全部</button></div>
+              <table>
+                <thead><tr><th>项目</th><th>分类</th><th>金额</th></tr></thead>
+                <tbody>
+                  <tr><td>工资入账</td><td><span class="badge">收入</span></td><td>+ ¥35,000</td></tr>
+                  <tr><td>房贷还款</td><td>负债</td><td>- ¥12,400</td></tr>
+                  <tr><td>基金定投</td><td>投资</td><td>- ¥3,000</td></tr>
+                  <tr><td>家庭采购</td><td>日常</td><td>- ¥860</td></tr>
+                </tbody>
+              </table>
+            </div>
+            <div class="two-col" style="grid-column:1 / -1">
+              <div class="card pad">
+                <div class="card-head" style="padding:0 0 10px;border-bottom:0;min-height:auto"><span>目标追踪</span></div>
+                <div class="kpi"><span class="muted">紧急备用金</span><strong>82%</strong></div>
+                <div class="kpi"><span class="muted">年度结余目标</span><strong>64%</strong></div>
+                <div class="kpi"><span class="muted">现金流安全垫</span><strong>9.6 月</strong></div>
+              </div>
+              <div class="card pad">
+                <div class="card-head" style="padding:0 0 10px;border-bottom:0;min-height:auto"><span>趋势</span></div>
+                <div class="spark"></div>
+                <div style="margin-top:12px;font-size:12px;color:var(--muted)">线条和填充都使用同一套低饱和暖色。</div>
+              </div>
+            </div>
+          </div>
+        </main>
+      </section>
+    </div>
+
+    <div class="app-wrap">
+      <div class="theme-label">Dark</div>
+      <section class="app dark">
+        <aside>
+          <div class="brand">
+            <div class="bird">
+              <svg viewBox="0 0 48 48" aria-hidden="true">
+                <path d="M10 24c0-10 6.6-17 14.8-17 8.1 0 13.2 7.1 13.2 16.7 0 7.7-4.4 13.3-12.4 13.3H15.9C12.4 37 10 34.3 10 30.8V24Z" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"/>
+                <path d="M10.8 22.4 4.9 25.8 10.6 27.3" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"/>
+                <path d="M29.6 25.4c4.7 4.9 9.2 5.7 14.4 3.4" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round"/>
+                <path d="M17.4 24.5c2.7-4.9 9.4-4.9 12.1 0 2.7 4.8-.7 10.7-6.1 10.7s-8.7-5.9-6-10.7Z" fill="color-mix(in srgb, var(--accent) 22%, transparent)" stroke="currentColor" stroke-width="2.4"/>
+                <circle cx="23.3" cy="14.6" r="2.2" fill="currentColor"/>
+                <path d="M21.2 25.6h5.5M20.8 29.4h5.9M21.5 33h4.7" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                <path d="M17 37v6M27 37v6M15 43l2-4 2 4M25 43l2-4 2 4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+              </svg>
+            </div>
+            <div>
+              <div class="brand-title">家庭账本</div>
+              <div class="brand-sub">Home Ledger</div>
+            </div>
+          </div>
+          <nav class="nav">
+            <div class="nav-item active"><svg class="icon" viewBox="0 0 24 24"><path d="M3 13h8V3H3z"/><path d="M13 21h8V11h-8z"/><path d="M13 3h8v6h-8z"/><path d="M3 21h8v-6H3z"/></svg>仪表盘</div>
+            <div class="nav-item"><svg class="icon" viewBox="0 0 24 24"><path d="M4 19V5a2 2 0 0 1 2-2h12v18H6a2 2 0 0 1-2-2Z"/><path d="M8 7h6"/><path d="M8 11h8"/></svg>资产管理</div>
+            <div class="nav-item"><svg class="icon" viewBox="0 0 24 24"><path d="M8 2v4"/><path d="M16 2v4"/><rect x="4" y="4" width="16" height="18" rx="2"/><path d="M8 12h8"/><path d="M8 16h5"/></svg>流水管理</div>
+            <div class="nav-item"><svg class="icon" viewBox="0 0 24 24"><path d="M4 19h16"/><path d="M6 16V9"/><path d="M12 16V5"/><path d="M18 16v-4"/></svg>预算管理</div>
+          </nav>
+          <div class="sidebar-bottom">
+            <div class="nav-item"><svg class="icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.9 4.9 1.4 1.4"/><path d="m17.7 17.7 1.4 1.4"/><path d="M2 12h2"/><path d="M20 12h2"/></svg>切换主题</div>
+            <div class="nav-item"><svg class="icon" viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="M16 17l5-5-5-5"/><path d="M21 12H9"/></svg>退出登录</div>
+          </div>
+        </aside>
+        <main>
+          <div class="topbar">
+            <div>
+              <div class="eyebrow">2026 年 6 月</div>
+              <h1>家庭财务概览</h1>
+            </div>
+            <div class="actions">
+              <button><svg class="icon" viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-2.6-6.4"/><path d="M21 3v6h-6"/></svg>刷新价格</button>
+              <button class="primary"><svg class="icon" viewBox="0 0 24 24"><path d="M12 5v14"/><path d="M5 12h14"/></svg>记一笔</button>
+            </div>
+          </div>
+          <div class="grid">
+            <div class="card pad stat-main">
+              <div>
+                <div class="eyebrow">净资产</div>
+                <div class="money">¥ 1,248,680</div>
+                <div class="stat-row">
+                  <div class="mini-stat"><div class="mini-label">总资产</div><div class="mini-value">¥ 1,682,400</div></div>
+                  <div class="mini-stat"><div class="mini-label">总负债</div><div class="mini-value">¥ 433,720</div></div>
+                  <div class="mini-stat"><div class="mini-label">净资产率</div><div class="mini-value">74.2%</div></div>
+                </div>
+              </div>
+              <span class="badge">稳健增长</span>
+            </div>
+            <div class="card">
+              <div class="card-head"><span>资产配置</span><span class="muted">低饱和图表</span></div>
+              <div class="ring-wrap">
+                <div class="ring"></div>
+                <div class="legend">
+                  <div class="legend-line"><span class="dot" style="--c:var(--sage)"></span><span>房产</span><strong>38%</strong></div>
+                  <div class="legend-line"><span class="dot" style="--c:var(--accent)"></span><span>现金</span><strong>21%</strong></div>
+                  <div class="legend-line"><span class="dot" style="--c:var(--blue)"></span><span>股票基金</span><strong>17%</strong></div>
+                  <div class="legend-line"><span class="dot" style="--c:var(--yellow)"></span><span>黄金</span><strong>13%</strong></div>
+                  <div class="legend-line"><span class="dot" style="--c:var(--red)"></span><span>其他</span><strong>11%</strong></div>
+                </div>
+              </div>
+            </div>
+            <div class="card">
+              <div class="card-head"><span>月度现金流</span><span class="muted">收入 / 支出</span></div>
+              <div class="chart-area">
+                <div class="bar" style="--h:45%"></div><div class="bar alt" style="--h:30%"></div>
+                <div class="bar" style="--h:54%"></div><div class="bar alt" style="--h:39%"></div>
+                <div class="bar" style="--h:70%"></div><div class="bar alt" style="--h:43%"></div>
+                <div class="bar" style="--h:62%"></div><div class="bar alt" style="--h:52%"></div>
+                <div class="bar" style="--h:78%"></div><div class="bar alt" style="--h:48%"></div>
+                <div class="bar" style="--h:82%"></div><div class="bar alt" style="--h:55%"></div>
+              </div>
+            </div>
+            <div class="card">
+              <div class="card-head"><span>近期流水</span><button>查看全部</button></div>
+              <table>
+                <thead><tr><th>项目</th><th>分类</th><th>金额</th></tr></thead>
+                <tbody>
+                  <tr><td>工资入账</td><td><span class="badge">收入</span></td><td>+ ¥35,000</td></tr>
+                  <tr><td>房贷还款</td><td>负债</td><td>- ¥12,400</td></tr>
+                  <tr><td>基金定投</td><td>投资</td><td>- ¥3,000</td></tr>
+                  <tr><td>家庭采购</td><td>日常</td><td>- ¥860</td></tr>
+                </tbody>
+              </table>
+            </div>
+            <div class="two-col" style="grid-column:1 / -1">
+              <div class="card pad">
+                <div class="card-head" style="padding:0 0 10px;border-bottom:0;min-height:auto"><span>目标追踪</span></div>
+                <div class="kpi"><span class="muted">紧急备用金</span><strong>82%</strong></div>
+                <div class="kpi"><span class="muted">年度结余目标</span><strong>64%</strong></div>
+                <div class="kpi"><span class="muted">现金流安全垫</span><strong>9.6 月</strong></div>
+              </div>
+              <div class="card pad">
+                <div class="card-head" style="padding:0 0 10px;border-bottom:0;min-height:auto"><span>趋势</span></div>
+                <div class="spark"></div>
+                <div style="margin-top:12px;font-size:12px;color:var(--muted)">线条和填充都使用同一套低饱和暖色。</div>
+              </div>
+            </div>
+          </div>
+        </main>
+      </section>
+    </div>
+  </div>
+</body>
+</html>

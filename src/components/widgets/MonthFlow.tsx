@@ -52,7 +52,7 @@ export default function MonthFlow({
 
   return (
     <div className="bg-ledger-surface rounded-xl p-4">
-      <h2 className="text-base font-bold mb-3" style={{ color: 'var(--color-text-heading)' }}>本月流水</h2>
+      <h2 className="text-base font-bold mb-3" style={{ color: 'var(--color-text-primary)' }}>本月流水</h2>
 
       {/* Summary bar */}
       <div className="flex items-center gap-4 text-sm mb-3">
@@ -60,7 +60,7 @@ export default function MonthFlow({
         <span className="text-ledger-muted/30">|</span>
         <span className="text-ledger-muted">支出 <AmountDisplay amount={curExpense} className="text-ledger-danger font-medium" /></span>
         <span className="text-ledger-muted/30">|</span>
-        <span className="text-ledger-muted">盈余率 <span className="font-medium" style={{ color: 'var(--color-text-heading)' }}>{surplus}%</span></span>
+        <span className="text-ledger-muted">盈余率 <span className="font-medium" style={{ color: 'var(--color-text-primary)' }}>{surplus}%</span></span>
       </div>
 
       <div className="flex gap-3">
@@ -68,7 +68,7 @@ export default function MonthFlow({
         <div className="flex-1">
           <button
             onClick={() => { setShowIncome(!showIncome); setShowExpense(false); }}
-            className="w-full text-left text-sm hover:text-ledger-accent mb-2 pb-1 border-b border-ledger-primary/10" style={{ color: 'var(--color-text-heading)' }}
+            className="w-full text-left text-sm hover:text-ledger-accent mb-2 pb-1 border-b border-ledger-primary/10" style={{ color: 'var(--color-text-primary)' }}
           >
             📥 本月收入 · {incomeTx.length} 笔 {showIncome ? '▴' : '▸'}
           </button>
@@ -95,7 +95,7 @@ export default function MonthFlow({
         <div className="flex-1">
           <button
             onClick={() => { setShowExpense(!showExpense); setShowIncome(false); }}
-            className="w-full text-left text-sm hover:text-ledger-accent mb-2 pb-1 border-b border-ledger-primary/10" style={{ color: 'var(--color-text-heading)' }}
+            className="w-full text-left text-sm hover:text-ledger-accent mb-2 pb-1 border-b border-ledger-primary/10" style={{ color: 'var(--color-text-primary)' }}
           >
             📤 本月支出 · {expenseTx.length} 笔 {showExpense ? '▴' : '▸'}
           </button>

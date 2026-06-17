@@ -63,9 +63,9 @@ export function AssetTable({
                 <td className="px-4 py-3 text-ledger-muted">{categoryLabel[asset.category] || asset.category}</td>
                 <td className="px-4 py-3 text-ledger-muted">{asset.market ? (marketLabel[asset.market] || asset.market) : '-'}</td>
                 <td className="px-4 py-3 text-ledger-muted font-mono">{asset.stockCode || '-'}</td>
-                <td className="px-4 py-3 text-right text-white">{asset.quantity ?? '-'}</td>
+                <td className="px-4 py-3 text-right" style={{ color: 'var(--color-text-primary)' }}>{asset.quantity ?? '-'}</td>
                 <td className="px-4 py-3 text-right text-ledger-muted">{asset.costUnitPrice != null ? `${cur(asset.priceCurrency)}${Number(asset.costUnitPrice).toLocaleString('zh-CN', { minimumFractionDigits: 2 })}` : '-'}</td>
-                <td className="px-4 py-3 text-right text-white">{asset.unitPrice != null ? `${cur(asset.priceCurrency)}${asset.unitPrice.toLocaleString('zh-CN', { minimumFractionDigits: 2 })}` : '-'}</td>
+                <td className="px-4 py-3 text-right" style={{ color: 'var(--color-text-primary)' }}>{asset.unitPrice != null ? `${cur(asset.priceCurrency)}${asset.unitPrice.toLocaleString('zh-CN', { minimumFractionDigits: 2 })}` : '-'}</td>
                 <td className="px-4 py-3 text-right font-medium">{cur(asset.priceCurrency)}{marketValue.toLocaleString('zh-CN', { minimumFractionDigits: 2 })}</td>
                 <td className="px-4 py-3 text-right">
                   {isMarketPriced && costBasis > 0 ? (
@@ -165,7 +165,7 @@ export function AssetTable({
                             </div>
                           </>
                         )}
-                        <button type="submit" className="rounded-md bg-ledger-accent px-3 py-1.5 text-xs font-medium hover:opacity-90">
+                        <button type="submit" className="rounded-md bg-ledger-accent px-3 py-1.5 text-xs font-medium hover:opacity-90" style={{ color: 'var(--color-text-inverse)' }}>
                           保存
                         </button>
                       </form>

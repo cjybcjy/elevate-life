@@ -1,8 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
-import Sidebar from "@/components/layout/Sidebar";
-import { ToastProvider } from "@/components/common/Toast";
+import AppShell from "@/components/layout/AppShell";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -15,12 +14,17 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "家庭账本",
+  applicationName: "Elevate Life 家庭账本",
+  title: "Elevate Life 家庭账本",
   description: "个人家庭财务管理系统",
-  manifest: "/manifest.json",
+  manifest: "/manifest.webmanifest",
   appleWebApp: {
     capable: true,
-    title: "家庭账本",
+    title: "Elevate Life 家庭账本",
+  },
+  icons: {
+    icon: "/icon-192.png",
+    apple: "/icon-192.png",
   },
 };
 
@@ -43,20 +47,7 @@ export default function RootLayout({
         <link rel="apple-touch-icon" href="/icon-192.png" />
       </head>
       <body className="min-h-full flex">
-        <ToastProvider>
-          <Sidebar />
-          <main
-            className="flex-1 overflow-auto"
-            style={{
-              viewTransitionName: 'main-content',
-              padding: '24px 28px',
-              minHeight: '100vh',
-              background: 'var(--color-surface)',
-            }}
-          >
-            {children}
-          </main>
-        </ToastProvider>
+        <AppShell>{children}</AppShell>
       </body>
     </html>
   );

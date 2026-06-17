@@ -23,6 +23,10 @@
 # misc
 .DS_Store
 *.pem
+*.keystore
+*.jks
+*.aab
+*.apk
 
 # debug
 npm-debug.log*
@@ -42,3 +46,8 @@ next-env.d.ts
 .claude/
 
 /src/generated/prisma
+
+# generated release assets
+/store-screenshots/
+/store-submission/
+/android-twa/
