@@ -9,9 +9,13 @@
 !.yarn/plugins
 !.yarn/releases
 !.yarn/versions
+.superpowers/
+
 
 # testing
 /coverage
+
+
 
 # next.js
 /.next/
