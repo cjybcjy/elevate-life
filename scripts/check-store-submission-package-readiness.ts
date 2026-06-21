@@ -38,6 +38,24 @@ assert(
 
 async function main() {
   const { buildStoreSubmissionPackage } = await import('./generate-store-submission-package');
+  assert.throws(
+    () => buildStoreSubmissionPackage({}),
+    /APP_PUBLIC_BASE_URL/,
+    'Submission package generation should fail without a real public app URL.',
+  );
+  assert.throws(
+    () =>
+      buildStoreSubmissionPackage({
+        APP_PUBLIC_BASE_URL: 'https://app.example.com',
+        APP_SUPPORT_EMAIL: 'support@example.com',
+      }),
+    (error: unknown) =>
+      error instanceof Error &&
+      error.message.includes('APP_PUBLIC_BASE_URL') &&
+      error.message.includes('APP_SUPPORT_EMAIL'),
+    'Submission package generation should fail when public URL and support email are placeholders.',
+  );
+
   const result = buildStoreSubmissionPackage({
     APP_PUBLIC_BASE_URL: 'https://app.elevatelife.example',
     APP_SUPPORT_EMAIL: 'support@elevatelife.example',
@@ -106,6 +124,7 @@ async function main() {
     'STORE_SUBMISSION_OUTPUT_DIR',
     'APP_PUBLIC_BASE_URL',
     'APP_SUPPORT_EMAIL',
+    'validateStoreSubmissionEnv',
     'REVIEW_ACCOUNT_USERNAME',
     'REVIEW_ACCOUNT_PASSWORD',
     'writeFileSync',
@@ -121,6 +140,7 @@ async function main() {
       packageGuide.includes('store-submission/') &&
       packageGuide.includes('metadata.json') &&
       packageGuide.includes('review-notes.md') &&
+      packageGuide.includes('拒绝占位') &&
       packageGuide.includes('正式提交前') &&
       packageGuide.includes('不要提交到仓库'),
     'Submission package guide should document command usage, output files, and review caveats.',

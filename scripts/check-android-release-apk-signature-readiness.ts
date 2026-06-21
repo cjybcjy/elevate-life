@@ -27,6 +27,7 @@ assert.equal(
 
 async function main() {
   const {
+    candidateApkSignerPaths,
     parseAndroidApkCertificateFingerprint,
     validateAndroidReleaseApkSignature,
   } = await import('./validate-android-release-apk-signature');
@@ -36,6 +37,25 @@ async function main() {
   const apksignerOutput = `Signer #1 certificate DN: CN=Elevate Life\nSigner #1 certificate SHA-256 digest: abf01eb5f24fef3a59d4b2ae02c255086248fe493f797e0b339821b826b5ade3`;
 
   assert.equal(parseAndroidApkCertificateFingerprint(apksignerOutput), fingerprint);
+  const discoveredApkSigners = candidateApkSignerPaths(
+    { HOME: '/home/dev' },
+    {
+      exists: (path: string) =>
+        [
+          '/home/dev/Android/Sdk/build-tools/34.0.0/apksigner',
+          '/home/dev/Android/Sdk/build-tools/35.0.0/apksigner',
+        ].includes(path),
+      readDir: (path: string) => (path === '/home/dev/Android/Sdk/build-tools' ? ['34.0.0', '35.0.0'] : []),
+    },
+  );
+  assert.deepEqual(
+    discoveredApkSigners.slice(0, 2),
+    [
+      '/home/dev/Android/Sdk/build-tools/35.0.0/apksigner',
+      '/home/dev/Android/Sdk/build-tools/34.0.0/apksigner',
+    ],
+    'APK signature validator should discover apksigner from the newest $HOME/Android/Sdk build-tools version.',
+  );
 
   const okResult = validateAndroidReleaseApkSignature(
     {
@@ -74,6 +94,10 @@ async function main() {
   const validator = read('scripts/validate-android-release-apk-signature.ts');
   for (const phrase of [
     'ANDROID_RELEASE_APK_PATH',
+    'ANDROID_APKSIGNER_PATH',
+    'ANDROID_HOME',
+    'ANDROID_SDK_ROOT',
+    'Android/Sdk',
     'ANDROID_SHA256_CERT_FINGERPRINTS',
     'apksigner',
     'SHA-256 digest',
@@ -85,8 +109,9 @@ async function main() {
   assert(
     artifactGuide.includes('npm run android:apk:signature:check') &&
       artifactGuide.includes('ANDROID_RELEASE_APK_PATH') &&
+      artifactGuide.includes('ANDROID_APKSIGNER_PATH') &&
       artifactGuide.includes('apksigner'),
-    'Android native artifact guide should document APK signature validation.',
+    'Android native artifact guide should document APK signature validation and apksigner path override.',
   );
 
   const signingGuide = read('docs/release/android-signing.md');
@@ -105,8 +130,9 @@ async function main() {
 
   const envTemplate = read('docs/release/store-release.env.example');
   assert(
-    envTemplate.includes('ANDROID_RELEASE_APK_PATH=android/app/build/outputs/apk/release/app-release.apk'),
-    'Store release env template should document Android release APK path.',
+    envTemplate.includes('ANDROID_RELEASE_APK_PATH=android/app/build/outputs/apk/release/app-release.apk') &&
+      envTemplate.includes('ANDROID_APKSIGNER_PATH='),
+    'Store release env template should document Android release APK path and optional apksigner path.',
   );
 
   const releaseReadiness = read('scripts/check-store-release-readiness.ts');

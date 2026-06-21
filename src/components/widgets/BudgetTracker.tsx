@@ -173,8 +173,8 @@ export default function BudgetTracker({
                   {editingBudgetId === p.id ? (
                     <span className="inline-flex items-center gap-1">
                       <input
-                        type="number"
-                        step="0.01"
+                        type="text"
+                        inputMode="decimal"
                         value={editBudgetAmount}
                         onChange={e => setEditBudgetAmount(e.target.value)}
                         onKeyDown={async e => {
@@ -242,8 +242,8 @@ export default function BudgetTracker({
                     <div>
                       <label className="block text-xs text-ledger-muted mb-1">金额</label>
                       <input
-                        type="number"
-                        step="0.01"
+                        type="text"
+                        inputMode="decimal"
                         value={form.amount}
                         onChange={e => setForm(f => ({ ...f, amount: e.target.value }))}
                         onKeyDown={e => { if (e.key === 'Enter') handleAddExpense(p.id); }}
@@ -300,8 +300,8 @@ export default function BudgetTracker({
                             <div className="flex flex-wrap items-end gap-2 bg-ledger-surface/50 rounded px-2 py-1.5">
                               <div>
                                 <input
-                                  type="number"
-                                  step="0.01"
+                                  type="text"
+                                  inputMode="decimal"
                                   value={editForm.amount}
                                   onChange={e => setEditForm(f => ({ ...f, amount: e.target.value }))}
                                   className="w-20 rounded border px-2 py-0.5 text-xs focus:outline-none focus:border-ledger-accent bg-white dark:bg-ledger-bg"

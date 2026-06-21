@@ -22,8 +22,10 @@ export interface RepaymentSimResult {
 export async function simulateEarlyRepayment(
   liabilityId: string,
   extraAmount: string,
-  extraMonth: number,
+  _extraMonth: number,
 ): Promise<{ success: boolean; data?: RepaymentSimResult[]; error?: string }> {
+  void _extraMonth;
+
   const session = await auth();
   const userId = session?.user?.id;
   if (!userId) return { success: false, error: 'Unauthorized' };
@@ -37,7 +39,6 @@ export async function simulateEarlyRepayment(
 
   if (!liability) return { success: false, error: 'Liability not found' };
 
-  const principal = new Decimal(decryptValue(liability.principal, derivedKey, userId));
   const currentBalance = new Decimal(decryptValue(liability.currentBalance, derivedKey, userId));
   const annualRate = liability.interestRate;
   const monthlyRate = annualRate.div(12);

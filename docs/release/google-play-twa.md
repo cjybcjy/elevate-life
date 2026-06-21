@@ -34,9 +34,11 @@ Google Play 第一阶段使用 Trusted Web Activity / Bubblewrap。官方 Bubble
    `TWA_MANIFEST_URL=https://<域名>/manifest.webmanifest TWA_OUTPUT_DIR=android-twa npm run twa:update`
 6. 构建 Play Store AAB：
    `TWA_MANIFEST_URL=https://<域名>/manifest.webmanifest TWA_OUTPUT_DIR=android-twa npm run twa:build`
-7. 校验 Bubblewrap 构建产物：
+7. 查看 Bubblewrap 产物下一步：
+   `TWA_OUTPUT_DIR=android-twa npm run twa:artifact:next`
+8. 校验 Bubblewrap 构建产物：
    `TWA_OUTPUT_DIR=android-twa npm run twa:artifact:check`
-8. 校验准备上传的 AAB 签名：
+9. 校验准备上传的 AAB 签名：
    `ANDROID_RELEASE_BUNDLE_PATH=android-twa/app-release-bundle.aab npm run android:aab:signature:check`
 
 ## `twa-manifest.json` 对照
@@ -51,6 +53,7 @@ Google Play 第一阶段使用 Trusted Web Activity / Bubblewrap。官方 Bubble
 - `iconUrl` 和 `maskableIconUrl` 指向 512 图标。
 - `signingKey.path` 和 `signingKey.alias` 指向上传签名，不提交 keystore。
 - `fingerprints` 与 `/.well-known/assetlinks.json` 中的 SHA-256 指纹一致。
+- 构建后先运行 `npm run twa:artifact:next`，确认 Bubblewrap 产物路径和后续 AAB 签名命令。
 - 构建后运行 `npm run twa:artifact:check`，确认 `twa-manifest.json`、包名、签名 key、指纹和 `app-release-bundle.aab` 一致。
 - 上传 Play Console 前运行 `npm run android:aab:signature:check`，确认 `app-release-bundle.aab` 已签名且签名证书 SHA-256 在 `ANDROID_SHA256_CERT_FINGERPRINTS` 中。
 

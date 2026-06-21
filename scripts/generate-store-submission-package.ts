@@ -14,6 +14,11 @@ type StoreSubmissionPackage = {
   files: SubmissionFile[];
 };
 
+type StoreSubmissionEnvValidationResult = {
+  ok: boolean;
+  errors: string[];
+};
+
 const APP_NAME = 'Elevate Life 家庭账本';
 const TAGLINE = '10 秒看懂家庭财务是否安全，知道下一步该处理什么。';
 const KEYWORDS = ['家庭账本', '家庭财务', '预算管理', '资产管理', '流水', '现金流', '记账', '财务安全', '资金账户', '负债管理'];
@@ -23,6 +28,65 @@ const FULL_DESCRIPTION =
 
 function envValue(env: EnvMap, key: string, fallback = '') {
   return (env[key] || fallback).trim();
+}
+
+function hasPlaceholder(value: string) {
+  const normalized = value.toLowerCase();
+  return (
+    !value ||
+    value.includes('<') ||
+    value.includes('>') ||
+    value.includes('你的域名') ||
+    value.includes('your-domain') ||
+    value.includes('待填写') ||
+    normalized.includes('example.com')
+  );
+}
+
+function validatePublicBaseUrl(value: string, errors: string[]) {
+  if (hasPlaceholder(value)) {
+    errors.push('APP_PUBLIC_BASE_URL must be a real public HTTPS origin, not a placeholder.');
+    return;
+  }
+
+  let url: URL;
+  try {
+    url = new URL(value);
+  } catch {
+    errors.push('APP_PUBLIC_BASE_URL must be a valid URL.');
+    return;
+  }
+
+  if (url.protocol !== 'https:') {
+    errors.push('APP_PUBLIC_BASE_URL must use https:// for store submission materials.');
+  }
+  if (url.hostname === 'localhost' || url.hostname === '127.0.0.1' || url.hostname === '0.0.0.0') {
+    errors.push('APP_PUBLIC_BASE_URL must point to a public host, not localhost.');
+  }
+  if (url.pathname !== '/') {
+    errors.push('APP_PUBLIC_BASE_URL must be an origin only, without a path.');
+  }
+}
+
+export function validateStoreSubmissionEnv(env: EnvMap = process.env): StoreSubmissionEnvValidationResult {
+  const errors: string[] = [];
+  const baseUrl = envValue(env, 'APP_PUBLIC_BASE_URL');
+  const supportEmail = envValue(env, 'APP_SUPPORT_EMAIL');
+
+  validatePublicBaseUrl(baseUrl, errors);
+
+  if (hasPlaceholder(supportEmail) || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(supportEmail)) {
+    errors.push('APP_SUPPORT_EMAIL must be a real support mailbox for store submission materials.');
+  }
+
+  return { ok: errors.length === 0, errors };
+}
+
+function requireStoreSubmissionEnv(env: EnvMap) {
+  const validation = validateStoreSubmissionEnv(env);
+  if (!validation.ok) {
+    throw new Error(`Store submission package requires real release metadata:\n- ${validation.errors.join('\n- ')}`);
+  }
 }
 
 function normalizeBaseUrl(value: string) {
@@ -38,8 +102,10 @@ function jsonFile(value: unknown) {
 }
 
 export function buildStoreSubmissionPackage(env: EnvMap = process.env): StoreSubmissionPackage {
-  const baseUrl = normalizeBaseUrl(envValue(env, 'APP_PUBLIC_BASE_URL', 'https://app.example.com'));
-  const supportEmail = envValue(env, 'APP_SUPPORT_EMAIL', 'support@example.com');
+  requireStoreSubmissionEnv(env);
+
+  const baseUrl = normalizeBaseUrl(envValue(env, 'APP_PUBLIC_BASE_URL'));
+  const supportEmail = envValue(env, 'APP_SUPPORT_EMAIL');
   const reviewUsername = envValue(env, 'REVIEW_ACCOUNT_USERNAME', 'demo');
   const reviewPassword = envValue(env, 'REVIEW_ACCOUNT_PASSWORD', 'demo123');
   const outputDir = envValue(env, 'STORE_SUBMISSION_OUTPUT_DIR', 'store-submission');

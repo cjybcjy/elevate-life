@@ -365,8 +365,8 @@ export default function AssetManager() {
           <label className="block text-xs text-ledger-muted mb-1">持有数量</label>
           <input
             name="quantity"
-            type="number"
-            step="0.0001"
+            type="text"
+            inputMode="decimal"
             className="rounded-md bg-ledger-bg border border-ledger-bg px-3 py-2 text-sm placeholder-ledger-muted focus:outline-none focus:border-ledger-accent"
             placeholder="克数/股数"
           />
@@ -375,8 +375,8 @@ export default function AssetManager() {
           <label className="block text-xs text-ledger-muted mb-1">成本单价</label>
           <input
             name="costUnitPrice"
-            type="number"
-            step="0.01"
+            type="text"
+            inputMode="decimal"
             className="rounded-md bg-ledger-bg border border-ledger-bg px-3 py-2 text-sm placeholder-ledger-muted focus:outline-none focus:border-ledger-accent"
             placeholder="每份买入价"
           />
@@ -386,8 +386,8 @@ export default function AssetManager() {
             <label className="block text-xs text-ledger-muted mb-1">买入总价</label>
             <input
               name="costPrice"
-              type="number"
-              step="0.01"
+              type="text"
+              inputMode="decimal"
               required
               className="rounded-md bg-ledger-bg border border-ledger-bg px-3 py-2 text-sm placeholder-ledger-muted focus:outline-none focus:border-ledger-accent"
               placeholder="折旧前原价"
@@ -398,8 +398,8 @@ export default function AssetManager() {
             <label className="block text-xs text-ledger-muted mb-1">余额/金额</label>
             <input
               name="balance"
-              type="number"
-              step="0.01"
+              type="text"
+              inputMode="decimal"
               className="rounded-md bg-ledger-bg border border-ledger-bg px-3 py-2 text-sm placeholder-ledger-muted focus:outline-none focus:border-ledger-accent"
               placeholder="手动金额（非黄金/股票类）"
             />
@@ -447,8 +447,8 @@ export default function AssetManager() {
               <label className="block text-xs text-ledger-muted mb-1">报废残值</label>
               <input
                 name="scrapValue"
-                type="number"
-                step="0.01"
+                type="text"
+                inputMode="decimal"
                 defaultValue="0"
                 className="rounded-md bg-ledger-bg border border-ledger-bg px-3 py-2 text-sm placeholder-ledger-muted focus:outline-none focus:border-ledger-accent"
                 placeholder="0"

@@ -3,10 +3,19 @@
 import { prisma } from '@/lib/prisma';
 import { auth } from '@/lib/auth';
 import { getUserKey } from '@/lib/key-cache';
-import { encryptValue, decryptValue } from '@/lib/crypto';
+import { decryptValue, encryptValue } from '@/lib/crypto';
 import { revalidateTag } from 'next/cache';
 import Decimal from 'decimal.js';
-import { createTransaction } from './ledger';
+import type { Prisma } from '@prisma/client';
+
+type ProcessRecurringResult = {
+  ruleId: string;
+  name: string;
+  success: boolean;
+  error?: string;
+  nextDueDate?: Date;
+  skipped?: boolean;
+};
 
 export async function getRecurringRules() {
   const session = await auth();
@@ -66,6 +75,7 @@ export async function createRecurringRule(data: {
   frequency: string;
   interval?: number;
   startDate: string;
+  isActive?: boolean;
 }) {
   const session = await auth();
   const userId = session?.user?.id;
@@ -85,6 +95,7 @@ export async function createRecurringRule(data: {
         frequency: data.frequency,
         interval: data.interval ?? 1,
         nextDueDate: new Date(data.startDate),
+        isActive: data.isActive ?? true,
         userId,
       },
     });
@@ -210,55 +221,141 @@ function computeNextDueDate(current: Date, frequency: string, interval: number):
   return next;
 }
 
-export async function processDueRecurring() {
+function computeNextFutureDueDate(current: Date, frequency: string, interval: number, reference: Date): Date {
+  let next = computeNextDueDate(current, frequency, interval);
+  let guard = 0;
+
+  while (next <= reference && guard < 500) {
+    next = computeNextDueDate(next, frequency, interval);
+    guard += 1;
+  }
+
+  if (guard >= 500) {
+    throw new Error('周期规则落后太多，请手动调整下次到期日');
+  }
+
+  return next;
+}
+
+async function getRecurringUserKey(
+  userId: string,
+  knownKeys: Map<string, string>,
+) {
+  const existing = knownKeys.get(userId);
+  if (existing) return existing;
+
+  const key = await getUserKey(userId);
+  if (key) knownKeys.set(userId, key);
+  return key;
+}
+
+async function adjustRecurringAssetBalance(
+  tx: Prisma.TransactionClient,
+  assetId: string,
+  userId: string,
+  derivedKey: string,
+  delta: Decimal,
+) {
+  const [asset] = await tx.$queryRaw<{ id: string; balance: string }[]>`
+    SELECT id, balance FROM "Asset"
+    WHERE id = ${assetId} AND user_id = ${userId}
+    FOR UPDATE
+  `;
+  if (!asset) throw new Error('资金账户不存在');
+
+  const currentBalance = new Decimal(decryptValue(asset.balance, derivedKey, userId));
+  const newBalance = currentBalance.plus(delta);
+  if (newBalance.isNegative()) {
+    throw new Error('资金账户余额不足');
+  }
+
+  await tx.asset.update({
+    where: { id: asset.id },
+    data: {
+      balance: encryptValue(newBalance.toFixed(4), derivedKey, userId),
+      isEncrypted: true,
+    },
+  });
+}
+
+async function processDueRecurringForUser(options: {
+  userId?: string;
+  derivedKey?: string | null;
+} = {}) {
   const now = new Date();
+  const knownKeys = new Map<string, string>();
+  if (options.userId && options.derivedKey) {
+    knownKeys.set(options.userId, options.derivedKey);
+  }
 
   const dueRules = await prisma.recurringRule.findMany({
     where: {
       isActive: true,
       nextDueDate: { lte: now },
+      ...(options.userId ? { userId: options.userId } : {}),
     },
   });
 
-  const results: { ruleId: string; name: string; success: boolean; error?: string }[] = [];
+  const results: ProcessRecurringResult[] = [];
 
-  for (const rule of dueRules) {
+  for (const candidate of dueRules) {
     try {
-      const nextDue = computeNextDueDate(rule.nextDueDate, rule.frequency, rule.interval);
+      const needsAccountKey = Boolean(candidate.fromAccountId || candidate.toAccountId);
+      const derivedKey = needsAccountKey
+        ? await getRecurringUserKey(candidate.userId, knownKeys)
+        : null;
+      if (needsAccountKey && !derivedKey) {
+        throw new Error('会话密钥已过期，请退出重新登录后再自动记录');
+      }
+
+      let transactionCreated = false;
+      let nextDue: Date | undefined;
 
       await prisma.$transaction(async (tx) => {
-        // Deduct from source account
-        if (rule.fromAccountId) {
-          const [asset] = await tx.$queryRawUnsafe<{ id: string; balance: string; is_encrypted: boolean }[]>(
-            `SELECT id, balance, is_encrypted FROM "Asset" WHERE id = $1 AND user_id = $2 FOR UPDATE`,
-            rule.fromAccountId, rule.userId
-          );
-          if (asset) {
-            const current = new Decimal(asset.balance);
-            const newBalance = current.minus(rule.amount);
-            if (!newBalance.isNegative()) {
-              await tx.$executeRawUnsafe(
-                `UPDATE "Asset" SET balance = $1 WHERE id = $2`,
-                newBalance.toFixed(4), asset.id
-              );
-            }
-          }
+        const [lockedRule] = await tx.$queryRaw<{ id: string }[]>`
+          SELECT id FROM "RecurringRule"
+          WHERE id = ${candidate.id}
+          FOR UPDATE
+        `;
+        if (!lockedRule) throw new Error('周期规则不存在');
+
+        const rule = await tx.recurringRule.findUnique({
+          where: { id: candidate.id },
+        });
+        if (!rule) throw new Error('周期规则不存在');
+
+        if (!rule.isActive || rule.nextDueDate > now) {
+          nextDue = rule.nextDueDate;
+          return;
         }
-        // Add to target account
-        if (rule.toAccountId) {
-          const [asset] = await tx.$queryRawUnsafe<{ id: string; balance: string }[]>(
-            `SELECT id, balance FROM "Asset" WHERE id = $1 AND user_id = $2 FOR UPDATE`,
-            rule.toAccountId, rule.userId
-          );
-          if (asset) {
-            const current = new Decimal(asset.balance);
-            const newBalance = current.plus(rule.amount);
-            await tx.$executeRawUnsafe(
-              `UPDATE "Asset" SET balance = $1 WHERE id = $2`,
-              newBalance.toFixed(4), asset.id
-            );
-          }
+
+        const ruleNeedsAccountKey = Boolean(rule.fromAccountId || rule.toAccountId);
+        if (ruleNeedsAccountKey && !derivedKey) {
+          throw new Error('会话密钥已过期，请退出重新登录后再自动记录');
         }
+
+        nextDue = computeNextFutureDueDate(rule.nextDueDate, rule.frequency, rule.interval, now);
+
+        if (rule.fromAccountId && derivedKey) {
+          await adjustRecurringAssetBalance(
+            tx,
+            rule.fromAccountId,
+            rule.userId,
+            derivedKey,
+            rule.amount.negated(),
+          );
+        }
+
+        if (rule.toAccountId && derivedKey) {
+          await adjustRecurringAssetBalance(
+            tx,
+            rule.toAccountId,
+            rule.userId,
+            derivedKey,
+            rule.amount,
+          );
+        }
+
         await tx.transaction.create({
           data: {
             type: rule.type,
@@ -272,16 +369,23 @@ export async function processDueRecurring() {
             userId: rule.userId,
           },
         });
-        // Advance nextDueDate atomically — prevents duplicates
+
         await tx.recurringRule.update({
           where: { id: rule.id },
           data: { nextDueDate: nextDue },
         });
+        transactionCreated = true;
       });
 
-      results.push({ ruleId: rule.id, name: rule.name, success: true });
+      results.push({
+        ruleId: candidate.id,
+        name: candidate.name,
+        success: true,
+        nextDueDate: nextDue,
+        skipped: !transactionCreated,
+      });
     } catch (error: any) {
-      results.push({ ruleId: rule.id, name: rule.name, success: false, error: error.message });
+      results.push({ ruleId: candidate.id, name: candidate.name, success: false, error: error.message });
     }
   }
 
@@ -292,4 +396,19 @@ export async function processDueRecurring() {
   }
 
   return { success: true, data: results };
+}
+
+export async function processDueRecurring() {
+  return processDueRecurringForUser();
+}
+
+export async function processMyDueRecurring() {
+  const session = await auth();
+  const userId = session?.user?.id;
+  if (!userId) return { success: false, error: 'Unauthorized' };
+
+  const derivedKey = session?.user?.derivedKey || await getUserKey(userId);
+  if (!derivedKey) return { success: false, error: '会话密钥已过期，请退出重新登录后再自动记录' };
+
+  return processDueRecurringForUser({ userId, derivedKey });
 }

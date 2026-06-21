@@ -16,9 +16,10 @@ export default function MonthFlow({
 }) {
   const [showIncome, setShowIncome] = useState(false);
   const [showExpense, setShowExpense] = useState(false);
+  const [referenceTime] = useState(() => Date.now());
 
   // Use Beijing time (UTC+8) for month comparison
-  const beijingNow = new Date(Date.now() + 8 * 3600_000);
+  const beijingNow = new Date(referenceTime + 8 * 3600_000);
   const nowYear = beijingNow.getUTCFullYear();
   const nowMonth = beijingNow.getUTCMonth();
 

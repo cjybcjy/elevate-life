@@ -8,6 +8,7 @@ function read(path: string) {
 
 const requiredFiles = [
   'scripts/validate-android-release-bundle-signature.ts',
+  'scripts/print-android-aab-fingerprint.ts',
   'docs/release/android-native-artifact.md',
   'docs/release/android-signing.md',
   'docs/release/google-play-twa.md',
@@ -24,18 +25,50 @@ assert.equal(
   'npx tsx scripts/validate-android-release-bundle-signature.ts',
   'package.json should expose android:aab:signature:check.',
 );
+assert.equal(
+  packageJson.scripts['android:aab:fingerprint'],
+  'npx tsx scripts/print-android-aab-fingerprint.ts',
+  'package.json should expose android:aab:fingerprint to copy the signed AAB SHA-256 into release env.',
+);
 
 async function main() {
   const {
     parseAndroidBundleCertificateFingerprint,
     validateAndroidReleaseBundleSignature,
   } = await import('./validate-android-release-bundle-signature');
+  const { buildAndroidAabFingerprintReport } = await import('./print-android-aab-fingerprint');
 
   const fingerprint =
     'AB:F0:1E:B5:F2:4F:EF:3A:59:D4:B2:AE:02:C2:55:08:62:48:FE:49:3F:79:7E:0B:33:98:21:B8:26:B5:AD:E3';
   const certOutput = `Signer #1:\nCertificate fingerprints:\n\t SHA256: ${fingerprint}\nSignature algorithm name: SHA384withRSA`;
 
   assert.equal(parseAndroidBundleCertificateFingerprint(certOutput), fingerprint);
+  const report = buildAndroidAabFingerprintReport(
+    {
+      ANDROID_RELEASE_BUNDLE_PATH: 'android/app/build/outputs/bundle/release/app-release.aab',
+    },
+    {
+      exists: () => true,
+      runKeytoolPrintCert: () => certOutput,
+    },
+  );
+  assert.deepEqual(report.errors, [], `valid signed AAB fingerprint export should pass: ${report.errors.join(', ')}`);
+  assert.equal(report.bundlePath, 'android/app/build/outputs/bundle/release/app-release.aab');
+  assert.equal(report.signerFingerprint, fingerprint);
+  assert.equal(report.envLine, `ANDROID_SHA256_CERT_FINGERPRINTS=${fingerprint}`);
+
+  const missingReport = buildAndroidAabFingerprintReport(
+    {},
+    {
+      exists: () => false,
+      runKeytoolPrintCert: () => certOutput,
+    },
+  );
+  assert(!missingReport.ok, 'missing AAB should fail fingerprint export.');
+  assert(
+    missingReport.errors.some((error: string) => error.includes('ANDROID_RELEASE_BUNDLE_PATH')),
+    'missing AAB fingerprint export should mention ANDROID_RELEASE_BUNDLE_PATH.',
+  );
 
   const okResult = validateAndroidReleaseBundleSignature(
     {
@@ -92,6 +125,17 @@ async function main() {
     assert(validator.includes(phrase), `Android AAB signature validator should mention ${phrase}.`);
   }
 
+  const printer = read('scripts/print-android-aab-fingerprint.ts');
+  for (const phrase of [
+    'ANDROID_RELEASE_BUNDLE_PATH',
+    'ANDROID_SHA256_CERT_FINGERPRINTS',
+    'buildAndroidAabFingerprintReport',
+    'keytool',
+    'parseAndroidBundleCertificateFingerprint',
+  ]) {
+    assert(printer.includes(phrase), `Android AAB fingerprint printer should mention ${phrase}.`);
+  }
+
   const artifactGuide = read('docs/release/android-native-artifact.md');
   assert(
     artifactGuide.includes('npm run android:aab:signature:check') &&
@@ -103,8 +147,9 @@ async function main() {
   const signingGuide = read('docs/release/android-signing.md');
   assert(
     signingGuide.includes('npm run android:aab:signature:check') &&
+      signingGuide.includes('npm run android:aab:fingerprint') &&
       signingGuide.includes('app-release.aab'),
-    'Android signing guide should point to AAB signature validation after release build.',
+    'Android signing guide should point to AAB fingerprint export and signature validation after release build.',
   );
 
   const twaGuide = read('docs/release/google-play-twa.md');
@@ -117,16 +162,19 @@ async function main() {
   const checklist = read('docs/release/store-publishing-checklist.md');
   assert(
     checklist.includes('npm run android:aab:signature:check') &&
+      checklist.includes('npm run android:aab:fingerprint') &&
       checklist.includes('AAB 签名'),
-    'Store publishing checklist should include Android AAB signature validation.',
+    'Store publishing checklist should include Android AAB fingerprint export and signature validation.',
   );
 
   const releaseReadiness = read('scripts/check-store-release-readiness.ts');
   assert(
     releaseReadiness.includes('scripts/check-android-release-bundle-signature-readiness.ts') &&
       releaseReadiness.includes('scripts/validate-android-release-bundle-signature.ts') &&
+      releaseReadiness.includes('scripts/print-android-aab-fingerprint.ts') &&
+      releaseReadiness.includes('android:aab:fingerprint') &&
       releaseReadiness.includes('android:aab:signature:check'),
-    'Overall store release readiness should include Android AAB signature validation.',
+    'Overall store release readiness should include Android AAB fingerprint export and signature validation.',
   );
 }
 

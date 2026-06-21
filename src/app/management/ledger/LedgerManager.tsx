@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef, useSyncExternalStore } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { createTransaction, deleteTransaction, updateTransactionReconciled, updateTransaction } from '@/lib/actions/ledger';
@@ -10,6 +10,7 @@ import {
   updateRecurringRule,
   toggleRecurringRule,
   deleteRecurringRule,
+  processMyDueRecurring,
 } from '@/lib/actions/recurring';
 
 interface Template {
@@ -38,24 +39,117 @@ interface RecurringRule {
   isActive: boolean;
 }
 
-const TEMPLATES_KEY = 'ledger-templates';
+type LedgerTab = 'transactions' | 'recurring';
 
-function loadTemplates(): Template[] {
-  if (typeof window === 'undefined') return [];
+const TEMPLATES_KEY = 'ledger-templates';
+const LEDGER_TAB_KEY = 'ledger-tab';
+const LEDGER_TAB_CHANGED_EVENT = 'ledger-tab-changed';
+const TEMPLATES_CHANGED_EVENT = 'ledger-templates-changed';
+const TRANSACTIONS_TAB: LedgerTab = 'transactions';
+const emptyTransactions: any[] = [];
+const emptyTemplates: Template[] = [];
+
+let cachedTemplatesRaw = '';
+let cachedTemplates = emptyTemplates;
+
+function readRecurringClockSnapshot() {
+  if (typeof window === 'undefined') return 0;
+  return Math.floor(Date.now() / 60_000);
+}
+
+function subscribeRecurringClock(callback: () => void) {
+  if (typeof window === 'undefined') return () => {};
+
+  const timeoutId = window.setTimeout(callback, 0);
+  const intervalId = window.setInterval(callback, 60_000);
+
+  return () => {
+    window.clearTimeout(timeoutId);
+    window.clearInterval(intervalId);
+  };
+}
+
+function readLedgerTabSnapshot(): LedgerTab {
+  if (typeof window === 'undefined') return TRANSACTIONS_TAB;
+
   try {
-    const raw = localStorage.getItem(TEMPLATES_KEY);
-    return raw ? JSON.parse(raw) : [];
+    const tab = localStorage.getItem(LEDGER_TAB_KEY);
+    return tab === 'recurring' || tab === 'transactions' ? tab : TRANSACTIONS_TAB;
   } catch {
-    return [];
+    return TRANSACTIONS_TAB;
+  }
+}
+
+function subscribeLedgerTab(callback: () => void) {
+  if (typeof window === 'undefined') return () => {};
+
+  const handleStorage = (event: StorageEvent) => {
+    if (event.key === LEDGER_TAB_KEY) callback();
+  };
+
+  window.addEventListener('storage', handleStorage);
+  window.addEventListener(LEDGER_TAB_CHANGED_EVENT, callback);
+
+  return () => {
+    window.removeEventListener('storage', handleStorage);
+    window.removeEventListener(LEDGER_TAB_CHANGED_EVENT, callback);
+  };
+}
+
+function saveLedgerTab(tab: LedgerTab) {
+  try {
+    localStorage.setItem(LEDGER_TAB_KEY, tab);
+    window.dispatchEvent(new Event(LEDGER_TAB_CHANGED_EVENT));
+  } catch {
+    // localStorage can be unavailable in private or restricted browser modes.
+  }
+}
+
+function readTemplatesSnapshot(): Template[] {
+  if (typeof window === 'undefined') return emptyTemplates;
+
+  try {
+    const raw = localStorage.getItem(TEMPLATES_KEY) ?? '';
+    if (raw === cachedTemplatesRaw) return cachedTemplates;
+
+    cachedTemplatesRaw = raw;
+    if (!raw) {
+      cachedTemplates = emptyTemplates;
+      return cachedTemplates;
+    }
+
+    const parsed = JSON.parse(raw);
+    cachedTemplates = Array.isArray(parsed) ? parsed : emptyTemplates;
+    return cachedTemplates;
+  } catch {
+    cachedTemplates = emptyTemplates;
+    return cachedTemplates;
   }
 }
 
 function saveTemplates(templates: Template[]) {
   try {
     localStorage.setItem(TEMPLATES_KEY, JSON.stringify(templates));
+    window.dispatchEvent(new Event(TEMPLATES_CHANGED_EVENT));
   } catch {
     // localStorage full or unavailable
   }
+}
+
+function subscribeTemplates(callback: () => void) {
+  if (typeof window === 'undefined') return () => {};
+
+  const handleStorage = (event: StorageEvent) => {
+    if (event.key === TEMPLATES_KEY) callback();
+  };
+
+  window.addEventListener('storage', handleStorage);
+  window.addEventListener(TEMPLATES_CHANGED_EVENT, callback);
+
+  return () => {
+    window.removeEventListener('storage', handleStorage);
+    window.removeEventListener(TEMPLATES_CHANGED_EVENT, callback);
+  };
 }
 
 const curSym: Record<string, string> = { CNY: '¥', USD: '$', HKD: 'HK$', JPY: 'JP¥' };
@@ -87,6 +181,7 @@ import { useToast } from '@/components/common/Toast';
 import { useSWRConfig } from 'swr';
 import useSWR from 'swr';
 import { getCategories } from '@/lib/actions/categories';
+import { buildTransactionUpdateInput } from '@/lib/ledger-edit';
 
 // ... (keep all existing type definitions and utility functions above)
 
@@ -94,8 +189,8 @@ export default function LedgerManager() {
   const searchParams = useSearchParams();
   const needsSourceFromQuery = searchParams.get('needsSource') === '1';
   const isCreateFocus = searchParams.get('focus') === 'create';
-  const { data: txData, isLoading: txLoading } = useTransactions();
-  const transactions = txData?.data ?? [];
+  const { data: txData } = useTransactions();
+  const transactions = txData?.data ?? emptyTransactions;
   const { data: assetData } = useAssets();
   const assets = assetData?.data ?? [];
   const { mutate } = useSWRConfig();
@@ -103,10 +198,15 @@ export default function LedgerManager() {
   const { data: catData } = useSWR('categories', () => getCategories().then(r => r.success ? (r.data ?? []) : []));
   const categories = catData ?? [];
 
-  const [activeTab, setActiveTab] = useState<'transactions' | 'recurring'>('transactions');
+  const storedLedgerTab = useSyncExternalStore(subscribeLedgerTab, readLedgerTabSnapshot, () => TRANSACTIONS_TAB);
+  const templates = useSyncExternalStore(subscribeTemplates, readTemplatesSnapshot, () => emptyTemplates);
+  const [selectedTab, setSelectedTab] = useState<LedgerTab | null>(null);
+  const activeTab = selectedTab ?? (needsSourceFromQuery || isCreateFocus ? TRANSACTIONS_TAB : storedLedgerTab);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-  const [templates, setTemplates] = useState<Template[]>([]);
+  const [processingRecurring, setProcessingRecurring] = useState(false);
+  const [autoRecordMessage, setAutoRecordMessage] = useState<string | null>(null);
+  const autoProcessedDueKeys = useRef<Set<string>>(new Set());
   const [showTemplateSave, setShowTemplateSave] = useState(false);
   const [templateName, setTemplateName] = useState('');
   const [showReconciliation, setShowReconciliation] = useState(false);
@@ -146,7 +246,9 @@ export default function LedgerManager() {
     frequency: 'monthly',
     interval: 1,
     startDate: new Date().toISOString().split('T')[0],
+    isActive: true,
   });
+  const recurringClockMinute = useSyncExternalStore(subscribeRecurringClock, readRecurringClockSnapshot, () => 0);
   const { data: recurringRules = [], mutate: mutateRecurringRules } = useSWR<RecurringRule[]>(
     activeTab === 'recurring' ? 'recurring-rules' : null,
     async () => {
@@ -164,18 +266,19 @@ export default function LedgerManager() {
       },
     },
   );
-
-  useEffect(() => {
-    setTemplates(loadTemplates());
-    if (needsSourceFromQuery || isCreateFocus) {
-      setActiveTab('transactions');
-      return;
-    }
-    try {
-      const tab = localStorage.getItem('ledger-tab');
-      if (tab === 'recurring' || tab === 'transactions') setActiveTab(tab);
-    } catch {}
-  }, [needsSourceFromQuery, isCreateFocus]);
+  const recurringClockTime = recurringClockMinute > 0 ? recurringClockMinute * 60_000 : 0;
+  const activeRecurringRules = recurringRules.filter((rule) => rule.isActive);
+  const dueRecurringRules = recurringClockTime > 0
+    ? activeRecurringRules.filter((rule) => new Date(rule.nextDueDate).getTime() <= recurringClockTime)
+    : [];
+  const dueRecurringKey = dueRecurringRules
+    .map((rule) => `${rule.id}:${new Date(rule.nextDueDate).toISOString()}`)
+    .sort()
+    .join('|');
+  const nextRecurringRule = activeRecurringRules.reduce<RecurringRule | null>((nearest, rule) => {
+    if (!nearest) return rule;
+    return new Date(rule.nextDueDate).getTime() < new Date(nearest.nextDueDate).getTime() ? rule : nearest;
+  }, null);
 
   // Fetch budget options when category or date changes
   useEffect(() => {
@@ -184,10 +287,10 @@ export default function LedgerManager() {
         getBudgetsForCategory(formValues.occurredAt, formValues.categoryId)
           .then(res => { if (res.success) setBudgetOptions(res.data ?? []); });
       });
-    } else {
-      setBudgetOptions([]);
     }
   }, [formValues.categoryId, formValues.occurredAt]);
+
+  const formBudgetOptions = formValues.categoryId && formValues.occurredAt ? budgetOptions : [];
 
   const applyTemplate = useCallback((t: Template) => {
     setFormValues({
@@ -215,7 +318,6 @@ export default function LedgerManager() {
       description: formValues.description,
     };
     const updated = [...templates.filter(t => t.name !== newTemplate.name), newTemplate];
-    setTemplates(updated);
     saveTemplates(updated);
     setTemplateName('');
     setShowTemplateSave(false);
@@ -223,7 +325,6 @@ export default function LedgerManager() {
 
   const deleteTemplate = useCallback((name: string) => {
     const updated = templates.filter(t => t.name !== name);
-    setTemplates(updated);
     saveTemplates(updated);
   }, [templates]);
 
@@ -312,6 +413,7 @@ export default function LedgerManager() {
       frequency: formData.get('frequency') as string,
       interval: Number(formData.get('interval') || 1),
       startDate: formData.get('startDate') as string,
+      isActive: formData.get('isActive') === 'on',
     });
     if (result.success) {
       (document.getElementById('recurring-form') as HTMLFormElement)?.reset();
@@ -327,6 +429,7 @@ export default function LedgerManager() {
         frequency: 'monthly',
         interval: 1,
         startDate: new Date().toISOString().split('T')[0],
+        isActive: true,
       });
       await mutateRecurringRules();
       mutate('transactions'); toast.success('操作成功');
@@ -337,6 +440,66 @@ export default function LedgerManager() {
     }
     setLoading(false);
   }
+
+  const processDueRecurringNow = useCallback(async () => {
+    setError('');
+    setAutoRecordMessage(null);
+    setProcessingRecurring(true);
+
+    const result = await processMyDueRecurring();
+
+    if (result.success && 'data' in result) {
+      const processed = result.data ?? [];
+      const successCount = processed.filter((item) => item.success && !item.skipped).length;
+      const skippedCount = processed.filter((item) => item.success && item.skipped).length;
+      const failedCount = processed.filter((item) => !item.success).length;
+      const firstFailure = processed.find((item) => !item.success);
+      await mutateRecurringRules();
+      mutate('transactions');
+      mutate('assets');
+
+      if (successCount > 0) {
+        const message = failedCount > 0
+          ? `已自动记录 ${successCount} 笔，${failedCount} 笔失败`
+          : `已自动记录 ${successCount} 笔到期周期交易`;
+        setAutoRecordMessage(message);
+        toast.success(message);
+      } else if (failedCount > 0) {
+        setError(firstFailure?.error || '到期周期交易记录失败');
+      } else if (skippedCount > 0) {
+        setAutoRecordMessage('到期周期交易已处理');
+      } else {
+        setAutoRecordMessage('暂无到期周期交易');
+        toast.success('暂无到期周期交易');
+      }
+    } else {
+      const resultError = 'error' in result ? result.error : '自动记录失败';
+      if (resultError?.includes('会话密钥') || resultError === 'Unauthorized') {
+        window.location.href = '/login';
+      } else {
+        setError(resultError || '自动记录失败');
+      }
+    }
+
+    setProcessingRecurring(false);
+  }, [mutate, mutateRecurringRules, toast]);
+
+  async function handleProcessDueRecurring() {
+    await processDueRecurringNow();
+  }
+
+  useEffect(() => {
+    if (activeTab !== 'recurring' || !dueRecurringKey || processingRecurring) {
+      return;
+    }
+
+    if (autoProcessedDueKeys.current.has(dueRecurringKey)) {
+      return;
+    }
+
+    autoProcessedDueKeys.current.add(dueRecurringKey);
+    void processDueRecurringNow();
+  }, [activeTab, dueRecurringKey, processDueRecurringNow, processingRecurring]);
 
   async function handleToggleRecurring(ruleId: string) {
     mutateRecurringRules(prev => (prev ?? []).map(r =>
@@ -368,17 +531,10 @@ export default function LedgerManager() {
   async function handleUpdateTransaction(txId: string) {
     if (!editTxForm.amount) return;
     setError('');
-    const result = await updateTransaction(txId, {
-      amount: editTxForm.amount || undefined,
-      categoryId: editTxForm.categoryId || undefined,
-      budgetId: editTxForm.budgetId || undefined,
-      fromAccountId: editTxForm.fromAccountId || undefined,
-      description: editTxForm.description || undefined,
-      occurredAt: editTxForm.occurredAt || undefined,
-    });
+    const result = await updateTransaction(txId, buildTransactionUpdateInput(editTxForm));
     if (result.success) {
       setEditingTxId(null);
-      mutate('transactions'); toast.success('操作成功');
+      mutate('transactions'); mutate('assets'); toast.success('操作成功');
     } else {
       setError(result.error || '更新失败');
     }
@@ -452,7 +608,7 @@ export default function LedgerManager() {
         <h1 className="text-2xl font-bold" style={{ color: 'var(--color-text-primary)' }}>流水管理</h1>
         <div className="flex rounded-lg bg-ledger-surface p-1">
           <button
-            onClick={() => { setActiveTab('transactions'); try { localStorage.setItem('ledger-tab', 'transactions'); } catch {} }}
+            onClick={() => { setSelectedTab('transactions'); saveLedgerTab('transactions'); }}
             className={`px-4 py-1.5 text-sm rounded-md transition-colors ${
               activeTab === 'transactions'
                 ? 'bg-ledger-accent text-white'
@@ -462,7 +618,7 @@ export default function LedgerManager() {
             流水记录
           </button>
           <button
-            onClick={() => { setActiveTab('recurring'); try { localStorage.setItem('ledger-tab', 'recurring'); } catch {} }}
+            onClick={() => { setSelectedTab('recurring'); saveLedgerTab('recurring'); }}
             className={`px-4 py-1.5 text-sm rounded-md transition-colors ${
               activeTab === 'recurring'
                 ? 'bg-ledger-accent text-white'
@@ -562,8 +718,8 @@ export default function LedgerManager() {
               <label className="block text-xs text-ledger-muted mb-1">金额</label>
               <input
                 name="amount"
-                type="number"
-                step="0.01"
+                type="text"
+                inputMode="decimal"
                 required
                 value={formValues.amount}
                 onChange={e => setFormValues(prev => ({ ...prev, amount: e.target.value }))}
@@ -585,7 +741,7 @@ export default function LedgerManager() {
                 ))}
               </select>
             </div>
-            {budgetOptions.length > 0 && (
+            {formBudgetOptions.length > 0 && (
               <div>
                 <label className="block text-xs text-ledger-muted mb-1">预算</label>
                 <select
@@ -595,7 +751,7 @@ export default function LedgerManager() {
                   className="rounded-md bg-ledger-bg border border-ledger-bg px-3 py-2 text-sm focus:outline-none focus:border-ledger-accent"
                 >
                   <option value="">-- 关联预算 --</option>
-                  {budgetOptions.map((b: any) => (
+                  {formBudgetOptions.map((b: any) => (
                     <option key={b.id} value={b.id}>{b.name}</option>
                   ))}
                 </select>
@@ -717,8 +873,8 @@ export default function LedgerManager() {
                   <div>
                     <label className="block text-xs text-ledger-muted mb-1">参考金额</label>
                     <input
-                      type="number"
-                      step="0.01"
+                      type="text"
+                      inputMode="decimal"
                       value={reconAmount}
                       onChange={e => setReconAmount(e.target.value)}
                       className="rounded-md bg-ledger-bg border border-ledger-bg px-3 py-1.5 text-sm placeholder-ledger-muted focus:outline-none focus:border-ledger-accent w-28"
@@ -888,7 +1044,7 @@ export default function LedgerManager() {
                             <div>
                               <label className="block text-xs text-ledger-muted mb-1">金额</label>
                               <input
-                                type="number" step="0.01"
+                                type="text" inputMode="decimal"
                                 value={editTxForm.amount}
                                 onChange={e => setEditTxForm(p => ({ ...p, amount: e.target.value }))}
                                 className="rounded-md bg-ledger-surface border border-ledger-bg px-2 py-1.5 text-xs focus:outline-none focus:border-ledger-accent w-24"
@@ -974,6 +1130,47 @@ export default function LedgerManager() {
 
       {activeTab === 'recurring' && (
         <>
+          <section className="mb-4 rounded-xl border border-ledger-primary/20 bg-ledger-surface p-4">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <div className="text-sm font-semibold" style={{ color: 'var(--color-text-primary)' }}>自动记录</div>
+                <div className="mt-1 text-xs text-ledger-muted">
+                  已开启后台检查；启用中的周期交易到期后会自动写入流水，并推进下次到期日。
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={handleProcessDueRecurring}
+                disabled={processingRecurring || dueRecurringRules.length === 0}
+                className="rounded-md bg-ledger-accent text-[var(--color-text-inverse)] px-3 py-2 text-xs font-medium hover:opacity-90 transition-opacity disabled:opacity-50"
+              >
+                {processingRecurring
+                  ? '记录中...'
+                  : dueRecurringRules.length > 0
+                    ? `立即记录 ${dueRecurringRules.length} 项`
+                    : '暂无到期项'}
+              </button>
+            </div>
+            <div className="mt-3 flex flex-wrap gap-2 text-xs">
+              <span className="rounded-full bg-ledger-bg px-2.5 py-1 text-ledger-muted">
+                自动记录中 {activeRecurringRules.length} 项
+              </span>
+              <span className="rounded-full bg-ledger-bg px-2.5 py-1 text-ledger-muted">
+                已到期 {dueRecurringRules.length} 项
+              </span>
+              {nextRecurringRule && (
+                <span className="rounded-full bg-ledger-bg px-2.5 py-1 text-ledger-muted">
+                  下一项 {nextRecurringRule.name} · {new Date(nextRecurringRule.nextDueDate).toLocaleDateString('zh-CN')}
+                </span>
+              )}
+              {autoRecordMessage && (
+                <span className="rounded-full bg-green-900/20 px-2.5 py-1 text-green-400">
+                  {autoRecordMessage}
+                </span>
+              )}
+            </div>
+          </section>
+
           {/* Recurring Rule Create Form */}
           <form
             id="recurring-form"
@@ -1022,8 +1219,8 @@ export default function LedgerManager() {
               <label className="block text-xs text-ledger-muted mb-1">金额</label>
               <input
                 name="amount"
-                type="number"
-                step="0.01"
+                type="text"
+                inputMode="decimal"
                 required
                 value={recurringForm.amount}
                 onChange={e => setRecurringForm(prev => ({ ...prev, amount: e.target.value }))}
@@ -1079,9 +1276,8 @@ export default function LedgerManager() {
                 <span className="text-xs text-ledger-muted">每</span>
                 <input
                   name="interval"
-                  type="number"
-                  min={1}
-                  max={99}
+                  type="text"
+                  inputMode="numeric"
                   value={recurringForm.interval}
                   onChange={e => setRecurringForm(prev => ({ ...prev, interval: Number(e.target.value) || 1 }))}
                   className="rounded-md bg-ledger-bg border border-ledger-bg px-2 py-2 text-sm focus:outline-none focus:border-ledger-accent w-14 text-center"
@@ -1110,6 +1306,17 @@ export default function LedgerManager() {
                 className="rounded-md bg-ledger-bg border border-ledger-bg px-3 py-2 text-sm focus:outline-none focus:border-ledger-accent"
               />
             </div>
+            <label className="flex items-center gap-2 rounded-md bg-ledger-bg px-3 py-2 text-sm text-ledger-muted">
+              <input
+                name="isActive"
+                type="checkbox"
+                checked={recurringForm.isActive}
+                onChange={e => setRecurringForm(prev => ({ ...prev, isActive: e.target.checked }))}
+                className="h-4 w-4"
+                style={{ accentColor: 'var(--color-accent)' }}
+              />
+              <span>自动记录</span>
+            </label>
             <div>
               <label className="block text-xs text-ledger-muted mb-1">备注</label>
               <input
@@ -1140,7 +1347,7 @@ export default function LedgerManager() {
                   <th className="px-4 py-3 font-medium">频率</th>
                   <th className="px-4 py-3 font-medium">上次执行</th>
                   <th className="px-4 py-3 font-medium">下次到期</th>
-                  <th className="px-4 py-3 font-medium">状态</th>
+                  <th className="px-4 py-3 font-medium">自动记录</th>
                   <th className="px-4 py-3 font-medium">操作</th>
                 </tr>
               </thead>
@@ -1180,7 +1387,7 @@ export default function LedgerManager() {
                         onClick={() => handleToggleRecurring(r.id)}
                         className={`text-xs px-2 py-0.5 rounded-full ${r.isActive ? 'bg-green-900/30 text-green-400' : 'bg-gray-800 text-ledger-muted'}`}
                       >
-                        {r.isActive ? '暂停' : '启用'}
+                        {r.isActive ? '记录中' : '已暂停'}
                       </button>
                     </td>
                     <td className="px-4 py-3">
@@ -1210,7 +1417,7 @@ export default function LedgerManager() {
                             </div>
                             <div>
                               <label className="block text-xs text-ledger-muted mb-1">金额</label>
-                              <input type="number" step="0.01" value={editRecurringForm.amount}
+                              <input type="text" inputMode="decimal" value={editRecurringForm.amount}
                                 onChange={e => setEditRecurringForm(p => ({ ...p, amount: e.target.value }))}
                                 className="rounded-md bg-ledger-surface border border-ledger-bg px-2 py-1.5 text-xs focus:outline-none focus:border-ledger-accent w-24" />
                             </div>

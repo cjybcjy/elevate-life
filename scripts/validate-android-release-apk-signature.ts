@@ -11,6 +11,11 @@ type AndroidReleaseApkSignatureOptions = {
   runApkSignerVerify?: (path: string) => string;
 };
 
+type ApkSignerPathOptions = {
+  exists?: (path: string) => boolean;
+  readDir?: (path: string) => string[];
+};
+
 type AndroidReleaseApkSignatureResult = {
   ok: boolean;
   errors: string[];
@@ -19,6 +24,7 @@ type AndroidReleaseApkSignatureResult = {
 };
 
 const SHA256_FINGERPRINT = /^([0-9a-f]{2}:){31}[0-9a-f]{2}$/i;
+const HOME_ANDROID_SDK_PATH = 'Android/Sdk';
 
 function envValue(env: EnvMap, key: string) {
   return (env[key] || '').trim();
@@ -41,25 +47,35 @@ function candidateApkPaths(env: EnvMap) {
   ];
 }
 
-function candidateApkSignerPaths(env: EnvMap) {
+export function candidateApkSignerPaths(env: EnvMap, options: ApkSignerPathOptions = {}) {
+  const exists = options.exists ?? existsSync;
+  const readDir = options.readDir ?? readdirSync;
   const explicitPath = envValue(env, 'ANDROID_APKSIGNER_PATH');
   if (explicitPath) return [explicitPath];
 
-  const sdkRoot = envValue(env, 'ANDROID_HOME') || envValue(env, 'ANDROID_SDK_ROOT');
-  if (!sdkRoot) return ['apksigner'];
+  const sdkRoots = [
+    envValue(env, 'ANDROID_HOME'),
+    envValue(env, 'ANDROID_SDK_ROOT'),
+    envValue(env, 'HOME') ? join(envValue(env, 'HOME'), ...HOME_ANDROID_SDK_PATH.split('/')) : '',
+    '/opt/android-sdk',
+    '/usr/lib/android-sdk',
+  ].filter(Boolean);
 
-  const buildToolsDir = join(sdkRoot, 'build-tools');
-  let buildToolVersions: string[] = [];
-  try {
-    buildToolVersions = readdirSync(buildToolsDir)
-      .filter((entry) => existsSync(join(buildToolsDir, entry, 'apksigner')))
-      .sort((a, b) => b.localeCompare(a, undefined, { numeric: true }));
-  } catch {
-    return ['apksigner'];
+  const sdkCandidates: string[] = [];
+  for (const sdkRoot of [...new Set(sdkRoots)]) {
+    const buildToolsDir = join(sdkRoot, 'build-tools');
+    try {
+      const buildToolVersions = readDir(buildToolsDir)
+        .filter((entry) => exists(join(buildToolsDir, entry, 'apksigner')))
+        .sort((a, b) => b.localeCompare(a, undefined, { numeric: true }));
+      sdkCandidates.push(...buildToolVersions.map((version) => join(buildToolsDir, version, 'apksigner')));
+    } catch {
+      // Continue through other conventional SDK locations, then fall back to PATH.
+    }
   }
 
   return [
-    ...buildToolVersions.map((version) => join(buildToolsDir, version, 'apksigner')),
+    ...sdkCandidates,
     'apksigner',
   ];
 }

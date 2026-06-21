@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import Link from 'next/link';
 import Decimal from 'decimal.js';
 import { ErrorBoundary } from '@/components/common/ErrorBoundary';
@@ -21,6 +21,7 @@ import { PriceRefresher } from '@/components/widgets/PriceRefresher';
 import { useDashboard } from '@/hooks/useDashboard';
 import { useBudgets } from '@/hooks/useBudgets';
 import { getGoals } from '@/lib/actions/goals';
+import { getCurrentGoldPrice } from '@/lib/actions/gold';
 import useSWR from 'swr';
 
 const categoryConfig: Record<string, { icon: string; color: string; label: string }> = {
@@ -38,26 +39,33 @@ const categoryConfig: Record<string, { icon: string; color: string; label: strin
   other: { icon: '📦', color: '#94a3b8', label: '其他' },
 };
 
+function loadIdleCash() {
+  if (typeof window === 'undefined') return 0;
+
+  try {
+    const value = localStorage.getItem('stock-idle-cash');
+    const parsed = value ? Number.parseFloat(value) : 0;
+    return Number.isFinite(parsed) ? parsed : 0;
+  } catch {
+    return 0;
+  }
+}
+
 export default function DashboardClient({ currentDate }: { currentDate: string }) {
   const {
     assets, liabilities, transactions, forecast,
     forexRates, pricesStale, isLoading,
-  } = useDashboard(currentDate);
+  } = useDashboard();
 
   const { data: budgetProgressData } = useBudgets(currentDate);
   const budgetProgress = budgetProgressData?.data ?? [];
 
   const { data: goalsData } = useSWR('goals', () => getGoals().then(r => r.success ? (r.data ?? []) : []));
   const goals = goalsData ?? [];
+  const { data: goldPriceData } = useSWR('gold-price', () => getCurrentGoldPrice().then(r => r.success ? r.data : null));
 
   // Idle cash from localStorage (synced with StockTable)
-  const [idleCash, setIdleCash] = useState(0);
-  useEffect(() => {
-    try {
-      const ic = localStorage.getItem('stock-idle-cash');
-      if (ic) setIdleCash(parseFloat(ic));
-    } catch {}
-  }, []);
+  const [idleCash] = useState(loadIdleCash);
 
   if (isLoading) {
     return (
@@ -93,6 +101,13 @@ export default function DashboardClient({ currentDate }: { currentDate: string }
   const surplusRate = totalAssets.gt(0) ? netWorth / totalAssets.toNumber() * 100 : 0;
 
   const stocks = assets.filter((a: any) => a.category === 'stock');
+  const goldPriceAsset = assets.find((a: any) => (
+    (a.category === 'gold_physical' || a.category === 'gold_paper') &&
+    Number.isFinite(Number(a.unitPrice)) &&
+    Number(a.unitPrice) > 0
+  ));
+  const goldUnitPrice = goldPriceData?.price ?? (goldPriceAsset ? Number(goldPriceAsset.unitPrice) : null);
+  const goldPriceCurrency = goldPriceData?.currency ?? goldPriceAsset?.priceCurrency ?? goldPriceAsset?.currency ?? 'CNY';
 
   const catTotals: Record<string, number> = {};
   for (const a of assets) {
@@ -166,6 +181,8 @@ export default function DashboardClient({ currentDate }: { currentDate: string }
           budgetProgress={budgetProgress}
           transactions={transactions}
           pricesStale={pricesStale}
+          goldUnitPrice={goldUnitPrice}
+          goldPriceCurrency={goldPriceCurrency}
         />
       </ErrorBoundary>
 
@@ -289,16 +306,13 @@ export default function DashboardClient({ currentDate }: { currentDate: string }
         </div>
       </ErrorBoundary>
 
-      {/* Goals — only if goals exist */}
-      {goals.length > 0 && (
-        <ErrorBoundary name="Goals">
-          <div className="card" style={{ gridColumn: '1 / -1' }}>
-            <div className="card-body">
-              <GoalTracker goals={goals} />
-            </div>
+      <ErrorBoundary name="Goals">
+        <div className="card" style={{ gridColumn: '1 / -1' }}>
+          <div className="card-body">
+            <GoalTracker goals={goals} />
           </div>
-        </ErrorBoundary>
-      )}
+        </div>
+      </ErrorBoundary>
 
       {/* Scissor */}
       <ErrorBoundary name="Scissor">

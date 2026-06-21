@@ -26,6 +26,8 @@ assert.equal(
 const smokeSource = read('scripts/smoke-test-store-deployment.ts');
 for (const phrase of [
   'APP_PUBLIC_BASE_URL',
+  'APP_SUPPORT_EMAIL',
+  'supportEmail',
   '/privacy',
   '/support',
   '/account-deletion',
@@ -41,13 +43,14 @@ for (const phrase of [
 async function main() {
   const { smokeTestStoreDeployment } = await import('./smoke-test-store-deployment');
   const baseUrl = 'https://app.elevatelife.example';
+  const supportEmail = 'support@elevatelife.example';
 
   const okFetch = async (input: string | URL) => {
     const url = new URL(String(input));
     const bodyByPath: Record<string, string> = {
-      '/privacy': '<html><title>隐私政策</title><body>家庭财务数据 账号信息 数据删除</body></html>',
-      '/support': '<html><title>支持与帮助</title><body>审核测试账号 隐私政策 账号与数据删除</body></html>',
-      '/account-deletion': '<html><title>账号与数据删除</title><body>删除范围 处理时限 审核备注</body></html>',
+      '/privacy': `<html><title>隐私政策</title><body>家庭财务数据 账号信息 数据删除 ${supportEmail}</body></html>`,
+      '/support': `<html><title>支持与帮助</title><body>审核测试账号 隐私政策 账号与数据删除 ${supportEmail}</body></html>`,
+      '/account-deletion': `<html><title>账号与数据删除</title><body>删除范围 处理时限 审核备注 ${supportEmail}</body></html>`,
       '/manifest.webmanifest': JSON.stringify({
         name: 'Elevate Life 家庭账本',
         short_name: '家庭账本',
@@ -79,11 +82,38 @@ async function main() {
     });
   };
 
-  const okResult = await smokeTestStoreDeployment({ baseUrl, fetchImpl: okFetch });
+  const okResult = await smokeTestStoreDeployment({ baseUrl, supportEmail, fetchImpl: okFetch });
   assert.deepEqual(okResult.errors, [], `valid deployed URL responses should pass: ${okResult.errors.join(', ')}`);
 
+  const missingSupportEmailFetch = async (input: string | URL) => {
+    const url = new URL(String(input));
+    if (url.pathname === '/manifest.webmanifest' || url.pathname === '/.well-known/assetlinks.json') {
+      return okFetch(input);
+    }
+    const bodyByPath: Record<string, string> = {
+      '/privacy': '<html><title>隐私政策</title><body>家庭财务数据 账号信息 数据删除</body></html>',
+      '/support': '<html><title>支持与帮助</title><body>审核测试账号 隐私政策 账号与数据删除</body></html>',
+      '/account-deletion': '<html><title>账号与数据删除</title><body>删除范围 处理时限 审核备注</body></html>',
+    };
+    return new Response(bodyByPath[url.pathname] ?? '', {
+      status: 200,
+      headers: { 'content-type': 'text/html' },
+    });
+  };
+
+  const missingSupportEmailResult = await smokeTestStoreDeployment({
+    baseUrl,
+    supportEmail,
+    fetchImpl: missingSupportEmailFetch,
+  });
+  assert(!missingSupportEmailResult.ok, 'deployed compliance pages without the support email should fail smoke testing.');
+  assert(
+    missingSupportEmailResult.errors.some((error: string) => error.includes('APP_SUPPORT_EMAIL')),
+    'missing support email responses should explain that APP_SUPPORT_EMAIL was not rendered.',
+  );
+
   const badFetch = async () => new Response('<html><title>Login</title><form>Sign In</form></html>', { status: 200 });
-  const badResult = await smokeTestStoreDeployment({ baseUrl, fetchImpl: badFetch });
+  const badResult = await smokeTestStoreDeployment({ baseUrl, supportEmail, fetchImpl: badFetch });
   assert(!badResult.ok, 'login/invalid deployed responses should fail smoke testing.');
   for (const phrase of ['/privacy', '/support', '/account-deletion', '/manifest.webmanifest', '/.well-known/assetlinks.json']) {
     assert(
@@ -96,6 +126,7 @@ async function main() {
   assert(
     guide.includes('npm run release:smoke') &&
       guide.includes('public URL smoke') &&
+      guide.includes('APP_SUPPORT_EMAIL') &&
       guide.includes('/manifest.webmanifest') &&
       guide.includes('/.well-known/assetlinks.json'),
     'production environment guide should document release:smoke after deployment.',

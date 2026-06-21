@@ -1,8 +1,9 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useSyncExternalStore } from 'react';
 
 type Theme = 'light' | 'dark';
+const themeChangeEvent = 'elevate-life-theme-change';
 
 function getSystemTheme(): Theme {
   if (typeof window === 'undefined') return 'light';
@@ -16,24 +17,68 @@ function getStoredTheme(): Theme | null {
   return null;
 }
 
-function applyTheme(theme: Theme) {
+function setDocumentTheme(theme: Theme) {
   document.documentElement.setAttribute('data-theme', theme);
+}
+
+function notifyThemeChange() {
+  window.dispatchEvent(new Event(themeChangeEvent));
+}
+
+function applyTheme(theme: Theme) {
+  setDocumentTheme(theme);
   localStorage.setItem('theme', theme);
+  notifyThemeChange();
+}
+
+function getInitialTheme(): Theme {
+  return getStoredTheme() ?? getSystemTheme();
+}
+
+function subscribeToThemeChanges(callback: () => void) {
+  if (typeof window === 'undefined') return () => {};
+
+  const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+  const handleSystemThemeChange = () => {
+    if (!getStoredTheme()) callback();
+  };
+  const handleStorageChange = (event: StorageEvent) => {
+    if (event.key === 'theme') callback();
+  };
+
+  window.addEventListener(themeChangeEvent, callback);
+  window.addEventListener('storage', handleStorageChange);
+  mediaQuery.addEventListener('change', handleSystemThemeChange);
+
+  return () => {
+    window.removeEventListener(themeChangeEvent, callback);
+    window.removeEventListener('storage', handleStorageChange);
+    mediaQuery.removeEventListener('change', handleSystemThemeChange);
+  };
+}
+
+function getServerThemeSnapshot(): Theme {
+  return 'light';
 }
 
 export default function ThemeToggle() {
-  const [theme, setTheme] = useState<Theme>('light');
+  const theme = useSyncExternalStore(
+    subscribeToThemeChanges,
+    getInitialTheme,
+    getServerThemeSnapshot,
+  );
 
   useEffect(() => {
-    const stored = getStoredTheme();
-    const resolved = stored ?? getSystemTheme();
-    setTheme(resolved);
-    applyTheme(resolved);
+    setDocumentTheme(theme);
+  }, [theme]);
+
+  useEffect(() => {
+    setDocumentTheme(getInitialTheme());
+    notifyThemeChange();
   }, []);
 
   function toggle() {
     const next = theme === 'light' ? 'dark' : 'light';
-    setTheme(next);
     applyTheme(next);
   }
 

@@ -7,7 +7,6 @@ import { AmountDisplay } from '@/components/common/AmountDisplay';
 import { useLiabilities } from '@/hooks/useLiabilities';
 import { useTransactions } from '@/hooks/useTransactions';
 import { useAssets } from '@/hooks/useAssets';
-import { useToast } from '@/components/common/Toast';
 import { useSWRConfig } from 'swr';
 
 interface Liability {
@@ -23,12 +22,6 @@ interface Liability {
   monthlyPayment?: string | null;
 }
 
-interface LiabilityManagerProps {
-  liabilities: Liability[];
-  transactions: any[];
-  assets: any[];
-}
-
 const paymentMethodLabel: Record<string, string> = {
   equal_interest: '等额本息',
   equal_principal: '等额本金',
@@ -36,13 +29,12 @@ const paymentMethodLabel: Record<string, string> = {
 };
 
 export default function LiabilityManager() {
-  const { data: liabData, isLoading: liabLoading } = useLiabilities();
+  const { data: liabData } = useLiabilities();
   const { data: txData } = useTransactions();
   const transactions = txData?.data ?? [];
   const { data: assetData } = useAssets();
   const assets = assetData?.data ?? [];
   const { mutate } = useSWRConfig();
-  const toast = useToast();
 
   const liabilities = liabData?.data ?? [];
   const [error, setError] = useState('');
@@ -281,8 +273,8 @@ export default function LiabilityManager() {
           <label className="block text-xs text-ledger-muted mb-1">本金</label>
           <input
             name="principal"
-            type="number"
-            step="0.01"
+            type="text"
+            inputMode="decimal"
             required
             className="rounded-md bg-ledger-bg border border-ledger-bg px-3 py-2 text-sm placeholder-ledger-muted focus:outline-none focus:border-ledger-accent"
             placeholder="0.00"
@@ -292,8 +284,8 @@ export default function LiabilityManager() {
           <label className="block text-xs text-ledger-muted mb-1">当前余额</label>
           <input
             name="currentBalance"
-            type="number"
-            step="0.01"
+            type="text"
+            inputMode="decimal"
             className="rounded-md bg-ledger-bg border border-ledger-bg px-3 py-2 text-sm placeholder-ledger-muted focus:outline-none focus:border-ledger-accent"
             placeholder="默认等于本金"
           />
@@ -302,8 +294,8 @@ export default function LiabilityManager() {
           <label className="block text-xs text-ledger-muted mb-1">年利率</label>
           <input
             name="interestRate"
-            type="number"
-            step="0.0001"
+            type="text"
+            inputMode="decimal"
             required
             className="rounded-md bg-ledger-bg border border-ledger-bg px-3 py-2 text-sm placeholder-ledger-muted focus:outline-none focus:border-ledger-accent"
             placeholder="0.05"
@@ -313,7 +305,8 @@ export default function LiabilityManager() {
           <label className="block text-xs text-ledger-muted mb-1">期限（月）</label>
           <input
             name="termMonths"
-            type="number"
+            type="text"
+            inputMode="numeric"
             required
             className="rounded-md bg-ledger-bg border border-ledger-bg px-3 py-2 text-sm placeholder-ledger-muted focus:outline-none focus:border-ledger-accent"
             placeholder="12"
@@ -502,7 +495,7 @@ export default function LiabilityManager() {
                           <div>
                             <label className="block text-xs text-ledger-muted mb-1">本金</label>
                             <input
-                              type="number" step="0.01"
+                              type="text" inputMode="decimal"
                               value={editForm.principal}
                               onChange={e => setEditForm(prev => ({ ...prev, principal: e.target.value }))}
                               className="rounded-md bg-ledger-surface border border-ledger-bg px-2 py-1.5 text-xs focus:outline-none focus:border-ledger-accent w-24"
@@ -511,7 +504,7 @@ export default function LiabilityManager() {
                           <div>
                             <label className="block text-xs text-ledger-muted mb-1">余额</label>
                             <input
-                              type="number" step="0.01"
+                              type="text" inputMode="decimal"
                               value={editForm.currentBalance}
                               onChange={e => setEditForm(prev => ({ ...prev, currentBalance: e.target.value }))}
                               className="rounded-md bg-ledger-surface border border-ledger-bg px-2 py-1.5 text-xs focus:outline-none focus:border-ledger-accent w-24"
@@ -520,7 +513,7 @@ export default function LiabilityManager() {
                           <div>
                             <label className="block text-xs text-ledger-muted mb-1">年利率</label>
                             <input
-                              type="number" step="0.0001"
+                              type="text" inputMode="decimal"
                               value={editForm.interestRate}
                               onChange={e => setEditForm(prev => ({ ...prev, interestRate: e.target.value }))}
                               className="rounded-md bg-ledger-surface border border-ledger-bg px-2 py-1.5 text-xs focus:outline-none focus:border-ledger-accent w-20"
@@ -529,7 +522,8 @@ export default function LiabilityManager() {
                           <div>
                             <label className="block text-xs text-ledger-muted mb-1">期限(月)</label>
                             <input
-                              type="number"
+                              type="text"
+                              inputMode="numeric"
                               value={editForm.termMonths}
                               onChange={e => setEditForm(prev => ({ ...prev, termMonths: e.target.value }))}
                               className="rounded-md bg-ledger-surface border border-ledger-bg px-2 py-1.5 text-xs focus:outline-none focus:border-ledger-accent w-16"
@@ -563,8 +557,8 @@ export default function LiabilityManager() {
                           <div>
                             <label className="block text-xs text-ledger-muted mb-1">还款金额</label>
                             <input
-                              type="number"
-                              step="0.01"
+                              type="text"
+                              inputMode="decimal"
                               value={repayForm.amount}
                               onChange={e => setRepayForm(prev => ({ ...prev, amount: e.target.value }))}
                               className="rounded-md bg-ledger-surface border border-ledger-bg px-3 py-1.5 text-sm placeholder-ledger-muted focus:outline-none focus:border-ledger-accent w-28"
@@ -657,7 +651,7 @@ export default function LiabilityManager() {
                                       <div>
                                         <label className="block text-xs text-ledger-muted mb-1">金额</label>
                                         <input
-                                          type="number" step="0.01"
+                                          type="text" inputMode="decimal"
                                           value={editRepayForm.amount}
                                           onChange={e => setEditRepayForm(p => ({ ...p, amount: e.target.value }))}
                                           className="rounded-md bg-ledger-surface border border-ledger-bg px-2 py-1 text-xs focus:outline-none focus:border-ledger-accent w-24"

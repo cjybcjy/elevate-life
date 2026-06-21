@@ -7,6 +7,7 @@ function read(path: string) {
 }
 
 const requiredFiles = [
+  'src/lib/public-release-config.ts',
   'src/app/privacy/page.tsx',
   'src/app/support/page.tsx',
   'src/app/account-deletion/page.tsx',
@@ -22,6 +23,7 @@ const privacySource = read('src/app/privacy/page.tsx');
 const supportSource = read('src/app/support/page.tsx');
 const deletionSource = read('src/app/account-deletion/page.tsx');
 const termsSource = read('src/app/terms/page.tsx');
+const publicReleaseConfigSource = read('src/lib/public-release-config.ts');
 const shellSource = read('src/components/layout/AppShell.tsx');
 const layoutSource = read('src/app/layout.tsx');
 const proxySource = read('src/proxy.ts');
@@ -44,6 +46,33 @@ assert(
     supportSource.includes('/account-deletion'),
   'Support page should include review account notes and link to privacy/deletion pages.',
 );
+
+assert(
+  publicReleaseConfigSource.includes("import { connection } from 'next/server';") &&
+    publicReleaseConfigSource.includes('APP_SUPPORT_EMAIL') &&
+    publicReleaseConfigSource.includes('getPublicReleaseContact') &&
+    publicReleaseConfigSource.includes('mailto:'),
+  'Public release contact helper should read APP_SUPPORT_EMAIL at request time and expose a mailto link.',
+);
+
+for (const [path, source] of [
+  ['src/app/privacy/page.tsx', privacySource],
+  ['src/app/support/page.tsx', supportSource],
+  ['src/app/account-deletion/page.tsx', deletionSource],
+  ['src/app/terms/page.tsx', termsSource],
+] as const) {
+  assert(
+    source.includes('getPublicReleaseContact'),
+    `${path} should render the runtime support contact from public release config.`,
+  );
+  assert(
+    !source.includes('待填写') &&
+      !source.includes('替换为真实邮箱') &&
+      !source.includes('填入真实支持邮箱') &&
+      !source.includes('正式上架前请'),
+    `${path} should not ship placeholder support-contact copy on public compliance pages.`,
+  );
+}
 
 assert(
   deletionSource.includes('账号与数据删除') &&

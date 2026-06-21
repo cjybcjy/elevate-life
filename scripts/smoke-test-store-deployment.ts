@@ -5,6 +5,7 @@ type FetchLike = (input: string | URL, init?: RequestInit) => Promise<Response>;
 
 type SmokeOptions = {
   baseUrl: string;
+  supportEmail?: string;
   fetchImpl?: FetchLike;
 };
 
@@ -68,7 +69,14 @@ function includesLoginScreen(text: string) {
   return normalized.includes('sign in') || normalized.includes('/login') || normalized.includes('login failed');
 }
 
-async function checkHtml(fetchImpl: FetchLike, baseUrl: string, path: string, phrases: string[], errors: string[]) {
+async function checkHtml(
+  fetchImpl: FetchLike,
+  baseUrl: string,
+  path: string,
+  phrases: string[],
+  errors: string[],
+  supportEmail?: string,
+) {
   const text = await fetchText(fetchImpl, urlFor(baseUrl, path), errors);
   if (!text) return;
 
@@ -80,6 +88,10 @@ async function checkHtml(fetchImpl: FetchLike, baseUrl: string, path: string, ph
     if (!text.includes(phrase)) {
       errors.push(`${path} should include "${phrase}" for store review.`);
     }
+  }
+
+  if (supportEmail && !text.includes(supportEmail)) {
+    errors.push(`${path} should render APP_SUPPORT_EMAIL (${supportEmail}) for store review contact.`);
   }
 }
 
@@ -148,7 +160,11 @@ async function checkAssetLinks(fetchImpl: FetchLike, baseUrl: string, errors: st
   }
 }
 
-export async function smokeTestStoreDeployment({ baseUrl, fetchImpl = fetch }: SmokeOptions): Promise<SmokeResult> {
+export async function smokeTestStoreDeployment({
+  baseUrl,
+  supportEmail,
+  fetchImpl = fetch,
+}: SmokeOptions): Promise<SmokeResult> {
   const errors: string[] = [];
   const checkedUrls = [
     ...REQUIRED_HTML.map(({ path }) => urlFor(baseUrl, path)),
@@ -157,7 +173,7 @@ export async function smokeTestStoreDeployment({ baseUrl, fetchImpl = fetch }: S
   ];
 
   for (const page of REQUIRED_HTML) {
-    await checkHtml(fetchImpl, baseUrl, page.path, page.phrases, errors);
+    await checkHtml(fetchImpl, baseUrl, page.path, page.phrases, errors, supportEmail);
   }
   await checkManifest(fetchImpl, baseUrl, errors);
   await checkAssetLinks(fetchImpl, baseUrl, errors);
@@ -175,7 +191,8 @@ async function runCli() {
   }
 
   const baseUrl = process.env.APP_PUBLIC_BASE_URL || '';
-  const result = await smokeTestStoreDeployment({ baseUrl });
+  const supportEmail = process.env.APP_SUPPORT_EMAIL || '';
+  const result = await smokeTestStoreDeployment({ baseUrl, supportEmail });
   if (!result.ok) {
     console.error('Deployed store URL smoke test failed:');
     for (const error of result.errors) console.error(`- ${error}`);

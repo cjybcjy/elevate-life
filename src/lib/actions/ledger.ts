@@ -8,6 +8,7 @@ import { revalidateTag } from 'next/cache';
 import Decimal from 'decimal.js';
 import { autoCategorize } from './category-rules';
 import type { Prisma } from '@prisma/client';
+import { buildTransactionEffectDeltas } from '@/lib/transaction-effects';
 
 type TransactionEffect = {
   amount: Decimal;
@@ -81,88 +82,6 @@ async function adjustLiabilityBalance(
       isEncrypted: true,
     },
   });
-}
-
-async function applyTransactionEffects(
-  tx: Prisma.TransactionClient,
-  effect: TransactionEffect,
-  userId: string,
-  derivedKey: string,
-) {
-  if (effect.fromAccountId) {
-    await adjustAssetBalance(
-      tx,
-      effect.fromAccountId,
-      userId,
-      derivedKey,
-      effect.amount.negated(),
-      'Source asset not found',
-      'Insufficient balance',
-    );
-  }
-
-  if (effect.toAccountId) {
-    await adjustAssetBalance(
-      tx,
-      effect.toAccountId,
-      userId,
-      derivedKey,
-      effect.amount,
-      'Target asset not found',
-      'Insufficient balance',
-    );
-  }
-
-  if (effect.liabilityId) {
-    await adjustLiabilityBalance(
-      tx,
-      effect.liabilityId,
-      userId,
-      derivedKey,
-      effect.amount.negated(),
-    );
-  }
-}
-
-async function reverseTransactionEffects(
-  tx: Prisma.TransactionClient,
-  effect: TransactionEffect,
-  userId: string,
-  derivedKey: string,
-) {
-  if (effect.fromAccountId) {
-    await adjustAssetBalance(
-      tx,
-      effect.fromAccountId,
-      userId,
-      derivedKey,
-      effect.amount,
-      'Source asset not found',
-      'Insufficient balance',
-    );
-  }
-
-  if (effect.toAccountId) {
-    await adjustAssetBalance(
-      tx,
-      effect.toAccountId,
-      userId,
-      derivedKey,
-      effect.amount.negated(),
-      'Target asset not found',
-      'Insufficient balance to reverse',
-    );
-  }
-
-  if (effect.liabilityId) {
-    await adjustLiabilityBalance(
-      tx,
-      effect.liabilityId,
-      userId,
-      derivedKey,
-      effect.amount,
-    );
-  }
 }
 
 export async function getTransactions() {
@@ -423,7 +342,7 @@ export async function updateTransaction(
   id: string,
   data: Partial<{
     amount: string;
-    categoryId: string;
+    categoryId: string | null;
     budgetId: string | null;
     fromAccountId: string | null;
     toAccountId: string | null;
@@ -488,18 +407,31 @@ export async function updateTransaction(
         data.liabilityId !== undefined;
 
       if (effectsChanged) {
-        await reverseTransactionEffects(
-          tx,
+        const deltas = buildTransactionEffectDeltas(
           {
             amount: existing.amount,
             fromAccountId: existing.fromAccountId,
             toAccountId: existing.toAccountId,
             liabilityId: existing.liabilityId,
           },
-          userId,
-          derivedKey,
+          nextEffect,
         );
-        await applyTransactionEffects(tx, nextEffect, userId, derivedKey);
+
+        for (const delta of deltas.assetDeltas) {
+          await adjustAssetBalance(
+            tx,
+            delta.id,
+            userId,
+            derivedKey,
+            delta.delta,
+            'Asset not found',
+            'Insufficient balance',
+          );
+        }
+
+        for (const delta of deltas.liabilityDeltas) {
+          await adjustLiabilityBalance(tx, delta.id, userId, derivedKey, delta.delta);
+        }
       }
 
       await tx.transaction.updateMany({

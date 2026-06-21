@@ -1,7 +1,6 @@
 'use client';
 
 import { useState } from 'react';
-import { AmountDisplay } from '@/components/common/AmountDisplay';
 
 const categoryLabel: Record<string, string> = {
   real_estate: '房产', cash: '现金', current_deposit: '银行活期', provident_fund: '公积金账户', pension: '养老账户',
@@ -109,11 +108,11 @@ export function AssetTable({
                           <>
                             <div>
                               <label className="block text-xs text-ledger-muted mb-1">数量</label>
-                              <input name="quantity" type="number" step="0.0001" defaultValue={asset.quantity} className="rounded-md bg-ledger-surface border border-ledger-bg px-2 py-1.5 text-xs focus:outline-none focus:border-ledger-accent w-20" />
+                              <input name="quantity" type="text" inputMode="decimal" defaultValue={asset.quantity} className="rounded-md bg-ledger-surface border border-ledger-bg px-2 py-1.5 text-xs focus:outline-none focus:border-ledger-accent w-20" />
                             </div>
                             <div>
                               <label className="block text-xs text-ledger-muted mb-1">成本单价</label>
-                              <input name="costUnitPrice" type="number" step="0.01" defaultValue={asset.costUnitPrice} className="rounded-md bg-ledger-surface border border-ledger-bg px-2 py-1.5 text-xs focus:outline-none focus:border-ledger-accent w-24" />
+                              <input name="costUnitPrice" type="text" inputMode="decimal" defaultValue={asset.costUnitPrice} className="rounded-md bg-ledger-surface border border-ledger-bg px-2 py-1.5 text-xs focus:outline-none focus:border-ledger-accent w-24" />
                             </div>
                           </>
                         )}
@@ -135,7 +134,7 @@ export function AssetTable({
                         ) : (
                           <div>
                             <label className="block text-xs text-ledger-muted mb-1">余额</label>
-                            <input name="balance" type="number" step="0.01" defaultValue={parseFloat(asset.balance || '0')} className="rounded-md bg-ledger-surface border border-ledger-bg px-2 py-1.5 text-xs focus:outline-none focus:border-ledger-accent w-28" />
+                            <input name="balance" type="text" inputMode="decimal" defaultValue={parseFloat(asset.balance || '0')} className="rounded-md bg-ledger-surface border border-ledger-bg px-2 py-1.5 text-xs focus:outline-none focus:border-ledger-accent w-28" />
                           </div>
                         )}
                         <div>
@@ -161,7 +160,7 @@ export function AssetTable({
                             </div>
                             <div>
                               <label className="block text-xs text-ledger-muted mb-1">报废残值</label>
-                              <input name="scrapValue" type="number" step="0.01" defaultValue={asset.scrapValue || 0} className="rounded-md bg-ledger-surface border border-ledger-bg px-2 py-1.5 text-xs focus:outline-none focus:border-ledger-accent w-24" />
+                              <input name="scrapValue" type="text" inputMode="decimal" defaultValue={asset.scrapValue || 0} className="rounded-md bg-ledger-surface border border-ledger-bg px-2 py-1.5 text-xs focus:outline-none focus:border-ledger-accent w-24" />
                             </div>
                           </>
                         )}

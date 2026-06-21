@@ -33,8 +33,8 @@ export default function TargetCashflow({
         <div>
           <label className="block text-xs text-ledger-muted mb-1">目标金额</label>
           <input
-            type="number"
-            step="10000"
+            type="text"
+            inputMode="decimal"
             value={targetAmount}
             onChange={e => setTargetAmount(e.target.value)}
             className="w-28 rounded-md bg-ledger-surface border border-ledger-bg px-2 py-1 text-xs text-white focus:outline-none focus:border-ledger-accent"

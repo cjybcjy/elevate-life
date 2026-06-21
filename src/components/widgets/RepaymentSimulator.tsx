@@ -59,8 +59,8 @@ export default function RepaymentSimulator({ liabilities }: Props) {
         <div>
           <label className="block text-xs text-ledger-muted mb-1">额外还款金额</label>
           <input
-            type="number"
-            step="0.01"
+            type="text"
+            inputMode="decimal"
             value={extraAmount}
             onChange={e => setExtraAmount(e.target.value)}
             className="rounded-md bg-ledger-bg border border-ledger-bg px-3 py-2 text-sm text-white placeholder-ledger-muted focus:outline-none focus:border-ledger-accent w-36"
@@ -70,8 +70,8 @@ export default function RepaymentSimulator({ liabilities }: Props) {
         <div>
           <label className="block text-xs text-ledger-muted mb-1">还款时机(第几月)</label>
           <input
-            type="number"
-            min={1}
+            type="text"
+            inputMode="numeric"
             value={extraMonth}
             onChange={e => setExtraMonth(Number(e.target.value))}
             className="rounded-md bg-ledger-bg border border-ledger-bg px-3 py-2 text-sm text-white focus:outline-none focus:border-ledger-accent w-20"

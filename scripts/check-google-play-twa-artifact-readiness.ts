@@ -8,6 +8,7 @@ function read(path: string) {
 
 const requiredFiles = [
   'scripts/validate-twa-build-artifact.ts',
+  'scripts/print-twa-artifact-next-steps.ts',
   'docs/release/google-play-twa.md',
   'docs/release/store-publishing-checklist.md',
 ];
@@ -21,6 +22,11 @@ assert.equal(
   packageJson.scripts['twa:artifact:check'],
   'npx tsx scripts/validate-twa-build-artifact.ts',
   'package.json should expose twa:artifact:check.',
+);
+assert.equal(
+  packageJson.scripts['twa:artifact:next'],
+  'npx tsx scripts/print-twa-artifact-next-steps.ts',
+  'package.json should expose twa:artifact:next for Bubblewrap artifact guidance.',
 );
 
 async function main() {
@@ -96,26 +102,54 @@ async function main() {
 
   const twaGuide = read('docs/release/google-play-twa.md');
   assert(
-    twaGuide.includes('npm run twa:artifact:check') &&
+    twaGuide.includes('npm run twa:artifact:next') &&
+      twaGuide.includes('npm run twa:artifact:check') &&
       twaGuide.includes('app-release-bundle.aab') &&
       twaGuide.includes('twa-manifest.json'),
-    'Google Play TWA guide should document TWA artifact validation.',
+    'Google Play TWA guide should document TWA artifact next steps and validation.',
   );
 
   const checklist = read('docs/release/store-publishing-checklist.md');
   assert(
-    checklist.includes('npm run twa:artifact:check') &&
+    checklist.includes('npm run twa:artifact:next') &&
+      checklist.includes('npm run twa:artifact:check') &&
       checklist.includes('AAB 产物'),
-    'Store publishing checklist should include TWA AAB artifact validation.',
+    'Store publishing checklist should include TWA AAB artifact next steps and validation.',
   );
 
   const releaseReadiness = read('scripts/check-store-release-readiness.ts');
   assert(
     releaseReadiness.includes('scripts/check-google-play-twa-artifact-readiness.ts') &&
       releaseReadiness.includes('scripts/validate-twa-build-artifact.ts') &&
+      releaseReadiness.includes('scripts/print-twa-artifact-next-steps.ts') &&
+      releaseReadiness.includes('twa:artifact:next') &&
       releaseReadiness.includes('twa:artifact:check'),
-    'Overall store release readiness should include Google Play TWA artifact validation.',
+    'Overall store release readiness should include Google Play TWA artifact next steps and validation.',
   );
+
+  const { buildTwaArtifactNextSteps } = await import('./print-twa-artifact-next-steps');
+  const nextSteps = buildTwaArtifactNextSteps(
+    {
+      APP_PUBLIC_BASE_URL: 'https://app.elevatelife.example',
+      TWA_MANIFEST_URL: 'https://app.elevatelife.example/manifest.webmanifest',
+      TWA_OUTPUT_DIR: 'android-twa',
+      ANDROID_PACKAGE_NAME: 'com.elevatelife.app',
+    },
+    {
+      exists: () => false,
+      readText: () => '',
+      fileSize: () => 0,
+    },
+  );
+
+  assert(nextSteps.includes('# Google Play TWA artifact next steps'));
+  assert(nextSteps.includes('twa-manifest.json should exist at android-twa/twa-manifest.json'));
+  assert(nextSteps.includes('app-release-bundle.aab should exist in android-twa after bubblewrap build'));
+  assert(nextSteps.includes('TWA_MANIFEST_URL=https://app.elevatelife.example/manifest.webmanifest'));
+  assert(nextSteps.includes('npm run twa:init'));
+  assert(nextSteps.includes('npm run twa:build'));
+  assert(nextSteps.includes('npm run twa:artifact:check'));
+  assert(nextSteps.includes('npm run android:aab:signature:check'));
 }
 
 main().catch((error) => {

@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import Link from 'next/link';
 import { AmountDisplay } from '../common/AmountDisplay';
 
 interface Goal {
@@ -17,11 +18,19 @@ interface Goal {
 export default function GoalTracker({ goals }: { goals: Goal[] }) {
   const [nowMs] = useState(() => Date.now());
 
-  if (goals.length === 0) return null;
-
   return (
     <div className="bg-ledger-surface rounded-xl p-4">
-      <h2 className="text-base font-bold text-ledger-text mb-3">储蓄目标</h2>
+      <div className="mb-3 flex items-center justify-between gap-3">
+        <h2 className="text-base font-bold text-ledger-text">储蓄目标</h2>
+        <Link href="/management/goals" className="btn btn-outline btn-sm">
+          {goals.length === 0 ? '创建目标' : '管理目标'}
+        </Link>
+      </div>
+      {goals.length === 0 ? (
+        <div className="rounded-lg border border-dashed border-ledger-bg px-4 py-6 text-center text-sm text-ledger-muted">
+          还没有储蓄目标。可以先建一个应急金、旅行金或教育金目标。
+        </div>
+      ) : (
       <div className="grid grid-cols-2 gap-3">
         {goals.map(g => {
           const current = typeof g.currentAmount === 'number'
@@ -89,6 +98,7 @@ export default function GoalTracker({ goals }: { goals: Goal[] }) {
           );
         })}
       </div>
+      )}
     </div>
   );
 }

@@ -13,8 +13,10 @@ const navItems = [
   { label: '负债管理', href: '/management/liabilities', icon: '📋' },
   { label: '流水管理', href: '/management/ledger', icon: '📝' },
   { label: '预算管理', href: '/management/budget', icon: '📊' },
+  { label: '目标管理', href: '/management/goals', icon: '🎯' },
   { label: '分类管理', href: '/management/categories', icon: '🏷️' },
 ];
+const passwordHref = '/account/password';
 
 function isNavActive(pathname: string, href: string) {
   return href === '/' ? pathname === '/' : pathname.startsWith(href);
@@ -122,6 +124,41 @@ export default function Sidebar() {
           }}
         >
           <ThemeToggle />
+          <Link
+            href={passwordHref}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '10px',
+              padding: '9px 12px',
+              borderRadius: 'var(--radius-md)',
+              fontSize: '14px',
+              fontWeight: pathname.startsWith(passwordHref) ? 600 : 400,
+              textDecoration: 'none',
+              color: pathname.startsWith(passwordHref)
+                ? 'var(--color-sidebar-active-text)'
+                : 'var(--color-sidebar-text)',
+              background: pathname.startsWith(passwordHref)
+                ? 'var(--color-sidebar-active-bg)'
+                : 'transparent',
+              transition: 'all var(--transition-fast)',
+            }}
+            onMouseEnter={e => {
+              if (!pathname.startsWith(passwordHref)) {
+                e.currentTarget.style.background = 'var(--color-sidebar-hover-bg)';
+                e.currentTarget.style.color = 'var(--color-text-primary)';
+              }
+            }}
+            onMouseLeave={e => {
+              if (!pathname.startsWith(passwordHref)) {
+                e.currentTarget.style.background = 'transparent';
+                e.currentTarget.style.color = 'var(--color-sidebar-text)';
+              }
+            }}
+          >
+            <span style={{ fontSize: '16px' }}>🔐</span>
+            修改密码
+          </Link>
           <button
             onClick={handleLogout}
             style={{
@@ -159,6 +196,15 @@ export default function Sidebar() {
         </Link>
         <div className="mobile-topbar__actions">
           <ThemeToggle />
+          <Link
+            href={passwordHref}
+            className="mobile-icon-button"
+            aria-label="修改密码"
+            title="修改密码"
+            style={{ textDecoration: 'none' }}
+          >
+            🔐
+          </Link>
           <button
             type="button"
             className="mobile-icon-button"

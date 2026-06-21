@@ -3,13 +3,15 @@
 正式生成 Google Play TWA、Android 国内市场包或 iOS 包之前，先把发布环境从本地示例值切到真实值，并运行：
 
 ```bash
+npm run release:env:next
+npm run release:env:draft
 npm run release:env:template:check
 npm run release:check
 ```
 
 这个命令会拦截 `example.com`、localhost、非 HTTPS、包名不一致、TWA manifest URL 不一致、缺少 Android SHA-256 指纹等常见提审前错误。
 
-可先参考 `docs/release/store-release.env.example` 整理本机或 CI 的真实环境变量。这个模板只用于交接变量名和填写顺序，不要把填好后的 secret 文件提交到仓库。
+可先运行 `npm run release:env:next` 查看当前缺失项、私有 env 目标位置和后续命令；再运行 `npm run release:env:draft` 生成一份私有 release env 草稿。如果本地已有签名 AAB，它会尝试带出 `ANDROID_SHA256_CERT_FINGERPRINTS`。再参考 `docs/release/store-release.env.example` 整理本机或 CI 的真实环境变量。草稿和模板只用于交接变量名和填写顺序，不要把填好后的 secret 文件提交到仓库。
 
 ## 必填变量
 
@@ -38,16 +40,18 @@ npm run release:check
 npm run release:smoke
 ```
 
-这个命令会实际访问 `APP_PUBLIC_BASE_URL` 下的 `/privacy`、`/support`、`/account-deletion`、`/manifest.webmanifest` 和 `/.well-known/assetlinks.json`，确认它们返回 200、不跳登录页，并且 manifest / Digital Asset Links 内容满足商店包装需要。
+这个命令会实际访问 `APP_PUBLIC_BASE_URL` 下的 `/privacy`、`/support`、`/account-deletion`、`/manifest.webmanifest` 和 `/.well-known/assetlinks.json`，确认它们返回 200、不跳登录页，公开合规页已渲染 `APP_SUPPORT_EMAIL`，并且 manifest / Digital Asset Links 内容满足商店包装需要。
 
 ## 推荐顺序
 
 1. 部署 Next.js 到真实 HTTPS 域名。
-2. 运行 `npm run release:env:template:check`，确认上架环境模板和文档没有漏项。
-3. 在部署环境设置上方变量。
-4. 运行 `npm run release:check`。
-5. 运行 `npm run release:smoke`，确认线上公开页面和 TWA 关联 JSON 可访问。
-6. 运行 `npm run privacy:check`、`npm run review:check`、`npm run screenshots:check`、`npm run twa:check`、`npm run mobile:check`。
-7. 在目标环境运行 `npm run review:seed` 准备审核账号。
-8. 运行 `npm run screenshots:store` 生成商店截图。
-9. 再执行 Bubblewrap / Capacitor 打包和商店后台提交流程。
+2. 运行 `npm run release:env:next`，确认当前缺失项和私有 env 填写位置。
+3. 运行 `npm run release:env:draft`，复制草稿到私有环境文件或 CI secret manager，并替换真实域名、邮箱和 secret。
+4. 运行 `npm run release:env:template:check`，确认上架环境模板和文档没有漏项。
+5. 在部署环境设置上方变量。
+6. 运行 `npm run release:check`。
+7. 运行 `npm run release:smoke`，确认线上公开页面包含 `APP_SUPPORT_EMAIL`，并且 TWA 关联 JSON 可访问。
+8. 运行 `npm run privacy:check`、`npm run review:check`、`npm run screenshots:check`、`npm run twa:check`、`npm run mobile:check`。
+9. 在目标环境运行 `npm run review:seed` 准备审核账号。
+10. 运行 `npm run screenshots:store` 生成商店截图。
+11. 再执行 Bubblewrap / Capacitor 打包和商店后台提交流程。

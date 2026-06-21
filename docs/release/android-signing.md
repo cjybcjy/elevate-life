@@ -3,18 +3,20 @@
 Google Play TWA、Android 国内市场包和 `/.well-known/assetlinks.json` 都依赖稳定包名和签名证书。生成正式包之前先运行：
 
 ```bash
+npm run android:signing:next
 npm run android:signing:check
 ```
 
-这个命令会用 `keytool` 读取 `TWA_SIGNING_KEY_PATH` / `TWA_SIGNING_KEY_ALIAS` 对应 keystore 的 SHA-256 指纹，并确认它出现在 `ANDROID_SHA256_CERT_FINGERPRINTS` 中。
+`android:signing:next` 会输出当前缺失项、`keytool` 生成/查看命令和私有 env 草稿；`android:signing:check` 会用 `keytool` 读取 `TWA_SIGNING_KEY_PATH` / `TWA_SIGNING_KEY_ALIAS` 对应 keystore 的 SHA-256 指纹，并确认它出现在 `ANDROID_SHA256_CERT_FINGERPRINTS` 中。
 
 生成 `app-release.aab` 之后，再运行：
 
 ```bash
+ANDROID_RELEASE_BUNDLE_PATH=android/app/build/outputs/bundle/release/app-release.aab npm run android:aab:fingerprint
 ANDROID_RELEASE_BUNDLE_PATH=android/app/build/outputs/bundle/release/app-release.aab npm run android:aab:signature:check
 ```
 
-这个命令会用 `jarsigner` 和 `keytool -printcert -jarfile` 确认 AAB 已签名，并且签名证书 SHA-256 与 `ANDROID_SHA256_CERT_FINGERPRINTS` 一致。
+第一个命令会用 `keytool -printcert -jarfile` 从 AAB 输出可复制到发布环境的 `ANDROID_SHA256_CERT_FINGERPRINTS=...`。把上传证书和 Play App Signing 证书都填入后，第二个命令会用 `jarsigner` 和 `keytool -printcert -jarfile` 确认 AAB 已签名，并且签名证书 SHA-256 与 `ANDROID_SHA256_CERT_FINGERPRINTS` 一致。
 
 如果目标 Android 市场要求 APK，也运行：
 
@@ -34,7 +36,7 @@ ANDROID_RELEASE_APK_PATH=android/app/build/outputs/apk/release/app-release.apk n
 
 ## 指纹来源
 
-1. 上传 keystore 指纹：本地 `keytool -list -v -keystore <path> -alias <alias>` 可查看。
+1. 上传 keystore 指纹：本地 `keytool -list -v -keystore <path> -alias <alias>` 可查看；如果已经有 release AAB，也可运行 `npm run android:aab:fingerprint` 从 AAB 反查。
 2. Play App Signing 指纹：Google Play Console 创建应用并启用 Play App Signing 后，在 App Integrity / 应用完整性页面查看。
 3. 国内 Android 市场：通常使用你本地 release keystore 签出的 APK/AAB，按对应市场后台要求记录 SHA-256。
 

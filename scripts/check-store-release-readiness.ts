@@ -48,7 +48,14 @@ const requiredFiles = [
   'scripts/check-store-submission-package-readiness.ts',
   'scripts/capture-store-screenshots.ts',
   'scripts/generate-store-submission-package.ts',
+  'scripts/store-release-status.ts',
   'scripts/store-preflight.ts',
+  'scripts/print-store-release-env-draft.ts',
+  'scripts/print-release-env-next-steps.ts',
+  'scripts/print-android-aab-fingerprint.ts',
+  'scripts/print-android-signing-next-steps.ts',
+  'scripts/print-twa-artifact-next-steps.ts',
+  'scripts/print-capacitor-android-artifact-next-steps.ts',
   'scripts/validate-android-signing.ts',
   'scripts/validate-android-release-bundle-signature.ts',
   'scripts/validate-android-release-apk-signature.ts',
@@ -158,15 +165,19 @@ assert(
     publishingGuideSource.includes('docs/release/store-submission-package.md') &&
     publishingGuideSource.includes('npm run store:submission') &&
     publishingGuideSource.includes('docs/release/android-signing.md') &&
+    publishingGuideSource.includes('npm run android:signing:next') &&
     publishingGuideSource.includes('npm run android:signing:check') &&
+    publishingGuideSource.includes('npm run android:aab:fingerprint') &&
     publishingGuideSource.includes('npm run android:aab:signature:check') &&
     publishingGuideSource.includes('npm run android:apk:signature:check') &&
     publishingGuideSource.includes('docs/release/android-native-artifact.md') &&
+    publishingGuideSource.includes('npm run android:artifact:next') &&
     publishingGuideSource.includes('npm run android:artifact:check') &&
     publishingGuideSource.includes('docs/release/mobile-permissions.md') &&
     publishingGuideSource.includes('npm run mobile:permissions:check') &&
     publishingGuideSource.includes('docs/release/production-environment.md') &&
     publishingGuideSource.includes('docs/release/store-release.env.example') &&
+    publishingGuideSource.includes('npm run release:env:next') &&
     publishingGuideSource.includes('npm run release:env:template:check') &&
     publishingGuideSource.includes('npm run release:check') &&
     publishingGuideSource.includes('npm run release:smoke') &&
@@ -176,6 +187,7 @@ assert(
     publishingGuideSource.includes('Bubblewrap') &&
     publishingGuideSource.includes('docs/release/google-play-twa.md') &&
     publishingGuideSource.includes('npm run twa:check') &&
+    publishingGuideSource.includes('npm run twa:artifact:next') &&
     publishingGuideSource.includes('npm run twa:artifact:check') &&
     publishingGuideSource.includes('API level 35') &&
     publishingGuideSource.includes('/.well-known/assetlinks.json') &&
@@ -213,14 +225,21 @@ assert(
     packageJson.scripts['store:preflight:check'] === 'npx tsx scripts/check-store-preflight-readiness.ts' &&
     packageJson.scripts['store:submission'] === 'npx tsx scripts/generate-store-submission-package.ts' &&
     packageJson.scripts['store:submission:check'] === 'npx tsx scripts/check-store-submission-package-readiness.ts' &&
+    packageJson.scripts['android:signing:next'] === 'npx tsx scripts/print-android-signing-next-steps.ts' &&
     packageJson.scripts['android:signing:check'] === 'npx tsx scripts/validate-android-signing.ts' &&
+    packageJson.scripts['android:aab:fingerprint'] === 'npx tsx scripts/print-android-aab-fingerprint.ts' &&
     packageJson.scripts['android:aab:signature:check'] === 'npx tsx scripts/validate-android-release-bundle-signature.ts' &&
     packageJson.scripts['android:apk:signature:check'] === 'npx tsx scripts/validate-android-release-apk-signature.ts' &&
+    packageJson.scripts['android:artifact:next'] === 'npx tsx scripts/print-capacitor-android-artifact-next-steps.ts' &&
     packageJson.scripts['android:artifact:check'] === 'npx tsx scripts/validate-capacitor-android-artifact.ts' &&
     packageJson.scripts['mobile:identity:check'] === 'npx tsx scripts/check-native-package-identity-readiness.ts' &&
     packageJson.scripts['mobile:permissions:check'] === 'npx tsx scripts/validate-mobile-permissions.ts' &&
     packageJson.scripts['ios:archive:check'] === 'npx tsx scripts/validate-ios-archive.ts' &&
+    packageJson.scripts['twa:artifact:next'] === 'npx tsx scripts/print-twa-artifact-next-steps.ts' &&
     packageJson.scripts['twa:artifact:check'] === 'npx tsx scripts/validate-twa-build-artifact.ts' &&
+    packageJson.scripts['release:status'] === 'npx tsx scripts/store-release-status.ts' &&
+    packageJson.scripts['release:env:draft'] === 'npx tsx scripts/print-store-release-env-draft.ts' &&
+    packageJson.scripts['release:env:next'] === 'npx tsx scripts/print-release-env-next-steps.ts' &&
     packageJson.scripts['release:check'] === 'npx tsx scripts/validate-release-env.ts' &&
     packageJson.scripts['release:env:template:check'] === 'npx tsx scripts/check-store-release-env-template-readiness.ts' &&
     packageJson.scripts['release:smoke'] === 'npx tsx scripts/smoke-test-store-deployment.ts' &&

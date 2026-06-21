@@ -20,10 +20,11 @@ export function AnimatedNumber({
   const [displayValue, setDisplayValue] = useState(0);
   const startTimeRef = useRef<number | null>(null);
   const startValueRef = useRef(0);
+  const displayValueRef = useRef(0);
   const animationRef = useRef<number | null>(null);
 
   useEffect(() => {
-    startValueRef.current = displayValue;
+    startValueRef.current = displayValueRef.current;
     startTimeRef.current = null;
 
     const animate = (timestamp: number) => {
@@ -37,6 +38,7 @@ export function AnimatedNumber({
       const easeOut = 1 - Math.pow(1 - progress, 3);
       const current = startValueRef.current + (value - startValueRef.current) * easeOut;
 
+      displayValueRef.current = current;
       setDisplayValue(current);
 
       if (progress < 1) {

@@ -3,7 +3,7 @@ import { useLiabilities } from './useLiabilities';
 import { useTransactions } from './useTransactions';
 import { useForecast } from './useForecast';
 
-export function useDashboard(_budgetDate: string) {
+export function useDashboard() {
   const assets = useAssets();
   const liabilities = useLiabilities();
   const transactions = useTransactions();

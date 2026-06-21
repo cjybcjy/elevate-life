@@ -1,6 +1,8 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 
+import { getPublicReleaseContact } from '@/lib/public-release-config';
+
 export const metadata: Metadata = {
   title: '隐私政策 - Elevate Life 家庭账本',
   description: 'Elevate Life 家庭账本的隐私政策。',
@@ -12,7 +14,9 @@ const sectionStyle = {
   color: 'var(--color-text-secondary)',
 } as const;
 
-export default function PrivacyPage() {
+export default async function PrivacyPage() {
+  const contact = await getPublicReleaseContact();
+
   return (
     <main style={{ maxWidth: 860, margin: '0 auto', padding: '56px 24px 80px' }}>
       <Link href="/login" className="btn btn-outline btn-sm">返回登录</Link>
@@ -51,7 +55,13 @@ export default function PrivacyPage() {
 
       <section style={sectionStyle}>
         <h2 style={{ fontSize: 18, fontWeight: 700, color: 'var(--color-text-primary)' }}>联系我们</h2>
-        <p>如果你对隐私政策、数据处理或账号删除有疑问，请通过 <Link href="/support" style={{ color: 'var(--color-primary)' }}>支持与帮助</Link> 页面提供的联系方式联系我们。正式上架前请在商店后台和本页面填入真实支持邮箱。</p>
+        <p>
+          如果你对隐私政策、数据处理或账号删除有疑问，请通过
+          <Link href="/support" style={{ color: 'var(--color-primary)' }}>支持与帮助</Link>
+          页面，或发送邮件至
+          <a href={contact.supportHref} style={{ color: 'var(--color-primary)' }}>{contact.supportEmail}</a>
+          联系我们。
+        </p>
       </section>
     </main>
   );

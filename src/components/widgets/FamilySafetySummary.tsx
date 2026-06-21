@@ -1,7 +1,15 @@
 'use client';
 
+import { useState, useSyncExternalStore } from 'react';
 import Link from 'next/link';
 import { AmountDisplay } from '@/components/common/AmountDisplay';
+import {
+  GOLD_ALERT_THRESHOLD_CHANGED_EVENT,
+  GOLD_ALERT_THRESHOLD_KEY,
+  getGoldAlertDraftState,
+  parseGoldAlertThreshold,
+} from '@/lib/gold-alert';
+import FinancialAiChat from './FinancialAiChat';
 
 interface BudgetProgress {
   id: string;
@@ -34,9 +42,18 @@ interface Props {
   budgetProgress: BudgetProgress[];
   transactions: Transaction[];
   pricesStale: boolean;
+  goldUnitPrice?: number | null;
+  goldPriceCurrency?: string | null;
 }
 
 type StatusTone = 'safe' | 'warning' | 'danger';
+type ActionItem = {
+  href: string;
+  title: string;
+  detail: string;
+  tone?: StatusTone;
+  label?: string;
+};
 
 const statusConfig: Record<StatusTone, {
   label: string;
@@ -86,6 +103,52 @@ function formatMonths(value: number | null) {
   return `${value.toFixed(1)}个月`;
 }
 
+function currencyPrefix(currency?: string | null) {
+  switch (currency) {
+    case 'USD':
+      return '$';
+    case 'HKD':
+      return 'HK$';
+    case 'JPY':
+      return '¥';
+    default:
+      return '¥';
+  }
+}
+
+function formatPricePerGram(value: number, currency?: string | null) {
+  return `${currencyPrefix(currency)}${value.toLocaleString('zh-CN', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  })}/克`;
+}
+
+function readGoldAlertThresholdSnapshot() {
+  if (typeof window === 'undefined') return '';
+
+  try {
+    return localStorage.getItem(GOLD_ALERT_THRESHOLD_KEY) ?? '';
+  } catch {
+    return '';
+  }
+}
+
+function subscribeGoldAlertThreshold(callback: () => void) {
+  if (typeof window === 'undefined') return () => {};
+
+  const handleStorage = (event: StorageEvent) => {
+    if (event.key === GOLD_ALERT_THRESHOLD_KEY) callback();
+  };
+
+  window.addEventListener('storage', handleStorage);
+  window.addEventListener(GOLD_ALERT_THRESHOLD_CHANGED_EVENT, callback);
+
+  return () => {
+    window.removeEventListener('storage', handleStorage);
+    window.removeEventListener(GOLD_ALERT_THRESHOLD_CHANGED_EVENT, callback);
+  };
+}
+
 export default function FamilySafetySummary({
   currentDate,
   netWorth,
@@ -98,7 +161,19 @@ export default function FamilySafetySummary({
   budgetProgress,
   transactions,
   pricesStale,
+  goldUnitPrice,
+  goldPriceCurrency,
 }: Props) {
+  const goldAlertSavedInput = useSyncExternalStore(
+    subscribeGoldAlertThreshold,
+    readGoldAlertThresholdSnapshot,
+    () => '',
+  );
+  const [goldAlertDraftInput, setGoldAlertDraftInput] = useState('');
+  const [hasGoldAlertDraft, setHasGoldAlertDraft] = useState(false);
+  const goldAlertInput = hasGoldAlertDraft ? goldAlertDraftInput : goldAlertSavedInput;
+  const goldAlertDraftState = getGoldAlertDraftState(goldAlertSavedInput, goldAlertInput);
+
   const coverageMonths = currentExpense > 0 ? tier1Total / currentExpense : null;
   const budgetRemaining = budgetProgress.reduce((sum, budget) => sum + budget.remaining, 0);
   const overBudgetCount = budgetProgress.filter((budget) => budget.isOverBudget).length;
@@ -110,6 +185,46 @@ export default function FamilySafetySummary({
   )).length;
   const monthSurplus = currentIncome - currentExpense;
   const hasCashflowData = currentIncome > 0 || currentExpense > 0;
+  const parsedGoldPrice = typeof goldUnitPrice === 'number' ? goldUnitPrice : Number(goldUnitPrice);
+  const goldPrice = Number.isFinite(parsedGoldPrice) && parsedGoldPrice > 0 ? parsedGoldPrice : null;
+  const goldAlertThreshold = parseGoldAlertThreshold(goldAlertSavedInput);
+  const hasGoldAlertThreshold = goldAlertThreshold !== null;
+  const goldAlertTriggered = goldPrice !== null && hasGoldAlertThreshold && goldPrice <= goldAlertThreshold;
+  const goldAlertTone: StatusTone = goldAlertTriggered ? 'warning' : hasGoldAlertThreshold ? 'safe' : 'warning';
+  const goldAlertToneConfig = statusConfig[goldAlertTone];
+  const goldAlertDetail = goldPrice === null
+    ? '暂无黄金报价'
+    : hasGoldAlertThreshold
+      ? `${formatPricePerGram(goldPrice, goldPriceCurrency)} · 提醒价 ${formatPricePerGram(goldAlertThreshold, goldPriceCurrency)}`
+      : `${formatPricePerGram(goldPrice, goldPriceCurrency)} · 待设置提醒价`;
+  const goldAlertStatusColor = goldAlertDraftState.validationError
+    ? 'var(--color-danger)'
+    : goldAlertDraftState.statusText === '已保存'
+      ? 'var(--color-success)'
+      : goldAlertDraftState.canSave
+        ? 'var(--color-warning)'
+        : 'var(--color-text-secondary)';
+
+  function handleGoldAlertChange(value: string) {
+    setGoldAlertDraftInput(value);
+    setHasGoldAlertDraft(true);
+  }
+
+  function handleGoldAlertSave() {
+    if (!goldAlertDraftState.canSave || goldAlertDraftState.validationError) return;
+
+    try {
+      if (goldAlertDraftState.willClear) {
+        localStorage.removeItem(GOLD_ALERT_THRESHOLD_KEY);
+      } else {
+        localStorage.setItem(GOLD_ALERT_THRESHOLD_KEY, goldAlertDraftState.normalizedValue);
+      }
+      window.dispatchEvent(new Event(GOLD_ALERT_THRESHOLD_CHANGED_EVENT));
+      setHasGoldAlertDraft(false);
+    } catch {
+      // localStorage can be unavailable in private or restricted browser modes.
+    }
+  }
 
   const statusTone: StatusTone = (() => {
     if (netWorth < 0 || (coverageMonths !== null && coverageMonths < 3) || monthSurplus < 0) {
@@ -130,7 +245,14 @@ export default function FamilySafetySummary({
     return 'safe';
   })();
 
-  const actionItems = [
+  const actionItems: ActionItem[] = [
+    ...(goldAlertTriggered ? [{
+      href: '/management/assets?focus=prices',
+      title: '黄金低于提醒价',
+      detail: `${formatPricePerGram(goldPrice, goldPriceCurrency)}，低于 ${formatPricePerGram(goldAlertThreshold, goldPriceCurrency)}`,
+      tone: 'warning' as StatusTone,
+      label: '价格提醒',
+    }] : []),
     ...(!hasCashflowData ? [{
       href: '/management/ledger?focus=create',
       title: '补齐本月流水',
@@ -174,6 +296,7 @@ export default function FamilySafetySummary({
   const status = statusConfig[statusTone];
   const primaryAction = actionItems[0];
   const secondaryActions = actionItems.slice(1);
+  const primaryActionTone = primaryAction?.tone ? statusConfig[primaryAction.tone] : status;
   const dataConfidenceItems = [
     ...(!hasCashflowData ? ['待补流水'] : []),
     ...(budgetProgress.length === 0 ? ['待建预算'] : []),
@@ -252,9 +375,27 @@ export default function FamilySafetySummary({
       detail: missingSourceCount > 0 ? `${missingSourceCount} 笔支出` : '支出有付款账户',
     },
   ];
+  const financeAiSnapshot = {
+    currentDate,
+    netWorth,
+    totalAssets,
+    totalLiabilities,
+    surplusRate,
+    tier1Total,
+    currentIncome,
+    currentExpense,
+    budgetRemaining,
+    coverageMonths,
+    overBudgetCount,
+    missingSourceCount,
+    pricesStale,
+    goldUnitPrice: goldPrice,
+    goldPriceCurrency: goldPriceCurrency ?? 'CNY',
+    goldAlertThreshold,
+  };
 
   return (
-    <div className="card" style={{ gridColumn: '1 / -1' }}>
+    <div className="card" style={{ gridColumn: '1 / -1', position: 'relative' }}>
       <div className="card-body" style={{ padding: 20 }}>
         <div
           style={{
@@ -317,6 +458,104 @@ export default function FamilySafetySummary({
                 <span style={{ flexShrink: 0, fontSize: 12, fontWeight: 800, color: dataConfidence.accent }}>
                   {dataConfidenceLabel}
                 </span>
+              </div>
+              <div
+                style={{
+                  marginTop: 10,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  gap: 10,
+                  flexWrap: 'wrap',
+                  padding: '9px 11px',
+                  borderRadius: 8,
+                  border: `1px solid ${goldAlertToneConfig.background}`,
+                  background: goldAlertToneConfig.background,
+                }}
+              >
+                <span style={{ minWidth: 0 }}>
+                  <span style={{ display: 'block', fontSize: 12, fontWeight: 700, color: 'var(--color-text-primary)' }}>
+                    黄金低价提醒
+                  </span>
+                  <span style={{ display: 'block', marginTop: 2, fontSize: 11, color: 'var(--color-text-secondary)' }}>
+                    {goldAlertDetail}
+                  </span>
+                </span>
+                <div
+                  style={{
+                    flexShrink: 0,
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 6,
+                    fontSize: 11,
+                    color: 'var(--color-text-secondary)',
+                    flexWrap: 'wrap',
+                  }}
+                >
+                  <label
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: 6,
+                      padding: '5px 7px',
+                      borderRadius: 8,
+                      border: '1px solid var(--border-tertiary)',
+                      background: 'var(--color-container)',
+                    }}
+                  >
+                    <span>低于</span>
+                    <input
+                      type="text"
+                      inputMode="decimal"
+                      value={goldAlertInput}
+                      onChange={(event) => handleGoldAlertChange(event.target.value)}
+                      placeholder="提醒价"
+                      aria-label="黄金低价提醒价"
+                      aria-describedby="gold-alert-save-status"
+                      style={{
+                        width: 88,
+                        border: 'none',
+                        outline: 'none',
+                        background: 'transparent',
+                        color: 'var(--color-text-primary)',
+                        fontSize: 12,
+                        fontWeight: 700,
+                        fontVariantNumeric: 'tabular-nums',
+                      }}
+                    />
+                    <span>{currencyPrefix(goldPriceCurrency)}/克</span>
+                  </label>
+                  <button
+                    type="button"
+                    onClick={handleGoldAlertSave}
+                    disabled={!goldAlertDraftState.canSave}
+                    style={{
+                      border: '1px solid var(--color-accent)',
+                      borderRadius: 8,
+                      background: goldAlertDraftState.canSave ? 'var(--color-accent)' : 'transparent',
+                      color: goldAlertDraftState.canSave ? 'var(--color-text-inverse)' : 'var(--color-text-secondary)',
+                      cursor: goldAlertDraftState.canSave ? 'pointer' : 'default',
+                      fontSize: 11,
+                      fontWeight: 700,
+                      padding: '5px 9px',
+                      opacity: goldAlertDraftState.canSave ? 1 : 0.65,
+                    }}
+                  >
+                    保存
+                  </button>
+                  <span
+                    id="gold-alert-save-status"
+                    aria-live="polite"
+                    style={{
+                      minWidth: 42,
+                      color: goldAlertStatusColor,
+                      fontSize: 11,
+                      fontWeight: 700,
+                    }}
+                  >
+                    {goldAlertDraftState.statusText}
+                  </span>
+                </div>
               </div>
               <div style={{ marginTop: 16 }}>
                 <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--color-text-secondary)', marginBottom: 8 }}>判断依据</div>
@@ -430,10 +669,10 @@ export default function FamilySafetySummary({
                     alignItems: 'center',
                     padding: '12px',
                     borderRadius: 8,
-                    border: `1px solid ${status.background}`,
+                    border: `1px solid ${primaryActionTone.background}`,
                     color: 'inherit',
                     textDecoration: 'none',
-                    background: status.background,
+                    background: primaryActionTone.background,
                   }}
                 >
                   <span
@@ -444,8 +683,8 @@ export default function FamilySafetySummary({
                       display: 'inline-flex',
                       alignItems: 'center',
                       justifyContent: 'center',
-                      background: status.accent,
-                      color: status.accentText,
+                      background: primaryActionTone.accent,
+                      color: primaryActionTone.accentText,
                       fontSize: 13,
                       fontWeight: 800,
                     }}
@@ -453,7 +692,9 @@ export default function FamilySafetySummary({
                     1
                   </span>
                   <span style={{ minWidth: 0 }}>
-                    <span style={{ display: 'block', fontSize: 11, fontWeight: 800, color: status.accent }}>优先做这件事</span>
+                    <span style={{ display: 'block', fontSize: 11, fontWeight: 800, color: primaryActionTone.accent }}>
+                      {primaryAction.label ?? '优先做这件事'}
+                    </span>
                     <span style={{ display: 'block', marginTop: 3, fontSize: 14, color: 'var(--color-text-primary)', fontWeight: 800 }}>{primaryAction.title}</span>
                     <span style={{ display: 'block', marginTop: 2, fontSize: 12, color: 'var(--color-text-secondary)' }}>{primaryAction.detail}</span>
                   </span>
@@ -461,48 +702,55 @@ export default function FamilySafetySummary({
               )}
 
               {secondaryActions.map((item, index) => (
-                <Link
-                  key={`${item.href}-${item.title}`}
-                  href={item.href}
-                  style={{
-                    display: 'grid',
-                    gridTemplateColumns: '24px 1fr',
-                    gap: 10,
-                    alignItems: 'center',
-                    padding: '10px 12px',
-                    borderRadius: 8,
-                    border: '1px solid var(--border-tertiary)',
-                    color: 'inherit',
-                    textDecoration: 'none',
-                    background: 'transparent',
-                  }}
-                >
-                  <span
-                    style={{
-                      width: 24,
-                      height: 24,
-                      borderRadius: 999,
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      background: 'var(--color-container-inset)',
-                      color: 'var(--color-text-secondary)',
-                      fontSize: 12,
-                      fontWeight: 800,
-                    }}
-                  >
-                    {index + 2}
-                  </span>
-                  <span style={{ minWidth: 0 }}>
-                    <span style={{ display: 'block', fontSize: 13, color: 'var(--color-text-primary)', fontWeight: 700 }}>{item.title}</span>
-                    <span style={{ display: 'block', marginTop: 2, fontSize: 12, color: 'var(--color-text-secondary)' }}>{item.detail}</span>
-                  </span>
-                </Link>
+                (() => {
+                  const itemTone = item.tone ? statusConfig[item.tone] : null;
+
+                  return (
+                    <Link
+                      key={`${item.href}-${item.title}`}
+                      href={item.href}
+                      style={{
+                        display: 'grid',
+                        gridTemplateColumns: '24px 1fr',
+                        gap: 10,
+                        alignItems: 'center',
+                        padding: '10px 12px',
+                        borderRadius: 8,
+                        border: itemTone ? `1px solid ${itemTone.background}` : '1px solid var(--border-tertiary)',
+                        color: 'inherit',
+                        textDecoration: 'none',
+                        background: itemTone ? itemTone.background : 'transparent',
+                      }}
+                    >
+                      <span
+                        style={{
+                          width: 24,
+                          height: 24,
+                          borderRadius: 999,
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          background: itemTone ? itemTone.accent : 'var(--color-container-inset)',
+                          color: itemTone ? itemTone.accentText : 'var(--color-text-secondary)',
+                          fontSize: 12,
+                          fontWeight: 800,
+                        }}
+                      >
+                        {index + 2}
+                      </span>
+                      <span style={{ minWidth: 0 }}>
+                        <span style={{ display: 'block', fontSize: 13, color: 'var(--color-text-primary)', fontWeight: 700 }}>{item.title}</span>
+                        <span style={{ display: 'block', marginTop: 2, fontSize: 12, color: 'var(--color-text-secondary)' }}>{item.detail}</span>
+                      </span>
+                    </Link>
+                  );
+                })()
               ))}
             </div>
           </section>
         </div>
       </div>
+      <FinancialAiChat snapshot={financeAiSnapshot} />
     </div>
   );
 }

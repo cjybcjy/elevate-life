@@ -260,8 +260,8 @@ export default function BudgetManager({ currentDate }: { currentDate: string }) 
           <label className="block text-xs text-ledger-muted mb-1">金额</label>
           <input
             name="amount"
-            type="number"
-            step="0.01"
+            type="text"
+            inputMode="decimal"
             required
             className="rounded-md bg-ledger-bg border border-ledger-bg px-3 py-2 text-sm placeholder-ledger-muted focus:outline-none focus:border-ledger-accent"
             placeholder="0.00"
@@ -365,7 +365,7 @@ export default function BudgetManager({ currentDate }: { currentDate: string }) 
                           <div>
                             <label className="block text-xs text-ledger-muted mb-1">金额</label>
                             <input
-                              type="number" step="0.01" required
+                              type="text" inputMode="decimal" required
                               value={expenseForm.amount}
                               onChange={e => setExpenseForm(p => ({ ...p, amount: e.target.value }))}
                               className="rounded-md bg-ledger-surface border border-ledger-bg px-2 py-1.5 text-xs focus:outline-none focus:border-ledger-accent w-24"
@@ -433,7 +433,7 @@ export default function BudgetManager({ currentDate }: { currentDate: string }) 
                           <div>
                             <label className="block text-xs text-ledger-muted mb-1">金额</label>
                             <input
-                              type="number" step="0.01" value={editForm.amount}
+                              type="text" inputMode="decimal" value={editForm.amount}
                               onChange={e => setEditForm(p => ({ ...p, amount: e.target.value }))}
                               className="rounded-md bg-ledger-surface border border-ledger-bg px-2 py-1.5 text-xs focus:outline-none focus:border-ledger-accent w-28"
                             />

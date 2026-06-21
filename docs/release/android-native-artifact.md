@@ -38,12 +38,13 @@
 - `capacitor.config.json` 中的 `server.url` 等于 `CAPACITOR_SERVER_URL`。
 - `server.cleartext` 为 `false`，避免 release 包加载明文 HTTP。
 - release APK 或 AAB 存在且非空。
+- release APK 或 AAB 生成时间晚于 `android/app/src/main/assets/capacitor.config.json`，避免 `npm run mobile:sync` 后继续误上传旧包。
 
 如果只生成了 debug APK，或者 `server.url` 仍然是 `http://localhost:3000`，这个检查会失败。
 
 `npm run android:aab:signature:check` 会用 `jar` 检查 `META-INF` 签名文件，用 `jarsigner` 确认 AAB 返回 `jar verified`，再用 `keytool -printcert -jarfile` 读取签名证书 SHA-256，并与 `ANDROID_SHA256_CERT_FINGERPRINTS` 比对。`jarsigner -strict` 对自签名 upload keystore 可能返回警告；这个脚本使用非 strict 验证来判断 AAB 是否真的完成 release 签名。
 
-`npm run android:apk:signature:check` 会用 Android build-tools 里的 `apksigner verify --print-certs` 校验 `ANDROID_RELEASE_APK_PATH`，读取 APK 签名证书 SHA-256，并与 `ANDROID_SHA256_CERT_FINGERPRINTS` 比对。国内 Android 市场要求 APK 时，用它确认 `app-release.apk` 不是 debug 包或未签名包。
+`npm run android:apk:signature:check` 会用 Android build-tools 里的 `apksigner verify --print-certs` 校验 `ANDROID_RELEASE_APK_PATH`，读取 APK 签名证书 SHA-256，并与 `ANDROID_SHA256_CERT_FINGERPRINTS` 比对。脚本会按 `ANDROID_APKSIGNER_PATH`、`ANDROID_HOME`、`ANDROID_SDK_ROOT`、`$HOME/Android/Sdk/build-tools` 的顺序查找 apksigner；如果这些都不可用，请设置 `ANDROID_APKSIGNER_PATH=/path/to/build-tools/<version>/apksigner`。国内 Android 市场要求 APK 时，用它确认 `app-release.apk` 不是 debug 包或未签名包。
 
 ## 上架前人工确认
 

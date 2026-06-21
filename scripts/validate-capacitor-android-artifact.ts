@@ -8,6 +8,7 @@ type FileSystemLike = {
   exists?: (path: string) => boolean;
   readText?: (path: string) => string;
   fileSize?: (path: string) => number;
+  fileMtimeMs?: (path: string) => number;
 };
 
 type CapacitorAndroidArtifactResult = {
@@ -62,6 +63,7 @@ export function validateCapacitorAndroidArtifact(
   const exists = fsLike.exists ?? existsSync;
   const readText = fsLike.readText ?? ((path: string) => readFileSync(path, 'utf8'));
   const fileSize = fsLike.fileSize ?? ((path: string) => statSync(path).size);
+  const fileMtimeMs = fsLike.fileMtimeMs ?? ((path: string) => statSync(path).mtimeMs);
   const errors: string[] = [];
 
   const projectDir = envValue(env, 'ANDROID_NATIVE_PROJECT_DIR') || 'android';
@@ -130,6 +132,16 @@ export function validateCapacitorAndroidArtifact(
       if (nativeConfig.server?.cleartext !== false) {
         errors.push('capacitor.config.json server.cleartext should be false for store release builds.');
       }
+    }
+  }
+
+  if (artifactPath && exists(nativeConfigPath)) {
+    const artifactMtimeMs = fileMtimeMs(artifactPath);
+    const nativeConfigMtimeMs = fileMtimeMs(nativeConfigPath);
+    if (artifactMtimeMs < nativeConfigMtimeMs) {
+      errors.push(
+        `release artifact should be rebuilt after the latest native sync: ${artifactPath} is older than ${nativeConfigPath}.`,
+      );
     }
   }
 

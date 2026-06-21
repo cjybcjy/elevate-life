@@ -57,7 +57,6 @@ export default function LiabilityCards({
           const repayments = transactions.filter(
             (t: Transaction) => t.liabilityId === l.id && t.type === 'EXPENSE'
           );
-          const totalRepaid = repayments.reduce((sum, t) => sum + parseFloat(t.amount || '0'), 0);
 
           return (
             <CollapsibleLiabilityCard
@@ -72,7 +71,6 @@ export default function LiabilityCards({
               startDate={start}
               termMonths={l.termMonths}
               repayments={repayments}
-              totalRepaid={totalRepaid}
               paymentMethod={l.paymentMethod}
               dotColor={DOT_COLORS[i % DOT_COLORS.length]}
               rateColor={l.interestRate > 0.06 ? RATE_COLORS.high : l.interestRate > 0.05 ? RATE_COLORS.mid : RATE_COLORS.low}
@@ -94,7 +92,6 @@ function CollapsibleLiabilityCard({
   startDate,
   termMonths,
   repayments,
-  totalRepaid,
   paymentMethod,
   dotColor,
   rateColor,
@@ -109,7 +106,6 @@ function CollapsibleLiabilityCard({
   startDate: Date;
   termMonths: number;
   repayments: Transaction[];
-  totalRepaid: number;
   paymentMethod?: string | null;
   dotColor: string;
   rateColor: string;

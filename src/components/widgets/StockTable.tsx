@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { updateAsset } from '@/lib/actions/assets';
 import { useRouter } from 'next/navigation';
 
@@ -54,8 +54,8 @@ function CostCell({ stock }: { stock: Stock }) {
       <td className="py-2 px-3 text-right">
         <div className="inline-flex items-center gap-1">
           <input
-            type="number"
-            step="0.01"
+            type="text"
+            inputMode="decimal"
             value={value}
             onChange={e => setValue(e.target.value)}
             onKeyDown={e => { if (e.key === 'Enter') save(); if (e.key === 'Escape') setEditing(false); }}
@@ -102,8 +102,8 @@ function EditablePrincipal({ totalCost, onSave }: { totalCost: number; onSave: (
     return (
       <span className="inline-flex items-center gap-1">
         <input
-          type="number"
-          step="0.01"
+          type="text"
+          inputMode="decimal"
           value={value}
           onChange={e => setValue(e.target.value)}
           onKeyDown={e => {
@@ -136,6 +136,19 @@ interface ForexRates {
   hkdToCny: number;
 }
 
+function readStoredNumber(key: string) {
+  if (typeof window === 'undefined') return null;
+
+  try {
+    const value = localStorage.getItem(key);
+    if (!value) return null;
+    const parsed = Number.parseFloat(value);
+    return Number.isFinite(parsed) ? parsed : null;
+  } catch {
+    return null;
+  }
+}
+
 export default function StockTable({ stocks, forexRates }: { stocks: Stock[]; forexRates?: ForexRates }) {
   const rates = forexRates || fallbackRates;
   const cnyRate: Record<string, number> = { CNY: 1, HKD: rates.hkdToCny, USD: rates.usdToCny };
@@ -156,17 +169,8 @@ export default function StockTable({ stocks, forexRates }: { stocks: Stock[]; fo
   }, 0);
 
   // Manual overrides from localStorage — init null to avoid hydration mismatch
-  const [manualCost, setManualCost] = useState<number | null>(null);
-  const [idleCash, setIdleCash] = useState<number | null>(null);
-
-  useEffect(() => {
-    try {
-      const mc = localStorage.getItem('stock-manual-principal');
-      if (mc) setManualCost(parseFloat(mc));
-      const ic = localStorage.getItem('stock-idle-cash');
-      if (ic) setIdleCash(parseFloat(ic));
-    } catch {}
-  }, []);
+  const [manualCost, setManualCost] = useState<number | null>(() => readStoredNumber('stock-manual-principal'));
+  const [idleCash, setIdleCash] = useState<number | null>(() => readStoredNumber('stock-idle-cash'));
 
   const totalCost = manualCost ?? computedCost;
   const totalPnl = totalValue - computedCost;

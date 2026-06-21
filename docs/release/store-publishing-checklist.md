@@ -7,7 +7,7 @@
 - 公网 HTTPS 域名：待确定。TWA、隐私政策、支持页和商店审核都需要公网 HTTPS。
 - 本地上架预检：按 `docs/release/store-preflight.md` 运行 `npm run store:preflight`，确认仓库里的 PWA、合规页面、隐私、截图、审核账号、TWA、Android 和 iOS readiness 链路没有断。
 - 商店提交材料包：按 `docs/release/store-submission-package.md` 设置真实域名、支持邮箱和审核账号后运行 `npm run store:submission`，生成 `store-submission/` 供 Google Play、Android 国内市场和 App Store Connect 填写。
-- 生产环境校验：按 `docs/release/production-environment.md` 和 `docs/release/store-release.env.example` 配置真实 HTTPS 域名、支持邮箱、包名和 SHA-256 指纹；先运行 `npm run release:env:template:check`，打包/提审前运行 `npm run release:check`，部署后运行 `npm run release:smoke` 验证线上公开页面和 `/.well-known/assetlinks.json`。
+- 生产环境校验：按 `docs/release/production-environment.md` 和 `docs/release/store-release.env.example` 配置真实 HTTPS 域名、支持邮箱、包名和 SHA-256 指纹；先运行 `npm run release:env:next` 查看缺失项和私有 env 目标，再运行 `npm run release:env:draft` 生成私有环境草稿，再运行 `npm run release:env:template:check`，打包/提审前运行 `npm run release:check`，部署后运行 `npm run release:smoke` 验证线上公开页面、`APP_SUPPORT_EMAIL` 和 `/.well-known/assetlinks.json`。
 - 隐私政策：`/privacy` 已提供公开页面；上架前需要绑定公网 HTTPS 域名。
 - 用户协议：`/terms` 已提供公开页面；国内 Android 市场和审核材料中如要求服务条款，可使用真实 HTTPS URL。
 - 首次启动确认：登录、注册和业务页面会先展示用户协议与隐私政策确认；同意前不进入核心功能，也不初始化非必要第三方 SDK。
@@ -19,7 +19,7 @@
 - 数据合规：不要在审核包内预置真实家庭财务数据。
 - 隐私申报：`docs/release/privacy-data-safety.md` 是 Google Play Data safety、App Store App Privacy 和 Android 国内市场隐私合规的填写底稿；运行 `npm run privacy:check` 验证。
 - 审核账号：运行 `npm run review:check` 验证 seed、审核备注和截图账号配置一致。
-- Android 签名：按 `docs/release/android-signing.md` 保存 release/upload keystore，运行 `npm run android:signing:check`，确认上传证书和 Play App Signing SHA-256 指纹进入 `ANDROID_SHA256_CERT_FINGERPRINTS`；生成 AAB 后运行 `npm run android:aab:signature:check` 校验 AAB 签名。
+- Android 签名：按 `docs/release/android-signing.md` 保存 release/upload keystore，先运行 `npm run android:signing:next` 查看缺失项和私有 env 草稿，再运行 `npm run android:signing:check`，确认上传证书和 Play App Signing SHA-256 指纹进入 `ANDROID_SHA256_CERT_FINGERPRINTS`；生成 AAB 后可先运行 `npm run android:aab:fingerprint` 导出 AAB 签名证书指纹，再运行 `npm run android:aab:signature:check` 校验 AAB 签名。
 - 原生包装：`docs/release/native-wrapper.md` 记录 Capacitor 路径；运行 `npm run mobile:check` 验证基础配置。当前默认候选包名是 `com.elevatelife.app`，生成原生工程后运行 `npm run mobile:identity:check`，确保 Android/iOS 不再使用 `com.example.*`；生成 Capacitor Android release 产物后运行 `npm run android:artifact:check`。
 - 移动权限审计：按 `docs/release/mobile-permissions.md` 运行 `npm run mobile:permissions:check`，确认 AndroidManifest.xml 和 Info.plist 未申请与家庭账本无关的敏感权限。
 - iOS Archive 产物：按 `docs/release/ios-app-store.md` 在 macOS + Xcode 26 环境中生成 `.xcarchive`，再运行 `npm run ios:archive:check` 校验 Bundle ID、HTTPS 线上地址和归档结构。
@@ -71,23 +71,43 @@ iOS 最难，因为需要 macOS、Xcode、Apple Developer Program、App Store Co
 - 在 macOS + Xcode 26 环境中完成 iOS 构建、归档、上传。
 - 在各市场后台填写真实主体和合规材料。
 
-## 5. 下一步工程建议
+## 5. 当前本地检查快照
+
+2026-06-17 本地按从易到难顺序跑过一次准备度检查：
+
+- 已通过：`npm run release:env:next`、`npm run release:env:draft`、`npm run release:env:template:check`、`npm run store:preflight:check`、`npm run store:submission:check`、`npm run privacy:check`、`npm run review:check`、`npm run screenshots:check`。
+- 已通过：`npm run mobile:check`、`npm run mobile:identity:check`、`npm run mobile:permissions:check`、`npm run twa:check`。
+- 可用状态看板：`npm run release:status` 会不中断地跑完 Google Play、Android 国内市场和 iOS 相关检查，并提示第一个阻塞阶段。
+- 已通过：`npm run android:aab:fingerprint` 和 `npm run android:aab:signature:check`，当前 `android/app/build/outputs/bundle/release/app-release.aab` 已签名且可被脚本读取签名证书；但该 AAB 早于最新 native sync 输出，不能当作最终上传包。
+- 仍需配置：`npm run release:check` 需要真实 `APP_PUBLIC_BASE_URL`、`APP_SUPPORT_EMAIL`、`CAPACITOR_SERVER_URL`、`STORE_SCREENSHOT_BASE_URL` 和 `TWA_MANIFEST_URL`。
+- 仍需配置：先运行 `npm run android:signing:next`，再给 `npm run android:signing:check` 提供真实 upload/release keystore 路径、alias、keystore 密码和 `ANDROID_SHA256_CERT_FINGERPRINTS`。
+- 仍需构建：先运行 `npm run twa:artifact:next`，再用 Bubblewrap 生成 `android-twa/twa-manifest.json` 和 `android-twa/app-release-bundle.aab`，最后运行 `npm run twa:artifact:check`。
+- 仍需配置/构建：`npm run android:artifact:check` 需要设置生产 HTTPS 的 `CAPACITOR_SERVER_URL`，重新 `npm run mobile:sync`，再重新构建 Capacitor Android release 产物。
+- 仍需工具/产物：`npm run android:apk:signature:check` 需要 Android SDK 的 `apksigner` 可用，并且存在准备上传的 release APK；如果目标市场只收 AAB，可优先用 AAB 校验链路。
+- 仍需 macOS/Xcode：`npm run ios:archive:check` 需要生产 HTTPS 的 `CAPACITOR_SERVER_URL`，以及 Xcode 生成的 `ios/build/ElevateLife.xcarchive`。
+
+## 6. 下一步工程建议
 
 1. 先部署 Web 到公网 HTTPS 域名。
-2. 本地先运行 `npm run store:preflight`，修掉仓库准备项问题。
-3. 按 `docs/release/production-environment.md` 设置真实域名、支持邮箱、包名和签名指纹，运行 `npm run release:check`。
-4. 设置真实域名、支持邮箱和审核账号后运行 `npm run store:submission`，生成 `store-submission/` 提交材料包。
-5. 部署后运行 `npm run release:smoke`，确认线上公开页面、manifest 和 `/.well-known/assetlinks.json` 可被商店审核访问。
-6. 填好隐私政策和支持页。
-7. 运行 `npm run privacy:check`，确认 Data safety / App Privacy / 国内安卓隐私合规底稿与公开隐私页一致。
-8. 运行 `npm run review:check`，在目标环境运行 `npm run review:seed`，确认 `demo/demo123` 能看到示例资产、预算、负债、流水和资金账户。
-9. 运行 `npm run screenshots:check`；设置审核测试账号后运行 `npm run screenshots:store` 生成 `store-screenshots/`，挑选各市场最终截图。
-10. 确定包名和签名策略。
-11. 运行 `npm run android:signing:check`，确认 Android keystore、alias 和 SHA-256 指纹一致。
-12. 运行 `npm run mobile:check`，确认原生包装基础配置仍然可用。
-13. 生成 Android/iOS 原生工程后运行 `npm run mobile:permissions:check`，确认权限最小化。
-14. 设置 `ANDROID_PACKAGE_NAME` 和 `ANDROID_SHA256_CERT_FINGERPRINTS`，确认 `/.well-known/assetlinks.json` 返回正式包名和签名指纹。
-15. 运行 `npm run twa:check` 后，用 Bubblewrap 生成 Google Play TWA AAB，再运行 `npm run twa:artifact:check` 校验 AAB 产物和 `twa-manifest.json`。
-16. 用 Capacitor 生成 Android 国内市场包，再运行 `npm run android:artifact:check` 校验 Capacitor Android release 产物。
-17. 对准备上传的 AAB 运行 `npm run android:aab:signature:check`，确认 AAB 签名证书与 `ANDROID_SHA256_CERT_FINGERPRINTS` 一致。
-17. 最后在 macOS 上生成 iOS 工程和 Archive，运行 `npm run ios:archive:check` 后准备 App Store Connect 审核。
+2. 运行 `npm run release:status`，按输出的第一个阻塞阶段继续推进。
+3. 本地再运行 `npm run store:preflight`，修掉仓库准备项问题。
+4. 运行 `npm run release:env:next`，确认当前缺失项和 `.env.production.local` / CI secret manager 的填写目标。
+5. 运行 `npm run release:env:draft`，把草稿复制到私有环境文件或 CI secret manager，再替换真实域名、支持邮箱和密码。
+6. 按 `docs/release/production-environment.md` 设置真实域名、支持邮箱、包名和签名指纹，运行 `npm run release:check`。
+7. 设置真实域名、支持邮箱和审核账号后运行 `npm run store:submission`，生成 `store-submission/` 提交材料包。
+8. 部署后运行 `npm run release:smoke`，确认线上公开页面包含 `APP_SUPPORT_EMAIL`，manifest 和 `/.well-known/assetlinks.json` 可被商店审核访问。
+9. 填好隐私政策和支持页。
+10. 运行 `npm run privacy:check`，确认 Data safety / App Privacy / 国内安卓隐私合规底稿与公开隐私页一致。
+11. 运行 `npm run review:check`，在目标环境运行 `npm run review:seed`，确认 `demo/demo123` 能看到示例资产、预算、负债、流水和资金账户。
+12. 运行 `npm run screenshots:check`；设置审核测试账号后运行 `npm run screenshots:store` 生成 `store-screenshots/`，挑选各市场最终截图。
+13. 确定包名和签名策略。
+14. 运行 `npm run android:signing:next`，按输出准备私有 keystore env。
+15. 运行 `npm run android:signing:check`，确认 Android keystore、alias 和 SHA-256 指纹一致。
+16. 运行 `npm run mobile:check`，确认原生包装基础配置仍然可用。
+17. 生成 Android/iOS 原生工程后运行 `npm run mobile:permissions:check`，确认权限最小化。
+18. 设置 `ANDROID_PACKAGE_NAME` 和 `ANDROID_SHA256_CERT_FINGERPRINTS`，确认 `/.well-known/assetlinks.json` 返回正式包名和签名指纹。
+19. 运行 `npm run twa:check` 后，用 Bubblewrap 生成 Google Play TWA AAB，再运行 `npm run twa:artifact:next` 和 `npm run twa:artifact:check` 校验 AAB 产物和 `twa-manifest.json`。
+20. 用 Capacitor 生成 Android 国内市场包，再运行 `npm run android:artifact:check` 校验 Capacitor Android release 产物。
+21. 对准备上传的 AAB 先运行 `npm run android:aab:fingerprint`，把输出的 SHA-256 补入 `ANDROID_SHA256_CERT_FINGERPRINTS`。
+22. 对准备上传的 AAB 运行 `npm run android:aab:signature:check`，确认 AAB 签名证书与 `ANDROID_SHA256_CERT_FINGERPRINTS` 一致。
+23. 最后在 macOS 上生成 iOS 工程和 Archive，运行 `npm run ios:archive:check` 后准备 App Store Connect 审核。

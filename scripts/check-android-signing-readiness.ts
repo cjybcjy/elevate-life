@@ -8,6 +8,7 @@ function read(path: string) {
 
 const requiredFiles = [
   'scripts/validate-android-signing.ts',
+  'scripts/print-android-signing-next-steps.ts',
   'docs/release/android-signing.md',
   'docs/release/google-play-twa.md',
   'docs/release/store-publishing-checklist.md',
@@ -22,6 +23,11 @@ assert.equal(
   packageJson.scripts['android:signing:check'],
   'npx tsx scripts/validate-android-signing.ts',
   'package.json should expose android:signing:check.',
+);
+assert.equal(
+  packageJson.scripts['android:signing:next'],
+  'npx tsx scripts/print-android-signing-next-steps.ts',
+  'package.json should expose android:signing:next for private keystore setup guidance.',
 );
 
 const envExample = read('.env.example');
@@ -107,6 +113,7 @@ async function main() {
 
   const signingGuide = read('docs/release/android-signing.md');
   for (const phrase of [
+    'npm run android:signing:next',
     'npm run android:signing:check',
     'keytool',
     'TWA_SIGNING_KEY_PATH',
@@ -128,19 +135,38 @@ async function main() {
 
   const checklist = read('docs/release/store-publishing-checklist.md');
   assert(
-    checklist.includes('npm run android:signing:check') &&
+    checklist.includes('npm run android:signing:next') &&
+      checklist.includes('npm run android:signing:check') &&
       checklist.includes('docs/release/android-signing.md'),
-    'Store publishing checklist should include Android signing verification before Android package builds.',
+    'Store publishing checklist should include Android signing next steps and verification before Android package builds.',
   );
 
   const releaseReadiness = read('scripts/check-store-release-readiness.ts');
   assert(
     releaseReadiness.includes('scripts/check-android-signing-readiness.ts') &&
       releaseReadiness.includes('scripts/validate-android-signing.ts') &&
+      releaseReadiness.includes('scripts/print-android-signing-next-steps.ts') &&
       releaseReadiness.includes('docs/release/android-signing.md') &&
+      releaseReadiness.includes('android:signing:next') &&
       releaseReadiness.includes('android:signing:check'),
-    'Overall store release readiness should include Android signing artifacts.',
+    'Overall store release readiness should include Android signing next steps and artifacts.',
   );
+
+  const { buildAndroidSigningNextSteps } = await import('./print-android-signing-next-steps');
+  const nextSteps = buildAndroidSigningNextSteps({
+    TWA_SIGNING_KEY_PATH: '/secure/path/elevate-life-upload.jks',
+    TWA_SIGNING_KEY_ALIAS: '',
+    ANDROID_KEYSTORE_STORE_PASSWORD: '',
+    ANDROID_SHA256_CERT_FINGERPRINTS: '',
+  });
+
+  assert(nextSteps.includes('# Android signing next steps'));
+  assert(nextSteps.includes('TWA_SIGNING_KEY_PATH must point to the final Android upload keystore'));
+  assert(nextSteps.includes('keytool -genkeypair'));
+  assert(nextSteps.includes('keytool -list -v'));
+  assert(nextSteps.includes('npm run android:signing:check'));
+  assert(nextSteps.includes('ANDROID_SHA256_CERT_FINGERPRINTS='));
+  assert(nextSteps.includes('不要提交'));
 }
 
 main().catch((error) => {

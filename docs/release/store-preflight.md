@@ -22,6 +22,18 @@ STORE_PREFLIGHT_SKIP_BUILD=1 npm run store:preflight
 npm run store:preflight:check
 ```
 
+不中断地查看从易到难的当前发布状态：
+
+```bash
+npm run release:status
+```
+
+如果希望在 CI 里把任何未就绪状态都当成失败：
+
+```bash
+STORE_RELEASE_STATUS_STRICT=1 npm run release:status
+```
+
 ## 覆盖范围
 
 这个命令会检查：
@@ -32,8 +44,7 @@ npm run store:preflight:check
 - 商店隐私与数据安全底稿。
 - AndroidManifest.xml / Info.plist 移动权限审计器。
 - 审核测试账号和截图脚本。
-- 发布环境校验器和部署 smoke test 校验器。
-- 上架环境变量模板校验器。
+- 发布环境下一步指引、发布环境草稿、环境变量模板校验器、严格发布环境校验器和部署 smoke test 校验器。
 - Digital Asset Links 路由。
 - Android 签名校验器。
 - Google Play TWA 配置和 TWA AAB 产物校验器。
@@ -46,7 +57,7 @@ npm run store:preflight:check
 `store:preflight` 不会替代以下真实产物和外部步骤：
 
 - 配置真实 HTTPS 域名后运行 `npm run release:check`。
-- 填写真实环境变量前运行 `npm run release:env:template:check`，按 `docs/release/store-release.env.example` 准备本机或 CI secret。
+- 填写真实环境变量前运行 `npm run release:env:next`、`npm run release:env:draft` 和 `npm run release:env:template:check`，按 `docs/release/store-release.env.example` 准备本机或 CI secret。
 - 部署后运行 `npm run release:smoke`。
 - 准备正式 Android keystore 后运行 `npm run android:signing:check`。
 - Bubblewrap 生成 Google Play AAB 后运行 `npm run twa:artifact:check`。
@@ -55,3 +66,5 @@ npm run store:preflight:check
 - 在 Google Play Console、各 Android 市场后台和 App Store Connect 填写真实主体、资质、截图、隐私和审核材料。
 
 换句话说，`store:preflight` 负责确认仓库里的上架准备链路没有断；真实上架仍然需要域名、账号、签名证书、构建产物和商店后台操作。
+
+`release:status` 会先跑发布环境下一步指引、草稿和模板检查，再继续跑完后续市场检查，展示失败摘要，并在末尾指出第一个阻塞阶段、具体检查项和应执行命令，适合日常推进；`store:preflight` 会在首个 readiness 失败处停止，适合作为提交前总闸门。
