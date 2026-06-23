@@ -55,3 +55,6 @@ next-env.d.ts
 /store-screenshots/
 /store-submission/
 /android-twa/
+.claude/
+*.forex-cache.json
+*.log
