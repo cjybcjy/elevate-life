@@ -1,8 +1,17 @@
 'use client';
 
-import { useState } from 'react';
+import { type FormEvent, useState } from 'react';
 import { updateAsset } from '@/lib/actions/assets';
 import { useRouter } from 'next/navigation';
+import SerenityAnalysisPanel, { type SerenityAnalysisMessage } from '@/components/widgets/SerenityAnalysisPanel';
+import {
+  DEFAULT_FINANCE_AI_CONFIG,
+  FINANCE_AI_CONFIG_STORAGE_KEY,
+  FINANCE_AI_PROVIDER_PRESETS,
+  hasCompleteFinanceAiConfig,
+  type FinanceAiConfig,
+} from '@/lib/finance-ai';
+import type { SerenityStockSnapshot } from '@/lib/serenity-stock-ai';
 
 const marketLabel: Record<string, string> = { cn: 'A股', hk: '港股', us: '美股' };
 const currencySymbol: Record<string, string> = { CNY: '¥', USD: '$', HKD: 'HK$', JPY: 'JP¥' };
@@ -134,6 +143,7 @@ function EditablePrincipal({ totalCost, onSave }: { totalCost: number; onSave: (
 interface ForexRates {
   usdToCny: number;
   hkdToCny: number;
+  jpyToCny?: number;
 }
 
 function readStoredNumber(key: string) {
@@ -149,9 +159,36 @@ function readStoredNumber(key: string) {
   }
 }
 
-export default function StockTable({ stocks, forexRates }: { stocks: Stock[]; forexRates?: ForexRates }) {
+function readStoredAiConfig(): FinanceAiConfig {
+  if (typeof window === 'undefined') return DEFAULT_FINANCE_AI_CONFIG;
+
+  try {
+    const raw = localStorage.getItem(FINANCE_AI_CONFIG_STORAGE_KEY);
+    if (!raw) return DEFAULT_FINANCE_AI_CONFIG;
+    const parsed = JSON.parse(raw) as Partial<FinanceAiConfig>;
+
+    return {
+      provider: parsed.provider || DEFAULT_FINANCE_AI_CONFIG.provider,
+      endpoint: parsed.endpoint || DEFAULT_FINANCE_AI_CONFIG.endpoint,
+      apiKey: parsed.apiKey || '',
+      model: parsed.model || DEFAULT_FINANCE_AI_CONFIG.model,
+    };
+  } catch {
+    return DEFAULT_FINANCE_AI_CONFIG;
+  }
+}
+
+export default function StockTable({
+  stocks,
+  forexRates,
+  pricesStale = false,
+}: {
+  stocks: Stock[];
+  forexRates?: ForexRates;
+  pricesStale?: boolean;
+}) {
   const rates = forexRates || fallbackRates;
-  const cnyRate: Record<string, number> = { CNY: 1, HKD: rates.hkdToCny, USD: rates.usdToCny };
+  const cnyRate: Record<string, number> = { CNY: 1, HKD: rates.hkdToCny, USD: rates.usdToCny, JPY: rates.jpyToCny ?? fallbackRates.jpyToCny };
 
   function toCny(val: number, cur?: string | null): number {
     return val * (cnyRate[cur || defaultCurrency] || 1);
@@ -171,11 +208,18 @@ export default function StockTable({ stocks, forexRates }: { stocks: Stock[]; fo
   // Manual overrides from localStorage — init null to avoid hydration mismatch
   const [manualCost, setManualCost] = useState<number | null>(() => readStoredNumber('stock-manual-principal'));
   const [idleCash, setIdleCash] = useState<number | null>(() => readStoredNumber('stock-idle-cash'));
+  const [aiConfig, setAiConfig] = useState<FinanceAiConfig>(() => readStoredAiConfig());
+  const [aiOpen, setAiOpen] = useState(false);
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiMessages, setAiMessages] = useState<SerenityAnalysisMessage[]>([]);
+  const [aiDraft, setAiDraft] = useState('');
+  const [aiStatus, setAiStatus] = useState('');
 
   const totalCost = manualCost ?? computedCost;
   const totalPnl = totalValue - computedCost;
   const totalPnlRate = computedCost > 0 ? (totalPnl / computedCost) * 100 : 0;
   const accountTotal = idleCash !== null ? totalValueCny + idleCash : null;
+  const aiProviderLabel = FINANCE_AI_PROVIDER_PRESETS[aiConfig.provider as keyof typeof FINANCE_AI_PROVIDER_PRESETS]?.label ?? '自定义模型';
 
   function saveManualCost(val: number) {
     setManualCost(val);
@@ -184,6 +228,131 @@ export default function StockTable({ stocks, forexRates }: { stocks: Stock[]; fo
   function saveIdleCash(val: number) {
     setIdleCash(val);
     try { localStorage.setItem('stock-idle-cash', val.toString()); } catch {}
+  }
+
+  function buildSerenitySnapshot(): SerenityStockSnapshot {
+    const holdings = marketStocks.map((st) => {
+      const value = parseFloat(st.currentValue || st.balance || '0');
+      const qty = st.quantity || 0;
+      const currency = st.priceCurrency || defaultCurrency;
+      const cup = st.costUnitPrice || parseFloat(st.costPrice || '0');
+      const cost = cup * qty;
+      const pnl = value - cost;
+      const pnlRate = cost > 0 ? (pnl / cost) * 100 : null;
+      const marketValueCny = toCny(value, currency);
+
+      return {
+        name: st.name,
+        stockCode: st.stockCode || '',
+        market: st.market || 'cn',
+        quantity: qty,
+        unitPrice: st.unitPrice ?? null,
+        priceCurrency: currency,
+        marketValue: value,
+        marketValueCny,
+        costValue: cost,
+        costValueCny: toCny(cost, currency),
+        pnl,
+        pnlCny: toCny(pnl, currency),
+        pnlRate,
+        weight: totalValueCny > 0 ? (marketValueCny / totalValueCny) * 100 : 0,
+      };
+    });
+
+    return {
+      currentDate: new Date().toISOString().slice(0, 10),
+      totalValueCny,
+      totalCostCny: computedCost,
+      totalPnlCny: totalPnl,
+      totalPnlRate: computedCost > 0 ? totalPnlRate : null,
+      accountTotalCny: accountTotal,
+      idleCashCny: idleCash,
+      pricesStale,
+      holdings,
+    };
+  }
+
+  async function analyzeHoldings() {
+    if (aiLoading) return;
+
+    const latestConfig = readStoredAiConfig();
+    setAiConfig(latestConfig);
+    setAiOpen(true);
+
+    if (!hasCompleteFinanceAiConfig(latestConfig)) {
+      setAiMessages([]);
+      setAiStatus('请先在右下角 AI 助手里保存 API 配置');
+      return;
+    }
+
+    setAiStatus('');
+    setAiLoading(true);
+
+    try {
+      const response = await fetch('/api/serenity-stock-analysis', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ config: latestConfig, snapshot: buildSerenitySnapshot() }),
+      });
+      const result = await response.json().catch(() => ({ success: false, error: 'AI 请求失败' }));
+
+      if (!response.ok || !result.success) {
+        throw new Error(result.error || 'AI 请求失败');
+      }
+
+      setAiMessages([{ role: 'assistant', content: result.content }]);
+      setAiDraft('');
+    } catch (error) {
+      setAiStatus(error instanceof Error ? error.message : 'AI 请求失败');
+    } finally {
+      setAiLoading(false);
+    }
+  }
+
+  async function askFollowUp(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const question = aiDraft.trim();
+    if (!question || aiLoading) return;
+
+    const latestConfig = readStoredAiConfig();
+    setAiConfig(latestConfig);
+
+    if (!hasCompleteFinanceAiConfig(latestConfig)) {
+      setAiStatus('请先在右下角 AI 助手里保存 API 配置');
+      return;
+    }
+
+    const history = aiMessages;
+    const nextMessages: SerenityAnalysisMessage[] = [...history, { role: 'user', content: question }];
+
+    setAiMessages(nextMessages);
+    setAiDraft('');
+    setAiStatus('');
+    setAiLoading(true);
+
+    try {
+      const response = await fetch('/api/serenity-stock-analysis', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          config: latestConfig,
+          snapshot: buildSerenitySnapshot(),
+          question,
+          messages: history,
+        }),
+      });
+      const result = await response.json().catch(() => ({ success: false, error: 'AI 请求失败' }));
+
+      if (!response.ok || !result.success) {
+        throw new Error(result.error || 'AI 请求失败');
+      }
+
+      setAiMessages([...nextMessages, { role: 'assistant', content: result.content }]);
+    } catch (error) {
+      setAiStatus(error instanceof Error ? error.message : 'AI 请求失败');
+    } finally {
+      setAiLoading(false);
+    }
   }
 
   if (marketStocks.length === 0) {
@@ -200,38 +369,61 @@ export default function StockTable({ stocks, forexRates }: { stocks: Stock[]; fo
           </span>
         </div>
       )}
-      <div className="flex items-center gap-3 text-sm mb-3 flex-wrap">
-        <span className="text-ledger-muted">
-          本金 <EditablePrincipal totalCost={totalCost} onSave={saveManualCost} />
-          {manualCost !== null && (
-            <button
-              onClick={() => { setManualCost(null); try { localStorage.removeItem('stock-manual-principal'); } catch {} }}
-              className="ml-1 text-xs text-ledger-muted/50 hover:text-[var(--color-text-primary)]"
-              title="恢复自动计算"
-            >
-              ↺
-            </button>
-          )}
-        </span>
-        <span className="text-ledger-muted/30">|</span>
-        <span className="text-ledger-muted">市值 <span className="text-ledger-success font-medium">{fmt(totalValueCny, 'CNY')}</span></span>
-        <span className="text-ledger-muted/30">|</span>
-        <span className="text-ledger-muted">
-          闲置现金 <EditablePrincipal totalCost={idleCash ?? 0} onSave={saveIdleCash} />
-          {idleCash !== null && (
-            <button
-              onClick={() => { setIdleCash(null); try { localStorage.removeItem('stock-idle-cash'); } catch {} }}
-              className="ml-1 text-xs text-ledger-muted/50 hover:text-[var(--color-text-primary)]"
-              title="清除"
-            >
-              ↺
-            </button>
-          )}
-        </span>
-        <span className="text-ledger-muted/30">|</span>
-        <span className="text-ledger-muted">浮动盈亏 <span className={`font-medium ${totalPnl >= 0 ? 'text-green-400' : 'text-red-400'}`}>{totalPnl >= 0 ? '+' : ''}{fmt(totalPnl, 'CNY')} ({totalPnlRate >= 0 ? '+' : ''}{totalPnlRate.toFixed(2)}%)</span></span>
-        {manualCost !== null && <span className="text-xs text-ledger-accent">手动</span>}
+      <div className="flex items-start justify-between gap-3 mb-3 flex-wrap">
+        <div className="flex items-center gap-3 text-sm flex-wrap">
+          <span className="text-ledger-muted">
+            本金 <EditablePrincipal totalCost={totalCost} onSave={saveManualCost} />
+            {manualCost !== null && (
+              <button
+                onClick={() => { setManualCost(null); try { localStorage.removeItem('stock-manual-principal'); } catch {} }}
+                className="ml-1 text-xs text-ledger-muted/50 hover:text-[var(--color-text-primary)]"
+                title="恢复自动计算"
+              >
+                ↺
+              </button>
+            )}
+          </span>
+          <span className="text-ledger-muted/30">|</span>
+          <span className="text-ledger-muted">市值 <span className="text-ledger-success font-medium">{fmt(totalValueCny, 'CNY')}</span></span>
+          <span className="text-ledger-muted/30">|</span>
+          <span className="text-ledger-muted">
+            闲置现金 <EditablePrincipal totalCost={idleCash ?? 0} onSave={saveIdleCash} />
+            {idleCash !== null && (
+              <button
+                onClick={() => { setIdleCash(null); try { localStorage.removeItem('stock-idle-cash'); } catch {} }}
+                className="ml-1 text-xs text-ledger-muted/50 hover:text-[var(--color-text-primary)]"
+                title="清除"
+              >
+                ↺
+              </button>
+            )}
+          </span>
+          <span className="text-ledger-muted/30">|</span>
+          <span className="text-ledger-muted">浮动盈亏 <span className={`font-medium ${totalPnl >= 0 ? 'text-green-400' : 'text-red-400'}`}>{totalPnl >= 0 ? '+' : ''}{fmt(totalPnl, 'CNY')} ({totalPnlRate >= 0 ? '+' : ''}{totalPnlRate.toFixed(2)}%)</span></span>
+          {manualCost !== null && <span className="text-xs text-ledger-accent">手动</span>}
+        </div>
+        <button
+          type="button"
+          onClick={analyzeHoldings}
+          disabled={aiLoading}
+          className="btn btn-outline btn-sm shrink-0"
+          aria-label="用 Serenity AI 分析股票持仓"
+        >
+          {aiLoading ? '分析中...' : aiMessages.length > 0 ? '重新分析' : 'Serenity AI 分析'}
+        </button>
       </div>
+      {aiOpen && (
+        <SerenityAnalysisPanel
+          providerLabel={aiProviderLabel}
+          messages={aiMessages}
+          status={aiStatus}
+          loading={aiLoading}
+          draft={aiDraft}
+          onDraftChange={setAiDraft}
+          onSubmit={askFollowUp}
+          onClose={() => setAiOpen(false)}
+        />
+      )}
       <div className="overflow-x-auto">
         <table className="w-full text-sm">
           <thead>

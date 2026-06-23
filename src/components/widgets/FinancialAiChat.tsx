@@ -2,22 +2,15 @@
 
 import { useMemo, useState } from 'react';
 import {
+  DEFAULT_FINANCE_AI_CONFIG,
   FINANCE_AI_PROVIDER_PRESETS,
+  FINANCE_AI_CONFIG_STORAGE_KEY,
+  hasCompleteFinanceAiConfig,
   type FinanceAiConfig,
   type FinanceAiMessage,
   type FinanceAiProvider,
   type FinanceAiSnapshot,
 } from '@/lib/finance-ai';
-
-const CONFIG_STORAGE_KEY = 'finance-ai-chat-config-v1';
-const DEFAULT_PROVIDER: Exclude<FinanceAiProvider, 'custom'> = 'deepseek';
-
-const defaultConfig: FinanceAiConfig = {
-  provider: DEFAULT_PROVIDER,
-  endpoint: FINANCE_AI_PROVIDER_PRESETS[DEFAULT_PROVIDER].endpoint,
-  apiKey: '',
-  model: FINANCE_AI_PROVIDER_PRESETS[DEFAULT_PROVIDER].model,
-};
 
 const quickQuestions = [
   '我的资产配比哪里偏了？',
@@ -29,15 +22,15 @@ function readStoredConfig() {
   if (typeof window === 'undefined') return null;
 
   try {
-    const raw = localStorage.getItem(CONFIG_STORAGE_KEY);
+    const raw = localStorage.getItem(FINANCE_AI_CONFIG_STORAGE_KEY);
     if (!raw) return null;
     const parsed = JSON.parse(raw) as Partial<FinanceAiConfig>;
 
     return {
-      provider: parsed.provider || defaultConfig.provider,
-      endpoint: parsed.endpoint || defaultConfig.endpoint,
+      provider: parsed.provider || DEFAULT_FINANCE_AI_CONFIG.provider,
+      endpoint: parsed.endpoint || DEFAULT_FINANCE_AI_CONFIG.endpoint,
       apiKey: parsed.apiKey || '',
-      model: parsed.model || defaultConfig.model,
+      model: parsed.model || DEFAULT_FINANCE_AI_CONFIG.model,
     };
   } catch {
     return null;
@@ -45,22 +38,18 @@ function readStoredConfig() {
 }
 
 function storeConfig(config: FinanceAiConfig) {
-  localStorage.setItem(CONFIG_STORAGE_KEY, JSON.stringify(config));
-}
-
-function hasCompleteConfig(config: FinanceAiConfig) {
-  return Boolean(config.endpoint.trim() && config.apiKey.trim() && config.model.trim());
+  localStorage.setItem(FINANCE_AI_CONFIG_STORAGE_KEY, JSON.stringify(config));
 }
 
 export default function FinancialAiChat({ snapshot }: { snapshot: FinanceAiSnapshot }) {
   const [open, setOpen] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
-  const [config, setConfig] = useState<FinanceAiConfig>(() => readStoredConfig() ?? defaultConfig);
+  const [config, setConfig] = useState<FinanceAiConfig>(() => readStoredConfig() ?? DEFAULT_FINANCE_AI_CONFIG);
   const [messages, setMessages] = useState<FinanceAiMessage[]>([]);
   const [draft, setDraft] = useState('');
   const [status, setStatus] = useState('');
   const [loading, setLoading] = useState(false);
-  const configComplete = useMemo(() => hasCompleteConfig(config), [config]);
+  const configComplete = useMemo(() => hasCompleteFinanceAiConfig(config), [config]);
 
   function openChat() {
     setOpen(true);
@@ -93,7 +82,7 @@ export default function FinancialAiChat({ snapshot }: { snapshot: FinanceAiSnaps
     const question = content.trim();
     if (!question || loading) return;
 
-    if (!hasCompleteConfig(config)) {
+    if (!hasCompleteFinanceAiConfig(config)) {
       setStatus('请先保存 API 配置');
       setShowSettings(true);
       return;

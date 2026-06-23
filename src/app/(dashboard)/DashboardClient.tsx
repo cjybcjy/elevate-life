@@ -301,7 +301,7 @@ export default function DashboardClient({ currentDate }: { currentDate: string }
             </div>
           </div>
           <div className="card-body">
-            <StockTable stocks={stocks} forexRates={forexRates} />
+            <StockTable stocks={stocks} forexRates={forexRates} pricesStale={pricesStale} />
           </div>
         </div>
       </ErrorBoundary>

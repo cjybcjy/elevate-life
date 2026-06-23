@@ -66,6 +66,19 @@ export const FINANCE_AI_PROVIDER_PRESETS: Record<Exclude<FinanceAiProvider, 'cus
   },
 };
 
+export const FINANCE_AI_CONFIG_STORAGE_KEY = 'finance-ai-chat-config-v1';
+export const DEFAULT_FINANCE_AI_PROVIDER: Exclude<FinanceAiProvider, 'custom'> = 'deepseek';
+export const DEFAULT_FINANCE_AI_CONFIG: FinanceAiConfig = {
+  provider: DEFAULT_FINANCE_AI_PROVIDER,
+  endpoint: FINANCE_AI_PROVIDER_PRESETS[DEFAULT_FINANCE_AI_PROVIDER].endpoint,
+  apiKey: '',
+  model: FINANCE_AI_PROVIDER_PRESETS[DEFAULT_FINANCE_AI_PROVIDER].model,
+};
+
+export function hasCompleteFinanceAiConfig(config: FinanceAiConfig) {
+  return Boolean(config.endpoint.trim() && config.apiKey.trim() && config.model.trim());
+}
+
 function formatCny(value: number) {
   return value.toLocaleString('zh-CN', {
     maximumFractionDigits: 0,
@@ -114,12 +127,9 @@ export function buildFinanceAiSystemPrompt(snapshot: FinanceAiSnapshot) {
 }
 
 function validateFinanceAiInput(input: FinanceAiChatInput) {
-  const endpoint = input.config.endpoint.trim();
-  const apiKey = input.config.apiKey.trim();
-  const model = input.config.model.trim();
   const hasMessage = input.messages.some((message) => message.content.trim());
 
-  if (!endpoint || !apiKey || !model) {
+  if (!hasCompleteFinanceAiConfig(input.config)) {
     throw new Error('请先保存 API 配置');
   }
 

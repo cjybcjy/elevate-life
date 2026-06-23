@@ -8534,3 +8534,393 @@ https://react.dev/link/hydration-mismatch
     at ignore-listed frames {
   code: 'ECONNRESET'
 }
+ GET / 200 in 278ms (next.js: 11ms, proxy.ts: 46ms, application-code: 221ms)
+ POST / 200 in 876ms (next.js: 6ms, proxy.ts: 29ms, application-code: 841ms)
+  └─ ƒ getAssets() in 829ms src/lib/actions/assets.ts
+ POST / 200 in 262ms (next.js: 5ms, proxy.ts: 18ms, application-code: 240ms)
+  └─ ƒ getLiabilities() in 231ms src/lib/actions/liabilities.ts
+ POST / 200 in 1288ms (next.js: 5ms, proxy.ts: 19ms, application-code: 1264ms)
+  └─ ƒ getTransactions() in 1252ms src/lib/actions/ledger.ts
+ POST / 200 in 3.0s (next.js: 5ms, proxy.ts: 28ms, application-code: 3.0s)
+  └─ ƒ getAutoForecast(12) in 2954ms src/lib/actions/forecast.ts
+ POST / 200 in 51ms (next.js: 5ms, proxy.ts: 19ms, application-code: 27ms)
+  └─ ƒ getBudgetProgress("2026-06-22") in 18ms src/lib/actions/budget.ts
+ POST / 200 in 208ms (next.js: 158ms, proxy.ts: 22ms, application-code: 29ms)
+  └─ ƒ getGoals() in 16ms src/lib/actions/goals.ts
+ POST / 200 in 46ms (next.js: 12ms, proxy.ts: 22ms, application-code: 11ms)
+  └─ ƒ getCurrentGoldPrice() in 3ms src/lib/actions/gold.ts
+ POST / 200 in 44ms (next.js: 5ms, proxy.ts: 18ms, application-code: 21ms)
+  └─ ƒ simulateCashflow({"monthlyExpense":"26344.67","monthlyIncome":"35333.33","months":12}) in 11ms src/lib/actions/forecast.ts
+[browser] [ECharts] Can't get DOM width or height. Please check dom.clientWidth and dom.clientHeight. They should not be 0.For example, you may need to call this in the callback of window.onload. (<anonymous>)
+[browser] [ECharts] Can't get DOM width or height. Please check dom.clientWidth and dom.clientHeight. They should not be 0.For example, you may need to call this in the callback of window.onload. (<anonymous>)
+ POST / 200 in 6.8s (next.js: 5ms, proxy.ts: 20ms, application-code: 6.8s)
+  └─ ƒ refreshMyPrices() in 6807ms src/lib/actions/assets.ts
+ POST / 200 in 7.6s (next.js: 5ms, proxy.ts: 21ms, application-code: 7.6s)
+  └─ ƒ refreshMyPrices() in 7568ms src/lib/actions/assets.ts
+ POST / 200 in 850ms (next.js: 9ms, proxy.ts: 23ms, application-code: 817ms)
+  └─ ƒ getAssets() in 806ms src/lib/actions/assets.ts
+ POST / 200 in 841ms (next.js: 11ms, proxy.ts: 21ms, application-code: 809ms)
+  └─ ƒ getAssets() in 797ms src/lib/actions/assets.ts
+ POST / 200 in 883ms (next.js: 5ms, proxy.ts: 29ms, application-code: 849ms)
+  └─ ƒ getAssets() in 838ms src/lib/actions/assets.ts
+ POST / 200 in 276ms (next.js: 10ms, proxy.ts: 24ms, application-code: 242ms)
+  └─ ƒ getLiabilities() in 226ms src/lib/actions/liabilities.ts
+ POST / 200 in 1289ms (next.js: 5ms, proxy.ts: 25ms, application-code: 1259ms)
+  └─ ƒ getTransactions() in 1242ms src/lib/actions/ledger.ts
+ POST / 200 in 1736ms (next.js: 5ms, proxy.ts: 28ms, application-code: 1702ms)
+  └─ ƒ getAutoForecast(12) in 1684ms src/lib/actions/forecast.ts
+ POST / 200 in 86ms (next.js: 11ms, proxy.ts: 28ms, application-code: 47ms)
+  └─ ƒ getBudgetProgress("2026-06-22") in 30ms src/lib/actions/budget.ts
+ POST / 200 in 70ms (next.js: 5ms, proxy.ts: 26ms, application-code: 38ms)
+  └─ ƒ getGoals() in 23ms src/lib/actions/goals.ts
+ POST / 200 in 51ms (next.js: 5ms, proxy.ts: 26ms, application-code: 20ms)
+  └─ ƒ getCurrentGoldPrice() in 4ms src/lib/actions/gold.ts
+ POST / 200 in 51ms (next.js: 5ms, proxy.ts: 18ms, application-code: 29ms)
+  └─ ƒ simulateCashflow({"monthlyExpense":"26344.67","monthlyIncome":"35333.33","months":12}) in 11ms src/lib/actions/forecast.ts
+ POST / 200 in 893ms (next.js: 11ms, proxy.ts: 29ms, application-code: 852ms)
+  └─ ƒ getAssets() in 839ms src/lib/actions/assets.ts
+ POST / 200 in 280ms (next.js: 10ms, proxy.ts: 25ms, application-code: 245ms)
+  └─ ƒ getLiabilities() in 231ms src/lib/actions/liabilities.ts
+ POST / 200 in 1299ms (next.js: 5ms, proxy.ts: 25ms, application-code: 1269ms)
+  └─ ƒ getTransactions() in 1247ms src/lib/actions/ledger.ts
+ POST / 200 in 3.0s (next.js: 5ms, proxy.ts: 24ms, application-code: 3.0s)
+  └─ ƒ getAutoForecast(12) in 2989ms src/lib/actions/forecast.ts
+ POST / 200 in 168ms (next.js: 105ms, proxy.ts: 28ms, application-code: 36ms)
+  └─ ƒ getBudgetProgress("2026-06-22") in 24ms src/lib/actions/budget.ts
+ POST / 200 in 59ms (next.js: 5ms, proxy.ts: 21ms, application-code: 33ms)
+  └─ ƒ getGoals() in 23ms src/lib/actions/goals.ts
+ POST / 200 in 45ms (next.js: 5ms, proxy.ts: 21ms, application-code: 19ms)
+  └─ ƒ getCurrentGoldPrice() in 4ms src/lib/actions/gold.ts
+ POST / 200 in 5.7s (next.js: 5ms, proxy.ts: 21ms, application-code: 5.7s)
+  └─ ƒ refreshMyPrices() in 5652ms src/lib/actions/assets.ts
+ POST / 200 in 50ms (next.js: 5ms, proxy.ts: 17ms, application-code: 27ms)
+  └─ ƒ simulateCashflow({"monthlyExpense":"26344.67","monthlyIncome":"35333.33","months":12}) in 17ms src/lib/actions/forecast.ts
+ POST / 200 in 823ms (next.js: 5ms, proxy.ts: 19ms, application-code: 800ms)
+  └─ ƒ getAssets() in 789ms src/lib/actions/assets.ts
+ GET / 200 in 216ms (next.js: 13ms, proxy.ts: 27ms, application-code: 176ms)
+ POST / 200 in 851ms (next.js: 5ms, proxy.ts: 24ms, application-code: 822ms)
+  └─ ƒ getAssets() in 811ms src/lib/actions/assets.ts
+ POST / 200 in 266ms (next.js: 8ms, proxy.ts: 19ms, application-code: 239ms)
+  └─ ƒ getLiabilities() in 227ms src/lib/actions/liabilities.ts
+ POST / 200 in 1277ms (next.js: 5ms, proxy.ts: 20ms, application-code: 1252ms)
+  └─ ƒ getTransactions() in 1241ms src/lib/actions/ledger.ts
+ POST / 200 in 3.0s (next.js: 5ms, proxy.ts: 18ms, application-code: 3.0s)
+  └─ ƒ getAutoForecast(12) in 2972ms src/lib/actions/forecast.ts
+ POST / 200 in 72ms (next.js: 5ms, proxy.ts: 26ms, application-code: 41ms)
+  └─ ƒ getBudgetProgress("2026-06-22") in 30ms src/lib/actions/budget.ts
+ POST / 200 in 71ms (next.js: 5ms, proxy.ts: 27ms, application-code: 39ms)
+  └─ ƒ getGoals() in 24ms src/lib/actions/goals.ts
+ POST / 200 in 51ms (next.js: 11ms, proxy.ts: 23ms, application-code: 18ms)
+  └─ ƒ getCurrentGoldPrice() in 4ms src/lib/actions/gold.ts
+ POST / 200 in 59ms (next.js: 9ms, proxy.ts: 22ms, application-code: 29ms)
+  └─ ƒ simulateCashflow({"monthlyExpense":"26344.67","monthlyIncome":"35333.33","months":12}) in 11ms src/lib/actions/forecast.ts
+[browser] [ECharts] Can't get DOM width or height. Please check dom.clientWidth and dom.clientHeight. They should not be 0.For example, you may need to call this in the callback of window.onload. (<anonymous>)
+[browser] [ECharts] Can't get DOM width or height. Please check dom.clientWidth and dom.clientHeight. They should not be 0.For example, you may need to call this in the callback of window.onload. (<anonymous>)
+ POST / 200 in 8.1s (next.js: 5ms, proxy.ts: 24ms, application-code: 8.0s)
+  └─ ƒ refreshMyPrices() in 8018ms src/lib/actions/assets.ts
+ POST / 200 in 6.8s (next.js: 5ms, proxy.ts: 28ms, application-code: 6.8s)
+  └─ ƒ refreshMyPrices() in 6742ms src/lib/actions/assets.ts
+ POST / 200 in 907ms (next.js: 5ms, proxy.ts: 27ms, application-code: 875ms)
+  └─ ƒ getAssets() in 853ms src/lib/actions/assets.ts
+ POST / 200 in 871ms (next.js: 17ms, proxy.ts: 25ms, application-code: 828ms)
+  └─ ƒ getAssets() in 805ms src/lib/actions/assets.ts
+✓ Compiled in 95ms
+✓ Compiled in 111ms
+✓ Compiled in 216ms
+ GET / 200 in 695ms (next.js: 192ms, proxy.ts: 235ms, application-code: 268ms)
+ GET / 200 in 169ms (next.js: 5ms, proxy.ts: 45ms, application-code: 120ms)
+ GET / 200 in 174ms (next.js: 6ms, proxy.ts: 53ms, application-code: 116ms)
+ GET / 200 in 161ms (next.js: 5ms, proxy.ts: 61ms, application-code: 95ms)
+ GET / 200 in 155ms (next.js: 5ms, proxy.ts: 46ms, application-code: 105ms)
+ GET / 200 in 160ms (next.js: 6ms, proxy.ts: 46ms, application-code: 107ms)
+ GET / 200 in 168ms (next.js: 5ms, proxy.ts: 60ms, application-code: 102ms)
+ GET / 200 in 155ms (next.js: 13ms, proxy.ts: 49ms, application-code: 93ms)
+ GET / 200 in 159ms (next.js: 5ms, proxy.ts: 47ms, application-code: 107ms)
+ GET / 200 in 168ms (next.js: 16ms, proxy.ts: 49ms, application-code: 103ms)
+ GET / 200 in 150ms (next.js: 5ms, proxy.ts: 56ms, application-code: 90ms)
+ GET / 200 in 154ms (next.js: 4ms, proxy.ts: 45ms, application-code: 105ms)
+ GET / 200 in 156ms (next.js: 7ms, proxy.ts: 47ms, application-code: 102ms)
+ GET / 200 in 161ms (next.js: 5ms, proxy.ts: 55ms, application-code: 101ms)
+ GET / 200 in 153ms (next.js: 5ms, proxy.ts: 56ms, application-code: 92ms)
+ GET / 200 in 156ms (next.js: 5ms, proxy.ts: 46ms, application-code: 105ms)
+ GET / 200 in 175ms (next.js: 6ms, proxy.ts: 52ms, application-code: 117ms)
+ GET / 200 in 156ms (next.js: 5ms, proxy.ts: 60ms, application-code: 91ms)
+ GET / 200 in 157ms (next.js: 5ms, proxy.ts: 46ms, application-code: 106ms)
+ GET / 200 in 157ms (next.js: 6ms, proxy.ts: 51ms, application-code: 101ms)
+ GET / 200 in 157ms (next.js: 4ms, proxy.ts: 56ms, application-code: 97ms)
+ GET / 200 in 147ms (next.js: 5ms, proxy.ts: 53ms, application-code: 90ms)
+ GET / 200 in 148ms (next.js: 5ms, proxy.ts: 45ms, application-code: 99ms)
+ GET / 200 in 152ms (next.js: 5ms, proxy.ts: 46ms, application-code: 100ms)
+ GET / 200 in 160ms (next.js: 5ms, proxy.ts: 54ms, application-code: 101ms)
+ GET / 200 in 151ms (next.js: 5ms, proxy.ts: 55ms, application-code: 91ms)
+ GET / 200 in 164ms (next.js: 5ms, proxy.ts: 45ms, application-code: 114ms)
+ GET / 200 in 175ms (next.js: 6ms, proxy.ts: 51ms, application-code: 118ms)
+ GET / 200 in 171ms (next.js: 5ms, proxy.ts: 60ms, application-code: 106ms)
+ GET / 200 in 157ms (next.js: 5ms, proxy.ts: 56ms, application-code: 96ms)
+ GET / 200 in 160ms (next.js: 4ms, proxy.ts: 45ms, application-code: 110ms)
+ GET / 200 in 171ms (next.js: 6ms, proxy.ts: 55ms, application-code: 110ms)
+ GET / 200 in 166ms (next.js: 5ms, proxy.ts: 58ms, application-code: 102ms)
+ GET / 200 in 148ms (next.js: 5ms, proxy.ts: 56ms, application-code: 88ms)
+ GET / 200 in 156ms (next.js: 5ms, proxy.ts: 43ms, application-code: 108ms)
+ GET / 200 in 177ms (next.js: 6ms, proxy.ts: 53ms, application-code: 118ms)
+ GET / 200 in 178ms (next.js: 5ms, proxy.ts: 61ms, application-code: 112ms)
+ GET / 200 in 155ms (next.js: 5ms, proxy.ts: 61ms, application-code: 90ms)
+ GET / 200 in 177ms (next.js: 5ms, proxy.ts: 46ms, application-code: 125ms)
+ GET / 200 in 185ms (next.js: 8ms, proxy.ts: 63ms, application-code: 114ms)
+ GET / 200 in 154ms (next.js: 5ms, proxy.ts: 60ms, application-code: 89ms)
+ GET / 200 in 151ms (next.js: 4ms, proxy.ts: 44ms, application-code: 103ms)
+ GET / 200 in 160ms (next.js: 6ms, proxy.ts: 50ms, application-code: 103ms)
+ GET / 200 in 150ms (next.js: 4ms, proxy.ts: 58ms, application-code: 87ms)
+ GET / 200 in 148ms (next.js: 5ms, proxy.ts: 43ms, application-code: 101ms)
+ GET / 200 in 138ms (next.js: 6ms, proxy.ts: 45ms, application-code: 86ms)
+✓ Compiled in 95ms
+✓ Compiled in 174ms
+✓ Compiled in 83ms
+✓ Compiled in 98ms
+ POST / 200 in 1099ms (next.js: 11ms, proxy.ts: 20ms, application-code: 1068ms)
+  └─ ƒ getAssets() in 918ms src/lib/actions/assets.ts
+ POST / 200 in 273ms (next.js: 5ms, proxy.ts: 21ms, application-code: 248ms)
+  └─ ƒ getLiabilities() in 227ms src/lib/actions/liabilities.ts
+ POST / 200 in 1305ms (next.js: 5ms, proxy.ts: 19ms, application-code: 1281ms)
+  └─ ƒ getTransactions() in 1265ms src/lib/actions/ledger.ts
+ POST / 200 in 3.0s (next.js: 7ms, proxy.ts: 31ms, application-code: 2.9s)
+  └─ ƒ getAutoForecast(12) in 2900ms src/lib/actions/forecast.ts
+ POST / 200 in 160ms (next.js: 103ms, proxy.ts: 19ms, application-code: 38ms)
+  └─ ƒ getBudgetProgress("2026-06-22") in 26ms src/lib/actions/budget.ts
+ POST / 200 in 64ms (next.js: 6ms, proxy.ts: 27ms, application-code: 31ms)
+  └─ ƒ getGoals() in 19ms src/lib/actions/goals.ts
+ POST / 200 in 44ms (next.js: 5ms, proxy.ts: 25ms, application-code: 14ms)
+  └─ ƒ getCurrentGoldPrice() in 5ms src/lib/actions/gold.ts
+ POST / 200 in 49ms (next.js: 5ms, proxy.ts: 20ms, application-code: 24ms)
+  └─ ƒ simulateCashflow({"monthlyExpense":"26344.67","monthlyIncome":"35333.33","months":12}) in 14ms src/lib/actions/forecast.ts
+ POST /api/serenity-stock-analysis 200 in 21.3s (next.js: 912ms, proxy.ts: 26ms, application-code: 20.4s)
+ POST / 200 in 886ms (next.js: 5ms, proxy.ts: 26ms, application-code: 855ms)
+  └─ ƒ getAssets() in 838ms src/lib/actions/assets.ts
+ POST / 200 in 275ms (next.js: 5ms, proxy.ts: 26ms, application-code: 244ms)
+  └─ ƒ getLiabilities() in 229ms src/lib/actions/liabilities.ts
+ POST / 200 in 1295ms (next.js: 11ms, proxy.ts: 19ms, application-code: 1266ms)
+  └─ ƒ getTransactions() in 1249ms src/lib/actions/ledger.ts
+ POST / 200 in 3.0s (next.js: 12ms, proxy.ts: 18ms, application-code: 3.0s)
+  └─ ƒ getAutoForecast(12) in 2993ms src/lib/actions/forecast.ts
+ POST / 200 in 140ms (next.js: 80ms, proxy.ts: 21ms, application-code: 39ms)
+  └─ ƒ getBudgetProgress("2026-06-22") in 19ms src/lib/actions/budget.ts
+ POST / 200 in 60ms (next.js: 5ms, proxy.ts: 19ms, application-code: 37ms)
+  └─ ƒ getGoals() in 19ms src/lib/actions/goals.ts
+ POST / 200 in 36ms (next.js: 4ms, proxy.ts: 20ms, application-code: 12ms)
+  └─ ƒ getCurrentGoldPrice() in 4ms src/lib/actions/gold.ts
+ POST / 200 in 50ms (next.js: 4ms, proxy.ts: 26ms, application-code: 20ms)
+  └─ ƒ simulateCashflow({"monthlyExpense":"26344.67","monthlyIncome":"35333.33","months":12}) in 11ms src/lib/actions/forecast.ts
+ POST / 200 in 903ms (next.js: 7ms, proxy.ts: 38ms, application-code: 858ms)
+  └─ ƒ getAssets() in 835ms src/lib/actions/assets.ts
+ POST / 200 in 268ms (next.js: 5ms, proxy.ts: 23ms, application-code: 239ms)
+  └─ ƒ getLiabilities() in 224ms src/lib/actions/liabilities.ts
+ POST / 200 in 1298ms (next.js: 12ms, proxy.ts: 23ms, application-code: 1263ms)
+  └─ ƒ getTransactions() in 1242ms src/lib/actions/ledger.ts
+ POST / 200 in 2.4s (next.js: 11ms, proxy.ts: 24ms, application-code: 2.3s)
+  └─ ƒ getAutoForecast(12) in 2324ms src/lib/actions/forecast.ts
+ POST / 200 in 82ms (next.js: 14ms, proxy.ts: 25ms, application-code: 43ms)
+  └─ ƒ getBudgetProgress("2026-06-22") in 26ms src/lib/actions/budget.ts
+ POST / 200 in 69ms (next.js: 7ms, proxy.ts: 25ms, application-code: 37ms)
+  └─ ƒ getGoals() in 21ms src/lib/actions/goals.ts
+ POST / 200 in 52ms (next.js: 10ms, proxy.ts: 24ms, application-code: 17ms)
+  └─ ƒ getCurrentGoldPrice() in 8ms src/lib/actions/gold.ts
+ POST / 200 in 865ms (next.js: 10ms, proxy.ts: 25ms, application-code: 829ms)
+  └─ ƒ getAssets() in 813ms src/lib/actions/assets.ts
+ POST / 200 in 259ms (next.js: 5ms, proxy.ts: 20ms, application-code: 234ms)
+  └─ ƒ getLiabilities() in 218ms src/lib/actions/liabilities.ts
+ POST / 200 in 69ms (next.js: 5ms, proxy.ts: 30ms, application-code: 34ms)
+  └─ ƒ simulateCashflow({"monthlyExpense":"26344.67","monthlyIncome":"35333.33","months":12}) in 17ms src/lib/actions/forecast.ts
+✓ Compiled in 180ms
+✓ Compiled in 1ms
+ GET / 200 in 700ms (next.js: 210ms, proxy.ts: 244ms, application-code: 246ms)
+ GET / 200 in 310ms (next.js: 6ms, proxy.ts: 187ms, application-code: 117ms)
+ POST / 200 in 875ms (next.js: 7ms, proxy.ts: 25ms, application-code: 843ms)
+  └─ ƒ getAssets() in 796ms src/lib/actions/assets.ts
+ POST / 200 in 257ms (next.js: 5ms, proxy.ts: 20ms, application-code: 233ms)
+  └─ ƒ getLiabilities() in 214ms src/lib/actions/liabilities.ts
+ POST / 200 in 1264ms (next.js: 4ms, proxy.ts: 21ms, application-code: 1239ms)
+  └─ ƒ getTransactions() in 1212ms src/lib/actions/ledger.ts
+ POST / 200 in 2.5s (next.js: 5ms, proxy.ts: 33ms, application-code: 2.5s)
+  └─ ƒ getAutoForecast(12) in 2465ms src/lib/actions/forecast.ts
+ POST / 200 in 117ms (next.js: 54ms, proxy.ts: 26ms, application-code: 38ms)
+  └─ ƒ getBudgetProgress("2026-06-22") in 22ms src/lib/actions/budget.ts
+ POST / 200 in 65ms (next.js: 5ms, proxy.ts: 25ms, application-code: 36ms)
+  └─ ƒ getGoals() in 24ms src/lib/actions/goals.ts
+ POST / 200 in 48ms (next.js: 5ms, proxy.ts: 27ms, application-code: 16ms)
+  └─ ƒ getCurrentGoldPrice() in 5ms src/lib/actions/gold.ts
+ POST / 200 in 46ms (next.js: 5ms, proxy.ts: 18ms, application-code: 24ms)
+  └─ ƒ simulateCashflow({"monthlyExpense":"26344.67","monthlyIncome":"35333.33","months":12}) in 14ms src/lib/actions/forecast.ts
+ POST / 200 in 905ms (next.js: 5ms, proxy.ts: 30ms, application-code: 870ms)
+  └─ ƒ getAssets() in 854ms src/lib/actions/assets.ts
+ POST / 200 in 284ms (next.js: 5ms, proxy.ts: 38ms, application-code: 241ms)
+  └─ ƒ getLiabilities() in 226ms src/lib/actions/liabilities.ts
+ POST / 200 in 1362ms (next.js: 11ms, proxy.ts: 24ms, application-code: 1327ms)
+  └─ ƒ getTransactions() in 1302ms src/lib/actions/ledger.ts
+ POST / 200 in 1785ms (next.js: 6ms, proxy.ts: 23ms, application-code: 1757ms)
+  └─ ƒ getAutoForecast(12) in 1736ms src/lib/actions/forecast.ts
+ POST / 200 in 88ms (next.js: 16ms, proxy.ts: 31ms, application-code: 41ms)
+  └─ ƒ getBudgetProgress("2026-06-22") in 24ms src/lib/actions/budget.ts
+ POST / 200 in 71ms (next.js: 10ms, proxy.ts: 25ms, application-code: 37ms)
+  └─ ƒ getGoals() in 26ms src/lib/actions/goals.ts
+ POST / 200 in 53ms (next.js: 10ms, proxy.ts: 26ms, application-code: 17ms)
+  └─ ƒ getCurrentGoldPrice() in 8ms src/lib/actions/gold.ts
+ POST / 200 in 6.3s (next.js: 10ms, proxy.ts: 23ms, application-code: 6.2s)
+  └─ ƒ refreshMyPrices() in 6215ms src/lib/actions/assets.ts
+ POST / 200 in 70ms (next.js: 10ms, proxy.ts: 25ms, application-code: 35ms)
+  └─ ƒ simulateCashflow({"monthlyExpense":"26344.67","monthlyIncome":"35333.33","months":12}) in 18ms src/lib/actions/forecast.ts
+ POST / 200 in 854ms (next.js: 6ms, proxy.ts: 27ms, application-code: 821ms)
+  └─ ƒ getAssets() in 809ms src/lib/actions/assets.ts
+ POST / 200 in 898ms (next.js: 5ms, proxy.ts: 20ms, application-code: 872ms)
+  └─ ƒ getAssets() in 855ms src/lib/actions/assets.ts
+ POST / 200 in 278ms (next.js: 10ms, proxy.ts: 24ms, application-code: 244ms)
+  └─ ƒ getLiabilities() in 224ms src/lib/actions/liabilities.ts
+ POST / 200 in 1313ms (next.js: 5ms, proxy.ts: 27ms, application-code: 1280ms)
+  └─ ƒ getTransactions() in 1258ms src/lib/actions/ledger.ts
+ POST / 200 in 3.1s (next.js: 10ms, proxy.ts: 26ms, application-code: 3.0s)
+  └─ ƒ getAutoForecast(12) in 3032ms src/lib/actions/forecast.ts
+ POST / 200 in 85ms (next.js: 6ms, proxy.ts: 26ms, application-code: 54ms)
+  └─ ƒ getBudgetProgress("2026-06-22") in 35ms src/lib/actions/budget.ts
+ POST / 200 in 67ms (next.js: 5ms, proxy.ts: 25ms, application-code: 38ms)
+  └─ ƒ getGoals() in 24ms src/lib/actions/goals.ts
+ POST / 200 in 45ms (next.js: 11ms, proxy.ts: 21ms, application-code: 13ms)
+  └─ ƒ getCurrentGoldPrice() in 4ms src/lib/actions/gold.ts
+ POST / 200 in 70ms (next.js: 6ms, proxy.ts: 32ms, application-code: 32ms)
+  └─ ƒ simulateCashflow({"monthlyExpense":"26344.67","monthlyIncome":"35333.33","months":12}) in 20ms src/lib/actions/forecast.ts
+ POST /api/serenity-stock-analysis 200 in 14.3s (next.js: 87ms, proxy.ts: 33ms, application-code: 14.2s)
+ POST / 200 in 902ms (next.js: 11ms, proxy.ts: 29ms, application-code: 863ms)
+  └─ ƒ getAssets() in 839ms src/lib/actions/assets.ts
+ POST / 200 in 276ms (next.js: 11ms, proxy.ts: 23ms, application-code: 241ms)
+  └─ ƒ getLiabilities() in 225ms src/lib/actions/liabilities.ts
+ POST / 200 in 1299ms (next.js: 5ms, proxy.ts: 25ms, application-code: 1269ms)
+  └─ ƒ getTransactions() in 1249ms src/lib/actions/ledger.ts
+ POST / 200 in 2.0s (next.js: 5ms, proxy.ts: 28ms, application-code: 1978ms)
+  └─ ƒ getAutoForecast(12) in 1966ms src/lib/actions/forecast.ts
+ POST / 200 in 156ms (next.js: 68ms, proxy.ts: 19ms, application-code: 69ms)
+  └─ ƒ getBudgetProgress("2026-06-22") in 53ms src/lib/actions/budget.ts
+ POST / 200 in 65ms (next.js: 5ms, proxy.ts: 20ms, application-code: 40ms)
+  └─ ƒ getGoals() in 30ms src/lib/actions/goals.ts
+ POST / 200 in 35ms (next.js: 5ms, proxy.ts: 18ms, application-code: 12ms)
+  └─ ƒ getCurrentGoldPrice() in 4ms src/lib/actions/gold.ts
+ POST / 200 in 53ms (next.js: 5ms, proxy.ts: 26ms, application-code: 22ms)
+  └─ ƒ simulateCashflow({"monthlyExpense":"26344.67","monthlyIncome":"35333.33","months":12}) in 13ms src/lib/actions/forecast.ts
+ POST /api/serenity-stock-analysis 200 in 19.4s (next.js: 4ms, proxy.ts: 25ms, application-code: 19.4s)
+ POST / 200 in 896ms (next.js: 11ms, proxy.ts: 26ms, application-code: 860ms)
+  └─ ƒ getAssets() in 847ms src/lib/actions/assets.ts
+ POST / 200 in 272ms (next.js: 5ms, proxy.ts: 27ms, application-code: 240ms)
+  └─ ƒ getLiabilities() in 225ms src/lib/actions/liabilities.ts
+ POST / 200 in 1349ms (next.js: 11ms, proxy.ts: 25ms, application-code: 1313ms)
+  └─ ƒ getTransactions() in 1296ms src/lib/actions/ledger.ts
+ POST / 200 in 2.1s (next.js: 5ms, proxy.ts: 19ms, application-code: 2.1s)
+  └─ ƒ getAutoForecast(12) in 2060ms src/lib/actions/forecast.ts
+ POST / 200 in 110ms (next.js: 60ms, proxy.ts: 21ms, application-code: 29ms)
+  └─ ƒ getBudgetProgress("2026-06-22") in 19ms src/lib/actions/budget.ts
+ POST / 200 in 72ms (next.js: 5ms, proxy.ts: 23ms, application-code: 45ms)
+  └─ ƒ getGoals() in 32ms src/lib/actions/goals.ts
+ POST / 200 in 47ms (next.js: 5ms, proxy.ts: 20ms, application-code: 22ms)
+  └─ ƒ getCurrentGoldPrice() in 11ms src/lib/actions/gold.ts
+ POST / 200 in 51ms (next.js: 4ms, proxy.ts: 20ms, application-code: 27ms)
+  └─ ƒ simulateCashflow({"monthlyExpense":"26344.67","monthlyIncome":"35333.33","months":12}) in 11ms src/lib/actions/forecast.ts
+ POST / 200 in 930ms (next.js: 10ms, proxy.ts: 53ms, application-code: 867ms)
+  └─ ƒ getAssets() in 835ms src/lib/actions/assets.ts
+ POST / 200 in 277ms (next.js: 6ms, proxy.ts: 25ms, application-code: 246ms)
+  └─ ƒ getLiabilities() in 232ms src/lib/actions/liabilities.ts
+ POST / 200 in 1285ms (next.js: 10ms, proxy.ts: 25ms, application-code: 1250ms)
+  └─ ƒ getTransactions() in 1238ms src/lib/actions/ledger.ts
+ POST / 200 in 3.0s (next.js: 5ms, proxy.ts: 27ms, application-code: 3.0s)
+  └─ ƒ getAutoForecast(12) in 2941ms src/lib/actions/forecast.ts
+ POST / 200 in 192ms (next.js: 129ms, proxy.ts: 24ms, application-code: 39ms)
+  └─ ƒ getBudgetProgress("2026-06-22") in 25ms src/lib/actions/budget.ts
+ POST / 200 in 67ms (next.js: 15ms, proxy.ts: 18ms, application-code: 34ms)
+  └─ ƒ getGoals() in 24ms src/lib/actions/goals.ts
+ POST / 200 in 44ms (next.js: 5ms, proxy.ts: 19ms, application-code: 20ms)
+  └─ ƒ getCurrentGoldPrice() in 5ms src/lib/actions/gold.ts
+ POST / 200 in 7.5s (next.js: 5ms, proxy.ts: 21ms, application-code: 7.5s)
+  └─ ƒ refreshMyPrices() in 7469ms src/lib/actions/assets.ts
+ POST / 200 in 52ms (next.js: 5ms, proxy.ts: 19ms, application-code: 28ms)
+  └─ ƒ simulateCashflow({"monthlyExpense":"26344.67","monthlyIncome":"35333.33","months":12}) in 19ms src/lib/actions/forecast.ts
+ POST / 200 in 817ms (next.js: 4ms, proxy.ts: 19ms, application-code: 794ms)
+  └─ ƒ getAssets() in 784ms src/lib/actions/assets.ts
+ GET /management/assets 200 in 491ms (next.js: 49ms, proxy.ts: 27ms, application-code: 415ms)
+ POST /management/assets 200 in 854ms (next.js: 5ms, proxy.ts: 29ms, application-code: 820ms)
+  └─ ƒ getAssets() in 809ms src/lib/actions/assets.ts
+ POST /management/assets 200 in 1330ms (next.js: 5ms, proxy.ts: 21ms, application-code: 1303ms)
+  └─ ƒ getTransactions() in 1284ms src/lib/actions/ledger.ts
+ GET / 200 in 119ms (next.js: 6ms, proxy.ts: 21ms, application-code: 93ms)
+ POST / 200 in 315ms (next.js: 5ms, proxy.ts: 33ms, application-code: 278ms)
+  └─ ƒ getLiabilities() in 266ms src/lib/actions/liabilities.ts
+ POST / 200 in 3.1s (next.js: 5ms, proxy.ts: 20ms, application-code: 3.1s)
+  └─ ƒ getAutoForecast(12) in 3044ms src/lib/actions/forecast.ts
+ POST / 200 in 155ms (next.js: 96ms, proxy.ts: 19ms, application-code: 40ms)
+  └─ ƒ getBudgetProgress("2026-06-23") in 23ms src/lib/actions/budget.ts
+ POST / 200 in 89ms (next.js: 37ms, proxy.ts: 21ms, application-code: 31ms)
+  └─ ƒ getGoals() in 20ms src/lib/actions/goals.ts
+ POST / 200 in 36ms (next.js: 5ms, proxy.ts: 20ms, application-code: 11ms)
+  └─ ƒ getCurrentGoldPrice() in 3ms src/lib/actions/gold.ts
+ POST / 200 in 814ms (next.js: 4ms, proxy.ts: 19ms, application-code: 790ms)
+  └─ ƒ getAssets() in 780ms src/lib/actions/assets.ts
+ POST / 200 in 1253ms (next.js: 5ms, proxy.ts: 21ms, application-code: 1228ms)
+  └─ ƒ getTransactions() in 1217ms src/lib/actions/ledger.ts
+ POST / 200 in 64ms (next.js: 5ms, proxy.ts: 21ms, application-code: 39ms)
+  └─ ƒ simulateCashflow({"monthlyExpense":"26344.67","monthlyIncome":"35333.33","months":12}) in 30ms src/lib/actions/forecast.ts
+[browser] [ECharts] Can't get DOM width or height. Please check dom.clientWidth and dom.clientHeight. They should not be 0.For example, you may need to call this in the callback of window.onload. (<anonymous>)
+[browser] [ECharts] Can't get DOM width or height. Please check dom.clientWidth and dom.clientHeight. They should not be 0.For example, you may need to call this in the callback of window.onload. (<anonymous>)
+ POST / 200 in 882ms (next.js: 7ms, proxy.ts: 35ms, application-code: 840ms)
+  └─ ƒ getAssets() in 823ms src/lib/actions/assets.ts
+ POST / 200 in 1291ms (next.js: 6ms, proxy.ts: 25ms, application-code: 1260ms)
+  └─ ƒ getTransactions() in 1244ms src/lib/actions/ledger.ts
+ POST / 200 in 308ms (next.js: 6ms, proxy.ts: 24ms, application-code: 278ms)
+  └─ ƒ getLiabilities() in 267ms src/lib/actions/liabilities.ts
+ POST / 200 in 2.5s (next.js: 6ms, proxy.ts: 22ms, application-code: 2.5s)
+  └─ ƒ getAutoForecast(12) in 2473ms src/lib/actions/forecast.ts
+ POST / 200 in 110ms (next.js: 54ms, proxy.ts: 22ms, application-code: 34ms)
+  └─ ƒ getBudgetProgress("2026-06-23") in 22ms src/lib/actions/budget.ts
+ POST / 200 in 78ms (next.js: 7ms, proxy.ts: 36ms, application-code: 34ms)
+  └─ ƒ getGoals() in 24ms src/lib/actions/goals.ts
+ POST / 200 in 47ms (next.js: 5ms, proxy.ts: 20ms, application-code: 21ms)
+  └─ ƒ getCurrentGoldPrice() in 11ms src/lib/actions/gold.ts
+ POST / 200 in 68ms (next.js: 7ms, proxy.ts: 27ms, application-code: 35ms)
+  └─ ƒ simulateCashflow({"monthlyExpense":"26344.67","monthlyIncome":"35333.33","months":12}) in 16ms src/lib/actions/forecast.ts
+✓ Compiled in 181ms
+✓ Compiled in 487ms
+ GET / 200 in 876ms (next.js: 209ms, proxy.ts: 263ms, application-code: 405ms)
+ GET / 200 in 307ms (next.js: 8ms, proxy.ts: 192ms, application-code: 107ms)
+ POST / 200 in 924ms (next.js: 5ms, proxy.ts: 26ms, application-code: 893ms)
+  └─ ƒ getAssets() in 854ms src/lib/actions/assets.ts
+ POST / 200 in 1307ms (next.js: 5ms, proxy.ts: 29ms, application-code: 1273ms)
+  └─ ƒ getTransactions() in 1252ms src/lib/actions/ledger.ts
+ POST / 200 in 290ms (next.js: 5ms, proxy.ts: 29ms, application-code: 255ms)
+  └─ ƒ getLiabilities() in 239ms src/lib/actions/liabilities.ts
+ POST / 200 in 1852ms (next.js: 6ms, proxy.ts: 33ms, application-code: 1814ms)
+  └─ ƒ getAutoForecast(12) in 1794ms src/lib/actions/forecast.ts
+ POST / 200 in 162ms (next.js: 90ms, proxy.ts: 28ms, application-code: 44ms)
+  └─ ƒ getBudgetProgress("2026-06-23") in 23ms src/lib/actions/budget.ts
+ POST / 200 in 62ms (next.js: 5ms, proxy.ts: 22ms, application-code: 36ms)
+  └─ ƒ getGoals() in 19ms src/lib/actions/goals.ts
+ POST / 200 in 53ms (next.js: 6ms, proxy.ts: 28ms, application-code: 20ms)
+  └─ ƒ getCurrentGoldPrice() in 10ms src/lib/actions/gold.ts
+ POST / 200 in 53ms (next.js: 5ms, proxy.ts: 22ms, application-code: 26ms)
+  └─ ƒ simulateCashflow({"monthlyExpense":"26344.67","monthlyIncome":"35333.33","months":12}) in 15ms src/lib/actions/forecast.ts
+ GET / 200 in 1036ms (next.js: 12ms, proxy.ts: 28ms, application-code: 996ms)
+ POST / 200 in 1307ms (next.js: 36ms, proxy.ts: 103ms, application-code: 1167ms)
+  └─ ƒ getAssets() in 1121ms src/lib/actions/assets.ts
+ POST / 200 in 271ms (next.js: 4ms, proxy.ts: 29ms, application-code: 237ms)
+  └─ ƒ getLiabilities() in 228ms src/lib/actions/liabilities.ts
+ POST / 200 in 1306ms (next.js: 6ms, proxy.ts: 22ms, application-code: 1278ms)
+  └─ ƒ getTransactions() in 1265ms src/lib/actions/ledger.ts
+ POST / 200 in 2.6s (next.js: 5ms, proxy.ts: 20ms, application-code: 2.5s)
+  └─ ƒ getAutoForecast(12) in 2519ms src/lib/actions/forecast.ts
+ POST / 200 in 54ms (next.js: 4ms, proxy.ts: 21ms, application-code: 30ms)
+  └─ ƒ getBudgetProgress("2026-06-23") in 20ms src/lib/actions/budget.ts
+ POST / 200 in 60ms (next.js: 4ms, proxy.ts: 28ms, application-code: 27ms)
+  └─ ƒ getGoals() in 18ms src/lib/actions/goals.ts
+ POST / 200 in 35ms (next.js: 4ms, proxy.ts: 19ms, application-code: 12ms)
+  └─ ƒ getCurrentGoldPrice() in 4ms src/lib/actions/gold.ts
+ POST / 200 in 44ms (next.js: 4ms, proxy.ts: 19ms, application-code: 21ms)
+  └─ ƒ simulateCashflow({"monthlyExpense":"26344.67","monthlyIncome":"35333.33","months":12}) in 12ms src/lib/actions/forecast.ts
+[browser] [ECharts] Can't get DOM width or height. Please check dom.clientWidth and dom.clientHeight. They should not be 0.For example, you may need to call this in the callback of window.onload. (<anonymous>)
+[browser] [ECharts] Can't get DOM width or height. Please check dom.clientWidth and dom.clientHeight. They should not be 0.For example, you may need to call this in the callback of window.onload. (<anonymous>)
+ POST /api/serenity-stock-analysis 200 in 14.2s (next.js: 65ms, proxy.ts: 22ms, application-code: 14.1s)
+ POST / 200 in 958ms (next.js: 12ms, proxy.ts: 29ms, application-code: 917ms)
+  └─ ƒ getAssets() in 904ms src/lib/actions/assets.ts
+ POST / 200 in 332ms (next.js: 13ms, proxy.ts: 38ms, application-code: 281ms)
+  └─ ƒ getLiabilities() in 269ms src/lib/actions/liabilities.ts
