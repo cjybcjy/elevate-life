@@ -58,3 +58,12 @@ next-env.d.ts
 .claude/
 *.forex-cache.json
 *.log
+*.log
+*.forex-cache.json
+.claude/
+# Claude AI 本地工作树
+.claude/
+# 汇率缓存文件
+*.forex-cache.json
+# 应用运行日志
+*.log
