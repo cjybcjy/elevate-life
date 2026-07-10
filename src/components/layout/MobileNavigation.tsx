@@ -28,18 +28,22 @@ export function MobileNavigationView({
 }: MobileNavigationViewProps) {
   return (
     <>
-      <header className="mobile-topbar">
-        <Link href="/" className="mobile-brand" aria-label="回到首页">
+      <header
+        className="mobile-topbar"
+        style={menuOpen ? { zIndex: 110, pointerEvents: 'none' } : undefined}
+      >
+        <Link href="/" className="mobile-brand min-h-11" aria-label="回到首页">
           <BirdLogo size={30} />
           <span>家庭账本</span>
         </Link>
         <button
           type="button"
-          className="mobile-icon-button"
+          className="mobile-icon-button min-h-11 min-w-11"
           aria-label="更多功能"
           aria-expanded={menuOpen}
           aria-controls="mobile-more-menu"
           onClick={onMenuToggle}
+          style={menuOpen ? { pointerEvents: 'auto' } : undefined}
         >
           ☰
         </button>
@@ -74,7 +78,9 @@ export function MobileNavigationView({
                 </Link>
               ))}
             </div>
-            <ThemeToggle />
+            <div className="[&_button]:min-h-11 [&_button]:min-w-11">
+              <ThemeToggle />
+            </div>
             <button
               type="button"
               className="min-h-11 rounded-lg border border-[var(--border-tertiary)] px-3 py-2 text-left text-sm text-[var(--color-danger)]"

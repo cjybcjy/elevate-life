@@ -40,3 +40,53 @@ test('MobileNavigationView exposes all approved more-menu actions', () => {
   assert.match(markup, /修改密码/);
   assert.match(markup, /退出登录/);
 });
+
+test('MobileNavigationView gives topbar controls 44px minimum touch targets', () => {
+  const markup = renderToString(
+    <MobileNavigationView
+      pathname="/"
+      menuOpen={false}
+      onMenuToggle={() => {}}
+      onMenuClose={() => {}}
+      onLogout={() => {}}
+    />,
+  );
+
+  assert.match(markup, /class="mobile-brand min-h-11"/);
+  assert.match(markup, /class="mobile-icon-button min-h-11 min-w-11"/);
+});
+
+test('MobileNavigationView expands the actual theme button to a 44px target', () => {
+  const markup = renderToString(
+    <MobileNavigationView
+      pathname="/"
+      menuOpen
+      onMenuToggle={() => {}}
+      onMenuClose={() => {}}
+      onLogout={() => {}}
+    />,
+  ).replaceAll('&amp;', '&');
+
+  assert.match(
+    markup,
+    /class="\[&_button\]:min-h-11 \[&_button\]:min-w-11"><button[^>]*aria-label="切换主题"/,
+  );
+});
+
+test('MobileNavigationView keeps only the More trigger pointer-active above the backdrop', () => {
+  const markup = renderToString(
+    <MobileNavigationView
+      pathname="/"
+      menuOpen
+      onMenuToggle={() => {}}
+      onMenuClose={() => {}}
+      onLogout={() => {}}
+    />,
+  );
+
+  assert.match(
+    markup,
+    /<header class="mobile-topbar" style="z-index:110;pointer-events:none">/,
+  );
+  assert.match(markup, /aria-label="更多功能"[^>]*style="pointer-events:auto"/);
+});
