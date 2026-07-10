@@ -73,7 +73,8 @@ export default function LegalConsentGate() {
         zIndex: 1000,
         display: 'grid',
         placeItems: 'center',
-        padding: 20,
+        padding: 'max(12px, env(safe-area-inset-top)) 12px max(12px, env(safe-area-inset-bottom))',
+        overflowY: 'auto',
         background: 'rgba(15, 23, 42, 0.42)',
         backdropFilter: 'blur(8px)',
       }}
@@ -86,6 +87,8 @@ export default function LegalConsentGate() {
           background: 'var(--color-surface-elevated)',
           boxShadow: 'var(--shadow-lg)',
           padding: 24,
+          maxHeight: 'calc(100dvh - 24px - env(safe-area-inset-top) - env(safe-area-inset-bottom))',
+          overflowY: 'auto',
         }}
       >
         <h2 id="legal-consent-title" style={{ fontSize: 22, fontWeight: 800, color: 'var(--color-text-primary)' }}>
@@ -104,10 +107,18 @@ export default function LegalConsentGate() {
           </p>
         )}
         <div style={{ display: 'flex', gap: 12, justifyContent: 'flex-end', flexWrap: 'wrap', marginTop: 22 }}>
-          <button type="button" className="btn btn-outline" onClick={() => setDeclined(true)}>
+          <button
+            type="button"
+            className="btn btn-outline min-h-11 flex-1 sm:flex-none"
+            onClick={() => setDeclined(true)}
+          >
             不同意
           </button>
-          <button type="button" className="btn btn-primary" onClick={acceptConsent}>
+          <button
+            type="button"
+            className="btn btn-primary min-h-11 flex-1 sm:flex-none"
+            onClick={acceptConsent}
+          >
             同意并继续
           </button>
         </div>

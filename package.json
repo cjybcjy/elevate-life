@@ -26,6 +26,7 @@
     "mobile:open:android": "npx cap open android",
     "mobile:open:ios": "npx cap open ios",
     "mobile:permissions:check": "npx tsx scripts/validate-mobile-permissions.ts",
+    "mobile:flow:check": "npx tsx scripts/check-mobile-ledger-flow.ts",
     "ios:archive:check": "npx tsx scripts/validate-ios-archive.ts",
     "twa:check": "npx tsx scripts/check-google-play-twa-readiness.ts",
     "twa:init": "npm run twa:check && npx tsx scripts/require-twa-env.ts && bubblewrap init --manifest=\"$TWA_MANIFEST_URL\" --directory=\"${TWA_OUTPUT_DIR:-android-twa}\"",
