@@ -6,6 +6,7 @@ import { signOut } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import BirdLogo from '@/components/common/BirdLogo';
 import ThemeToggle from '@/components/common/ThemeToggle';
+import MobileNavigation from '@/components/layout/MobileNavigation';
 
 const navItems = [
   { label: '仪表盘', href: '/', icon: '🏠' },
@@ -189,54 +190,7 @@ export default function Sidebar() {
         </div>
       </aside>
 
-      <header className="mobile-topbar">
-        <Link href="/" className="mobile-brand" aria-label="回到仪表盘">
-          <BirdLogo size={30} />
-          <span>家庭账本</span>
-        </Link>
-        <div className="mobile-topbar__actions">
-          <ThemeToggle />
-          <Link
-            href={passwordHref}
-            className="mobile-icon-button"
-            aria-label="修改密码"
-            title="修改密码"
-            style={{ textDecoration: 'none' }}
-          >
-            🔐
-          </Link>
-          <button
-            type="button"
-            className="mobile-icon-button"
-            onClick={handleLogout}
-            aria-label="退出登录"
-            title="退出登录"
-          >
-            🚪
-          </button>
-        </div>
-      </header>
-
-      <nav className="mobile-bottom-nav" aria-label="主要导航">
-        {navItems.map(item => {
-          const isActive = isNavActive(pathname, item.href);
-          return (
-            <Link
-              key={item.href}
-              href={item.href}
-              prefetch={true}
-              className={
-                isActive
-                  ? 'mobile-bottom-nav__item mobile-bottom-nav__item--active'
-                  : 'mobile-bottom-nav__item'
-              }
-            >
-              <span className="mobile-bottom-nav__icon">{item.icon}</span>
-              <span className="mobile-bottom-nav__label">{item.label}</span>
-            </Link>
-          );
-        })}
-      </nav>
+      <MobileNavigation onLogout={handleLogout} />
     </>
   );
 }
