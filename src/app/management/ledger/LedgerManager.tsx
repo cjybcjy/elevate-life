@@ -182,6 +182,8 @@ import { useSWRConfig } from 'swr';
 import useSWR from 'swr';
 import { getCategories } from '@/lib/actions/categories';
 import { buildTransactionUpdateInput } from '@/lib/ledger-edit';
+import LedgerAgentQuickEntry from '@/components/widgets/LedgerAgentQuickEntry';
+import { buildLedgerCreateFormValues } from '@/lib/ledger-quick-entry';
 
 // ... (keep all existing type definitions and utility functions above)
 
@@ -221,6 +223,8 @@ export default function LedgerManager() {
   const [editRecurringForm, setEditRecurringForm] = useState({
     name: '', amount: '', frequency: 'monthly', interval: 1, nextDueDate: '', categoryId: '', fromAccountId: '', toAccountId: '',
   });
+  const createFormRef = useRef<HTMLFormElement>(null);
+  const [quickEntryResetKey, setQuickEntryResetKey] = useState(0);
   const [formValues, setFormValues] = useState({
     type: 'EXPENSE',
     amount: '',
@@ -362,7 +366,7 @@ export default function LedgerManager() {
       occurredAt: formData.get('occurredAt') as string,
     });
     if (result.success) {
-      (document.getElementById('create-form') as HTMLFormElement)?.reset();
+      createFormRef.current?.reset();
       setFormValues({
         type: 'EXPENSE',
         amount: '',
@@ -374,7 +378,13 @@ export default function LedgerManager() {
         description: '',
         occurredAt: new Date().toISOString().split('T')[0],
       });
-      mutate('transactions'); toast.success('操作成功');
+      setQuickEntryResetKey((current) => current + 1);
+      toast.success('已记账');
+      await Promise.all([
+        mutate('transactions'),
+        mutate('assets'),
+        mutate((key) => typeof key === 'string' && (key.startsWith('budgets') || key.startsWith('forecast'))),
+      ]);
     } else if (result.error?.includes('会话密钥')) {
       window.location.href = '/login';
     } else {
@@ -678,35 +688,55 @@ export default function LedgerManager() {
             </section>
           )}
 
+          {isCreateFocus ? (
+            <section className="mb-4 md:hidden" aria-label="快速记一笔">
+              <LedgerAgentQuickEntry
+                key={quickEntryResetKey}
+                categories={categories}
+                assets={assets}
+                onApply={(draft) => {
+                  setFormValues(buildLedgerCreateFormValues(draft));
+                  requestAnimationFrame(() => {
+                    const form = createFormRef.current;
+                    form?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    form?.querySelector<HTMLInputElement>('input[name="amount"]')?.focus({ preventScroll: true });
+                  });
+                }}
+              />
+            </section>
+          ) : null}
+
           {/* Create form */}
           <form
+            ref={createFormRef}
             id="create-form"
+            data-ledger-create-form="true"
             action={handleCreate}
-            className={`mb-4 rounded-xl bg-ledger-surface p-4 flex flex-wrap gap-3 items-end ${
+            className={`mb-4 grid grid-cols-1 items-end gap-3 rounded-xl bg-ledger-surface p-4 md:flex md:flex-wrap ${
               isCreateFocus ? 'border border-ledger-accent/30' : ''
             }`}
           >
-            <div>
+            <div className="min-w-0 w-full md:w-auto">
               <label className="block text-xs text-ledger-muted mb-1">类型</label>
               <select
                 name="type"
                 required
                 value={formValues.type}
                 onChange={e => setFormValues(prev => ({ ...prev, type: e.target.value }))}
-                className="rounded-md bg-ledger-bg border border-ledger-bg px-3 py-2 text-sm focus:outline-none focus:border-ledger-accent"
+                className="rounded-md bg-ledger-bg border border-ledger-bg px-3 py-2 text-sm focus:outline-none focus:border-ledger-accent w-full min-h-11 md:w-auto"
               >
                 <option value="EXPENSE">支出</option>
                 <option value="INCOME">收入</option>
                 <option value="TRANSFER">转账</option>
               </select>
             </div>
-            <div>
+            <div className="min-w-0 w-full md:w-auto">
               <label className="block text-xs text-ledger-muted mb-1">币种</label>
               <select
                 name="currency"
                 value={formValues.currency}
                 onChange={e => setFormValues(prev => ({ ...prev, currency: e.target.value }))}
-                className="rounded-md bg-ledger-bg border border-ledger-bg px-2 py-2 text-sm focus:outline-none focus:border-ledger-accent"
+                className="rounded-md bg-ledger-bg border border-ledger-bg px-2 py-2 text-sm focus:outline-none focus:border-ledger-accent w-full min-h-11 md:w-auto"
               >
                 <option value="CNY">¥ 人民币</option>
                 <option value="USD">$ 美元</option>
@@ -714,7 +744,7 @@ export default function LedgerManager() {
                 <option value="JPY">JP¥ 日元</option>
               </select>
             </div>
-            <div>
+            <div className="min-w-0 w-full md:w-auto">
               <label className="block text-xs text-ledger-muted mb-1">金额</label>
               <input
                 name="amount"
@@ -723,17 +753,17 @@ export default function LedgerManager() {
                 required
                 value={formValues.amount}
                 onChange={e => setFormValues(prev => ({ ...prev, amount: e.target.value }))}
-                className="rounded-md bg-ledger-bg border border-ledger-bg px-3 py-2 text-sm placeholder-ledger-muted focus:outline-none focus:border-ledger-accent"
+                className="rounded-md bg-ledger-bg border border-ledger-bg px-3 py-2 text-sm placeholder-ledger-muted focus:outline-none focus:border-ledger-accent w-full min-h-11 md:w-auto"
                 placeholder="0.00"
               />
             </div>
-            <div>
+            <div className="min-w-0 w-full md:w-auto">
               <label className="block text-xs text-ledger-muted mb-1">分类</label>
               <select
                 name="categoryId"
                 value={formValues.categoryId}
                 onChange={e => setFormValues(prev => ({ ...prev, categoryId: e.target.value, budgetId: '' }))}
-                className="rounded-md bg-ledger-bg border border-ledger-bg px-3 py-2 text-sm focus:outline-none focus:border-ledger-accent"
+                className="rounded-md bg-ledger-bg border border-ledger-bg px-3 py-2 text-sm focus:outline-none focus:border-ledger-accent w-full min-h-11 md:w-auto"
               >
                 <option value="">--</option>
                 {categories.map((c: any) => (
@@ -742,13 +772,13 @@ export default function LedgerManager() {
               </select>
             </div>
             {formBudgetOptions.length > 0 && (
-              <div>
+              <div className="min-w-0 w-full md:w-auto">
                 <label className="block text-xs text-ledger-muted mb-1">预算</label>
                 <select
                   name="budgetId"
                   value={formValues.budgetId}
                   onChange={e => setFormValues(prev => ({ ...prev, budgetId: e.target.value }))}
-                  className="rounded-md bg-ledger-bg border border-ledger-bg px-3 py-2 text-sm focus:outline-none focus:border-ledger-accent"
+                  className="rounded-md bg-ledger-bg border border-ledger-bg px-3 py-2 text-sm focus:outline-none focus:border-ledger-accent w-full min-h-11 md:w-auto"
                 >
                   <option value="">-- 关联预算 --</option>
                   {formBudgetOptions.map((b: any) => (
@@ -757,13 +787,13 @@ export default function LedgerManager() {
                 </select>
               </div>
             )}
-            <div>
+            <div className="min-w-0 w-full md:w-auto">
               <label className="block text-xs text-ledger-muted mb-1">来源资金账户</label>
               <select
                 name="fromAccountId"
                 value={formValues.fromAccountId}
                 onChange={e => setFormValues(prev => ({ ...prev, fromAccountId: e.target.value }))}
-                className="rounded-md bg-ledger-bg border border-ledger-bg px-3 py-2 text-sm focus:outline-none focus:border-ledger-accent"
+                className="rounded-md bg-ledger-bg border border-ledger-bg px-3 py-2 text-sm focus:outline-none focus:border-ledger-accent w-full min-h-11 md:w-auto"
               >
                 <option value="">不指定（只记总收支）</option>
                 {assets.map((a: any) => (
@@ -771,13 +801,13 @@ export default function LedgerManager() {
                 ))}
               </select>
             </div>
-            <div>
+            <div className="min-w-0 w-full md:w-auto">
               <label className="block text-xs text-ledger-muted mb-1">目标资金账户</label>
               <select
                 name="toAccountId"
                 value={formValues.toAccountId}
                 onChange={e => setFormValues(prev => ({ ...prev, toAccountId: e.target.value }))}
-                className="rounded-md bg-ledger-bg border border-ledger-bg px-3 py-2 text-sm focus:outline-none focus:border-ledger-accent"
+                className="rounded-md bg-ledger-bg border border-ledger-bg px-3 py-2 text-sm focus:outline-none focus:border-ledger-accent w-full min-h-11 md:w-auto"
               >
                 <option value="">--</option>
                 {assets.map((a: any) => (
@@ -785,7 +815,7 @@ export default function LedgerManager() {
                 ))}
               </select>
             </div>
-            <div>
+            <div className="min-w-0 w-full md:w-auto">
               <label className="block text-xs text-ledger-muted mb-1">日期</label>
               <input
                 name="occurredAt"
@@ -793,24 +823,24 @@ export default function LedgerManager() {
                 required
                 value={formValues.occurredAt}
                 onChange={e => setFormValues(prev => ({ ...prev, occurredAt: e.target.value }))}
-                className="rounded-md bg-ledger-bg border border-ledger-bg px-3 py-2 text-sm focus:outline-none focus:border-ledger-accent"
+                className="rounded-md bg-ledger-bg border border-ledger-bg px-3 py-2 text-sm focus:outline-none focus:border-ledger-accent w-full min-h-11 md:w-auto"
               />
             </div>
-            <div>
+            <div className="min-w-0 w-full md:w-auto">
               <label className="block text-xs text-ledger-muted mb-1">备注</label>
               <input
                 name="description"
                 value={formValues.description}
                 onChange={e => setFormValues(prev => ({ ...prev, description: e.target.value }))}
-                className="rounded-md bg-ledger-bg border border-ledger-bg px-3 py-2 text-sm placeholder-ledger-muted focus:outline-none focus:border-ledger-accent"
+                className="rounded-md bg-ledger-bg border border-ledger-bg px-3 py-2 text-sm placeholder-ledger-muted focus:outline-none focus:border-ledger-accent w-full min-h-11 md:w-auto"
                 placeholder="备注"
               />
             </div>
-            <div className="flex items-end gap-2">
+            <div className="flex min-w-0 w-full items-end gap-2 md:w-auto">
               <button
                 type="submit"
                 disabled={loading}
-                className="rounded-md bg-ledger-accent text-[var(--color-text-inverse)] px-4 py-2 text-sm font-medium hover:opacity-90 transition-opacity disabled:opacity-50"
+                className="min-h-11 flex-1 rounded-md bg-ledger-accent px-4 py-2 text-sm font-medium text-[var(--color-text-inverse)] transition-opacity hover:opacity-90 disabled:opacity-50 md:flex-none"
               >
                 {loading ? '创建中...' : '创建'}
               </button>
@@ -975,7 +1005,7 @@ export default function LedgerManager() {
           </div>
 
           {/* Table */}
-          <div className="rounded-xl bg-ledger-surface overflow-hidden">
+          <div data-transaction-list="true" className="rounded-xl bg-ledger-surface overflow-hidden">
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-ledger-bg text-left text-ledger-muted">
