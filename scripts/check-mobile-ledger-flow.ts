@@ -52,7 +52,8 @@ async function login(page: Page) {
     page.waitForURL((url) => url.pathname === '/', { timeout: 15000 }),
     page.getByRole('button', { name: 'Sign In' }).click(),
   ]);
-  await settle(page);
+  await page.locator('body').waitFor({ state: 'visible' });
+  await page.waitForLoadState('networkidle', { timeout: 15000 });
 }
 
 async function assertMobileShell(page: Page) {

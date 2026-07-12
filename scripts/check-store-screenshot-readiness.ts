@@ -81,13 +81,16 @@ assert(
 
 const appShellSource = read('src/components/layout/AppShell.tsx');
 const sidebarSource = read('src/components/layout/Sidebar.tsx');
+const mobileNavigationSource = read('src/components/layout/MobileNavigation.tsx');
 const globalCss = read('src/app/globals.css');
 assert(
   appShellSource.includes('app-main') &&
     appShellSource.includes('app-main--with-nav') &&
     appShellSource.includes('app-main--public') &&
-    sidebarSource.includes('mobile-topbar') &&
-    sidebarSource.includes('mobile-bottom-nav') &&
+    sidebarSource.includes("import MobileNavigation from '@/components/layout/MobileNavigation';") &&
+    sidebarSource.includes('<MobileNavigation') &&
+    mobileNavigationSource.includes('mobile-topbar') &&
+    mobileNavigationSource.includes('mobile-bottom-nav') &&
     globalCss.includes('@media (max-width: 767px)') &&
     globalCss.includes('.app-sidebar') &&
     globalCss.includes('.mobile-topbar') &&
