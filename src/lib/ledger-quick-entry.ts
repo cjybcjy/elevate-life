@@ -25,3 +25,27 @@ export function buildLedgerCreateFormValues(draft: LedgerAgentDraft): LedgerCrea
     occurredAt: draft.occurredAt,
   };
 }
+
+type LedgerCacheKey = string | ((key: unknown) => boolean);
+
+export async function refreshLedgerCaches(
+  mutate: (key: LedgerCacheKey) => Promise<unknown>,
+) {
+  await Promise.allSettled([
+    mutate('transactions'),
+    mutate('assets'),
+    mutate((key) => typeof key === 'string' && (key.startsWith('budgets') || key.startsWith('forecast'))),
+  ]);
+}
+
+export async function withLedgerLoading<T>(
+  setLoading: (loading: boolean) => void,
+  work: () => Promise<T>,
+) {
+  setLoading(true);
+  try {
+    return await work();
+  } finally {
+    setLoading(false);
+  }
+}

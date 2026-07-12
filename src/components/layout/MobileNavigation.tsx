@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import BirdLogo from '@/components/common/BirdLogo';
@@ -26,6 +26,57 @@ export function MobileNavigationView({
   onMenuClose,
   onLogout,
 }: MobileNavigationViewProps) {
+  const moreTriggerRef = useRef<HTMLButtonElement>(null);
+  const moreDialogRef = useRef<HTMLElement>(null);
+  const restoreTriggerFocusRef = useRef(false);
+
+  useEffect(() => {
+    if (!menuOpen) {
+      if (restoreTriggerFocusRef.current) {
+        moreTriggerRef.current?.focus();
+        restoreTriggerFocusRef.current = false;
+      }
+      return;
+    }
+
+    restoreTriggerFocusRef.current = true;
+    const focusFrame = window.requestAnimationFrame(() => moreDialogRef.current?.focus());
+    const containKeyboardFocus = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        onMenuClose();
+        return;
+      }
+      if (event.key !== 'Tab') return;
+
+      const dialog = moreDialogRef.current;
+      if (!dialog) return;
+      const focusable = Array.from(dialog.querySelectorAll<HTMLElement>(
+        'a[href], button:not([disabled]), [tabindex]:not([tabindex="-1"])',
+      ));
+      if (focusable.length === 0) {
+        event.preventDefault();
+        dialog.focus();
+        return;
+      }
+
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      if (event.shiftKey && (document.activeElement === first || document.activeElement === dialog)) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first.focus();
+      }
+    };
+    window.addEventListener('keydown', containKeyboardFocus);
+    return () => {
+      window.cancelAnimationFrame(focusFrame);
+      window.removeEventListener('keydown', containKeyboardFocus);
+    };
+  }, [menuOpen, onMenuClose]);
+
   return (
     <>
       <header
@@ -37,6 +88,7 @@ export function MobileNavigationView({
           <span>家庭账本</span>
         </Link>
         <button
+          ref={moreTriggerRef}
           type="button"
           className="mobile-icon-button min-h-11 min-w-11"
           aria-label="更多功能"
@@ -58,10 +110,12 @@ export function MobileNavigationView({
             onClick={onMenuClose}
           />
           <section
+            ref={moreDialogRef}
             id="mobile-more-menu"
             role="dialog"
             aria-modal="true"
             aria-label="更多功能菜单"
+            tabIndex={-1}
             className="fixed right-3 left-3 z-[100] grid gap-2 rounded-xl border border-[var(--color-border)] bg-[var(--color-container)] p-3 shadow-xl md:hidden"
             style={{ bottom: 'calc(78px + env(safe-area-inset-bottom))' }}
           >
@@ -133,15 +187,6 @@ export function MobileNavigationView({
 export default function MobileNavigation({ onLogout }: { onLogout: () => void | Promise<void> }) {
   const pathname = usePathname();
   const [menuOpen, setMenuOpen] = useState(false);
-
-  useEffect(() => {
-    if (!menuOpen) return;
-    const closeOnEscape = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') setMenuOpen(false);
-    };
-    window.addEventListener('keydown', closeOnEscape);
-    return () => window.removeEventListener('keydown', closeOnEscape);
-  }, [menuOpen]);
 
   return (
     <MobileNavigationView

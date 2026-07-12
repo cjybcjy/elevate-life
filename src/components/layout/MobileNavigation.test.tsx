@@ -90,3 +90,17 @@ test('MobileNavigationView keeps only the More trigger pointer-active above the 
   );
   assert.match(markup, /aria-label="更多功能"[^>]*style="pointer-events:auto"/);
 });
+
+test('MobileNavigationView makes the More dialog a programmatic focus target', () => {
+  const markup = renderToString(
+    <MobileNavigationView
+      pathname="/"
+      menuOpen
+      onMenuToggle={() => {}}
+      onMenuClose={() => {}}
+      onLogout={() => {}}
+    />,
+  );
+
+  assert.match(markup, /role="dialog"[^>]*tabindex="-1"/);
+});

@@ -183,7 +183,11 @@ import useSWR from 'swr';
 import { getCategories } from '@/lib/actions/categories';
 import { buildTransactionUpdateInput } from '@/lib/ledger-edit';
 import LedgerAgentQuickEntry from '@/components/widgets/LedgerAgentQuickEntry';
-import { buildLedgerCreateFormValues } from '@/lib/ledger-quick-entry';
+import {
+  buildLedgerCreateFormValues,
+  refreshLedgerCaches,
+  withLedgerLoading,
+} from '@/lib/ledger-quick-entry';
 
 // ... (keep all existing type definitions and utility functions above)
 
@@ -353,44 +357,40 @@ export default function LedgerManager() {
 
   async function handleCreate(formData: FormData) {
     setError('');
-    setLoading(true);
-    const result = await createTransaction({
-      type: formData.get('type') as string,
-      amount: formData.get('amount') as string,
-      currency: (formData.get('currency') as string) || 'CNY',
-      categoryId: (formData.get('categoryId') as string) || undefined,
-      fromAccountId: (formData.get('fromAccountId') as string) || undefined,
-      toAccountId: (formData.get('toAccountId') as string) || undefined,
-      liabilityId: (formData.get('liabilityId') as string) || undefined,
-      description: (formData.get('description') as string) || undefined,
-      occurredAt: formData.get('occurredAt') as string,
-    });
-    if (result.success) {
-      createFormRef.current?.reset();
-      setFormValues({
-        type: 'EXPENSE',
-        amount: '',
-        currency: 'CNY',
-        categoryId: '',
-        budgetId: '',
-        fromAccountId: '',
-        toAccountId: '',
-        description: '',
-        occurredAt: new Date().toISOString().split('T')[0],
+    await withLedgerLoading(setLoading, async () => {
+      const result = await createTransaction({
+        type: formData.get('type') as string,
+        amount: formData.get('amount') as string,
+        currency: (formData.get('currency') as string) || 'CNY',
+        categoryId: (formData.get('categoryId') as string) || undefined,
+        fromAccountId: (formData.get('fromAccountId') as string) || undefined,
+        toAccountId: (formData.get('toAccountId') as string) || undefined,
+        liabilityId: (formData.get('liabilityId') as string) || undefined,
+        description: (formData.get('description') as string) || undefined,
+        occurredAt: formData.get('occurredAt') as string,
       });
-      setQuickEntryResetKey((current) => current + 1);
-      toast.success('已记账');
-      await Promise.all([
-        mutate('transactions'),
-        mutate('assets'),
-        mutate((key) => typeof key === 'string' && (key.startsWith('budgets') || key.startsWith('forecast'))),
-      ]);
-    } else if (result.error?.includes('会话密钥')) {
-      window.location.href = '/login';
-    } else {
-      setError(result.error || '创建失败');
-    }
-    setLoading(false);
+      if (result.success) {
+        createFormRef.current?.reset();
+        setFormValues({
+          type: 'EXPENSE',
+          amount: '',
+          currency: 'CNY',
+          categoryId: '',
+          budgetId: '',
+          fromAccountId: '',
+          toAccountId: '',
+          description: '',
+          occurredAt: new Date().toISOString().split('T')[0],
+        });
+        setQuickEntryResetKey((current) => current + 1);
+        toast.success('已记账');
+        await refreshLedgerCaches(mutate);
+      } else if (result.error?.includes('会话密钥')) {
+        window.location.href = '/login';
+      } else {
+        setError(result.error || '创建失败');
+      }
+    });
   }
 
   async function handleDelete(formData: FormData) {
