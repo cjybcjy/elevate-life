@@ -1,6 +1,14 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { buildLedgerCreateFormValues } from './ledger-quick-entry';
+import {
+  applyAmountKey,
+  buildLedgerCreateFormValues,
+  buildQuickEntryFeedback,
+  evaluateAmountExpression,
+  parseQuickEntryPreferences,
+  partitionQuickEntryCategories,
+  serializeQuickEntryPreferences,
+} from './ledger-quick-entry';
 import * as ledgerQuickEntry from './ledger-quick-entry';
 
 test('buildLedgerCreateFormValues maps an agent draft into the existing create form', () => {
@@ -64,4 +72,70 @@ test('withLedgerLoading always clears loading when work rejects', async () => {
     /write failed/,
   );
   assert.deepEqual(states, [true, false]);
+});
+
+test('expense categories use approved order and reserve the eighth cell for 更多', () => {
+  const categories = [
+    ['extra', '其他', 'EXPENSE'], ['social-in', '人情往来', 'INCOME'],
+    ['travel', '旅行', 'EXPENSE'], ['quality', '提升品质', 'EXPENSE'],
+    ['daily', '日用', 'EXPENSE'], ['fixed', '固定支出', 'EXPENSE'],
+    ['medical', '医疗', 'EXPENSE'], ['transit', '交通', 'EXPENSE'],
+    ['rent', '房租', 'EXPENSE'], ['food', '餐饮', 'EXPENSE'],
+    ['social-out', '人情往来', 'EXPENSE'],
+  ].map(([id, name, type]) => ({ id, name, type }));
+  const result = partitionQuickEntryCategories(categories, 'EXPENSE');
+  assert.deepEqual(result.primary.map((item) => item.name), [
+    '餐饮', '房租', '交通', '医疗', '固定支出', '日用', '提升品质',
+  ]);
+  assert.deepEqual(result.all.map((item) => item.name), [
+    '餐饮', '房租', '交通', '医疗', '固定支出', '日用', '提升品质', '旅行', '人情往来', '其他',
+  ]);
+});
+
+test('income 人情往来 never resolves to the expense record', () => {
+  const result = partitionQuickEntryCategories([
+    { id: 'expense-social', name: '人情往来', type: 'EXPENSE' },
+    { id: 'income-social', name: '人情往来', type: 'INCOME' },
+    { id: 'salary', name: '工资', type: 'INCOME' },
+  ], 'INCOME');
+  assert.deepEqual(result.primary.map((item) => item.id), ['salary', 'income-social']);
+});
+
+test('amount keypad evaluates simple addition and subtraction without eval', () => {
+  let expression = '';
+  for (const key of ['2', '8', '+', '6', '-', '4'] as const) expression = applyAmountKey(expression, key);
+  assert.deepEqual(evaluateAmountExpression(expression), { valid: true, amount: '30', result: 30 });
+});
+
+test('amount keypad blocks a third decimal and rejects zero or trailing operators', () => {
+  assert.equal(applyAmountKey('12.34', '5'), '12.34');
+  assert.equal(evaluateAmountExpression('0').valid, false);
+  assert.equal(evaluateAmountExpression('12+').valid, false);
+});
+
+test('amount keypad supports backspace and replaces a trailing operator', () => {
+  assert.equal(applyAmountKey('12.3', 'backspace'), '12.');
+  assert.equal(applyAmountKey('12+', '-'), '12-');
+});
+
+test('amount expression rejects zero and negative results after calculation', () => {
+  assert.equal(evaluateAmountExpression('2-2').valid, false);
+  assert.equal(evaluateAmountExpression('2-3').valid, false);
+});
+
+test('quick-entry preferences tolerate invalid storage and round trip valid values', () => {
+  assert.deepEqual(parseQuickEntryPreferences('{bad'), { categoryByType: {}, accountByType: {} });
+  const preferences = {
+    categoryByType: { EXPENSE: 'food', INCOME: 'salary' },
+    accountByType: { EXPENSE: 'cash', INCOME: 'bank' },
+  };
+  assert.deepEqual(parseQuickEntryPreferences(serializeQuickEntryPreferences(preferences)), preferences);
+});
+
+test('feedback includes budget remaining only when available', () => {
+  assert.equal(buildQuickEntryFeedback({ amount: '32', currency: 'CNY', categoryName: '餐饮' }), '已记 ¥32 · 餐饮');
+  assert.equal(
+    buildQuickEntryFeedback({ amount: '32', currency: 'CNY', categoryName: '餐饮', budgetRemaining: 568 }),
+    '已记 ¥32 · 餐饮预算还剩 ¥568',
+  );
 });
