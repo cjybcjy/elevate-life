@@ -166,3 +166,22 @@ export function buildQuickEntryFeedback(input: {
     ? base
     : `${base}预算还剩 ${symbol}${Math.round(input.budgetRemaining * 100) / 100}`;
 }
+
+export async function getQuickEntryBudgetRemainingSafely(
+  budgetId: string,
+  loader: () => Promise<{
+    success: boolean;
+    data?: Array<{ id: string; remaining: number }> | null;
+  }>,
+) {
+  if (!budgetId) return undefined;
+
+  try {
+    const result = await loader();
+    return result.success
+      ? result.data?.find((item) => item.id === budgetId)?.remaining
+      : undefined;
+  } catch {
+    return undefined;
+  }
+}

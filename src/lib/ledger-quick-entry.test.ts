@@ -172,3 +172,69 @@ test('feedback includes budget remaining only when available', () => {
     '已记 ¥32 · 餐饮预算还剩 ¥568',
   );
 });
+
+test('budget remaining lookup treats a rejected loader as unavailable feedback', async () => {
+  const getQuickEntryBudgetRemainingSafely = (ledgerQuickEntry as {
+    getQuickEntryBudgetRemainingSafely?: (
+      budgetId: string,
+      loader: () => Promise<{
+        success: boolean;
+        data?: Array<{ id: string; remaining: number }>;
+      }>,
+    ) => Promise<number | undefined>;
+  }).getQuickEntryBudgetRemainingSafely;
+  assert.equal(typeof getQuickEntryBudgetRemainingSafely, 'function');
+
+  const remaining = await getQuickEntryBudgetRemainingSafely!('food-budget', async () => {
+    throw new Error('budget lookup unavailable');
+  });
+
+  assert.equal(remaining, undefined);
+});
+
+test('budget remaining lookup skips the loader without a budget id', async () => {
+  const getQuickEntryBudgetRemainingSafely = (ledgerQuickEntry as {
+    getQuickEntryBudgetRemainingSafely?: (
+      budgetId: string,
+      loader: () => Promise<{ success: boolean }>,
+    ) => Promise<number | undefined>;
+  }).getQuickEntryBudgetRemainingSafely;
+  assert.equal(typeof getQuickEntryBudgetRemainingSafely, 'function');
+
+  let calls = 0;
+  const remaining = await getQuickEntryBudgetRemainingSafely!('', async () => {
+    calls += 1;
+    return { success: true };
+  });
+
+  assert.equal(calls, 0);
+  assert.equal(remaining, undefined);
+});
+
+test('budget remaining lookup returns only the matching successful item', async () => {
+  const getQuickEntryBudgetRemainingSafely = (ledgerQuickEntry as {
+    getQuickEntryBudgetRemainingSafely?: (
+      budgetId: string,
+      loader: () => Promise<{
+        success: boolean;
+        data?: Array<{ id: string; remaining: number }>;
+      }>,
+    ) => Promise<number | undefined>;
+  }).getQuickEntryBudgetRemainingSafely;
+  assert.equal(typeof getQuickEntryBudgetRemainingSafely, 'function');
+
+  assert.equal(await getQuickEntryBudgetRemainingSafely!('food-budget', async () => ({
+    success: true,
+    data: [
+      { id: 'travel-budget', remaining: 200 },
+      { id: 'food-budget', remaining: 568 },
+    ],
+  })), 568);
+  assert.equal(await getQuickEntryBudgetRemainingSafely!('missing-budget', async () => ({
+    success: true,
+    data: [{ id: 'food-budget', remaining: 568 }],
+  })), undefined);
+  assert.equal(await getQuickEntryBudgetRemainingSafely!('food-budget', async () => ({
+    success: false,
+  })), undefined);
+});

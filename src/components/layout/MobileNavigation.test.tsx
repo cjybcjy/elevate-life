@@ -1,7 +1,44 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
+import type { ComponentType, ReactNode } from 'react';
 import { renderToString } from 'react-dom/server';
 import { MobileNavigationView } from './MobileNavigation';
+import * as mobileNavigation from './MobileNavigation';
+
+test('MobileNavigationSearchBoundary keeps all five fallback actions while search params suspend', () => {
+  type BoundaryProps = {
+    pathname: string;
+    menuOpen: boolean;
+    onMenuToggle: () => void;
+    onMenuClose: () => void;
+    onLogout: () => void;
+    children: ReactNode;
+  };
+  const MobileNavigationSearchBoundary = (mobileNavigation as {
+    MobileNavigationSearchBoundary?: ComponentType<BoundaryProps>;
+  }).MobileNavigationSearchBoundary;
+  assert.equal(typeof MobileNavigationSearchBoundary, 'function');
+  if (!MobileNavigationSearchBoundary) return;
+
+  function SuspendedSearchParams(): ReactNode {
+    throw new Promise(() => {});
+  }
+
+  const markup = renderToString(
+    <MobileNavigationSearchBoundary
+      pathname="/management/ledger"
+      menuOpen={false}
+      onMenuToggle={() => {}}
+      onMenuClose={() => {}}
+      onLogout={() => {}}
+    >
+      <SuspendedSearchParams />
+    </MobileNavigationSearchBoundary>,
+  );
+
+  assert.equal((markup.match(/data-mobile-primary-nav=/g) ?? []).length, 5);
+  assert.match(markup, /data-mobile-primary-nav="ledger" aria-current="page"/);
+});
 
 test('MobileNavigationView selects quick-entry only for focus=create', () => {
   const focusedMarkup = renderToString(

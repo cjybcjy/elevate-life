@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { Suspense, useEffect, useRef, useState, type ReactNode } from 'react';
 import Link from 'next/link';
 import { usePathname, useSearchParams } from 'next/navigation';
 import BirdLogo from '@/components/common/BirdLogo';
@@ -19,6 +19,8 @@ type MobileNavigationViewProps = {
   onMenuClose: () => void;
   onLogout: () => void | Promise<void>;
 };
+
+type MobileNavigationShellProps = Omit<MobileNavigationViewProps, 'focus'>;
 
 export function MobileNavigationView({
   pathname,
@@ -186,19 +188,36 @@ export function MobileNavigationView({
   );
 }
 
+export function MobileNavigationSearchBoundary({
+  children,
+  ...viewProps
+}: MobileNavigationShellProps & { children: ReactNode }) {
+  return (
+    <Suspense fallback={<MobileNavigationView {...viewProps} focus={null} />}>
+      {children}
+    </Suspense>
+  );
+}
+
+function MobileNavigationSearchParamsView(viewProps: MobileNavigationShellProps) {
+  const searchParams = useSearchParams();
+  return <MobileNavigationView {...viewProps} focus={searchParams.get('focus')} />;
+}
+
 export default function MobileNavigation({ onLogout }: { onLogout: () => void | Promise<void> }) {
   const pathname = usePathname();
-  const searchParams = useSearchParams();
   const [menuOpen, setMenuOpen] = useState(false);
+  const navigationProps: MobileNavigationShellProps = {
+    pathname,
+    menuOpen,
+    onMenuToggle: () => setMenuOpen((current) => !current),
+    onMenuClose: () => setMenuOpen(false),
+    onLogout,
+  };
 
   return (
-    <MobileNavigationView
-      pathname={pathname}
-      focus={searchParams.get('focus')}
-      menuOpen={menuOpen}
-      onMenuToggle={() => setMenuOpen((current) => !current)}
-      onMenuClose={() => setMenuOpen(false)}
-      onLogout={onLogout}
-    />
+    <MobileNavigationSearchBoundary {...navigationProps}>
+      <MobileNavigationSearchParamsView {...navigationProps} />
+    </MobileNavigationSearchBoundary>
   );
 }

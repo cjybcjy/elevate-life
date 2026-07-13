@@ -189,6 +189,7 @@ import MobileQuickEntry, {
 } from '@/components/ledger/MobileQuickEntry';
 import {
   buildQuickEntryFeedback,
+  getQuickEntryBudgetRemainingSafely,
   refreshLedgerCaches,
   withLedgerLoading,
 } from '@/lib/ledger-quick-entry';
@@ -419,13 +420,10 @@ export default function LedgerManager() {
     await refreshLedgerCaches(mutate);
     const categoryName = categories.find((category: any) => category.id === values.categoryId)?.name
       ?? (values.type === 'TRANSFER' ? '转账' : '未分类');
-    let budgetRemaining: number | undefined;
-    if (values.budgetId) {
-      const progress = await getBudgetProgress(values.occurredAt);
-      budgetRemaining = progress.success
-        ? progress.data?.find((item: any) => item.id === values.budgetId)?.remaining
-        : undefined;
-    }
+    const budgetRemaining = await getQuickEntryBudgetRemainingSafely(
+      values.budgetId,
+      () => getBudgetProgress(values.occurredAt),
+    );
     const feedback = buildQuickEntryFeedback({
       amount: values.amount,
       currency: values.currency,
