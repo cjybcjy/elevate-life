@@ -31,10 +31,15 @@ test('mobile more menu preserves every low-frequency route', () => {
   );
 });
 
-test('mobile active state marks page tabs but not the quick-entry action', () => {
+test('mobile active state marks page tabs', () => {
   assert.equal(isMobileNavItemActive('/', 'home'), true);
   assert.equal(isMobileNavItemActive('/management/assets', 'assets'), true);
-  assert.equal(isMobileNavItemActive('/management/ledger', 'ledger'), true);
-  assert.equal(isMobileNavItemActive('/management/ledger', 'quick-entry'), false);
   assert.equal(isMobileNavItemActive('/management/budget/history', 'budget'), true);
+});
+
+test('focus=create selects only quick-entry while normal ledger selects ledger', () => {
+  assert.equal(isMobileNavItemActive('/management/ledger', 'quick-entry', 'create'), true);
+  assert.equal(isMobileNavItemActive('/management/ledger', 'ledger', 'create'), false);
+  assert.equal(isMobileNavItemActive('/management/ledger', 'quick-entry', null), false);
+  assert.equal(isMobileNavItemActive('/management/ledger', 'ledger', null), true);
 });

@@ -3,10 +3,51 @@ import test from 'node:test';
 import { renderToString } from 'react-dom/server';
 import { MobileNavigationView } from './MobileNavigation';
 
+test('MobileNavigationView selects quick-entry only for focus=create', () => {
+  const focusedMarkup = renderToString(
+    <MobileNavigationView
+      pathname="/management/ledger"
+      focus="create"
+      menuOpen={false}
+      onMenuToggle={() => {}}
+      onMenuClose={() => {}}
+      onLogout={() => {}}
+    />,
+  );
+  const normalMarkup = renderToString(
+    <MobileNavigationView
+      pathname="/management/ledger"
+      focus={null}
+      menuOpen={false}
+      onMenuToggle={() => {}}
+      onMenuClose={() => {}}
+      onLogout={() => {}}
+    />,
+  );
+
+  assert.match(
+    focusedMarkup,
+    /data-mobile-primary-nav="quick-entry" aria-current="page"/,
+  );
+  assert.doesNotMatch(
+    focusedMarkup,
+    /data-mobile-primary-nav="ledger" aria-current="page"/,
+  );
+  assert.doesNotMatch(
+    normalMarkup,
+    /data-mobile-primary-nav="quick-entry" aria-current="page"/,
+  );
+  assert.match(
+    normalMarkup,
+    /data-mobile-primary-nav="ledger" aria-current="page"/,
+  );
+});
+
 test('MobileNavigationView renders five primary actions and a closed more button', () => {
   const markup = renderToString(
     <MobileNavigationView
       pathname="/"
+      focus={null}
       menuOpen={false}
       onMenuToggle={() => {}}
       onMenuClose={() => {}}
@@ -25,6 +66,7 @@ test('MobileNavigationView exposes all approved more-menu actions', () => {
   const markup = renderToString(
     <MobileNavigationView
       pathname="/management/ledger"
+      focus={null}
       menuOpen
       onMenuToggle={() => {}}
       onMenuClose={() => {}}
@@ -45,6 +87,7 @@ test('MobileNavigationView gives topbar controls 44px minimum touch targets', ()
   const markup = renderToString(
     <MobileNavigationView
       pathname="/"
+      focus={null}
       menuOpen={false}
       onMenuToggle={() => {}}
       onMenuClose={() => {}}
@@ -60,6 +103,7 @@ test('MobileNavigationView expands the actual theme button to a 44px target', ()
   const markup = renderToString(
     <MobileNavigationView
       pathname="/"
+      focus={null}
       menuOpen
       onMenuToggle={() => {}}
       onMenuClose={() => {}}
@@ -77,6 +121,7 @@ test('MobileNavigationView keeps only the More trigger pointer-active above the 
   const markup = renderToString(
     <MobileNavigationView
       pathname="/"
+      focus={null}
       menuOpen
       onMenuToggle={() => {}}
       onMenuClose={() => {}}
@@ -95,6 +140,7 @@ test('MobileNavigationView makes the More dialog a programmatic focus target', (
   const markup = renderToString(
     <MobileNavigationView
       pathname="/"
+      focus={null}
       menuOpen
       onMenuToggle={() => {}}
       onMenuClose={() => {}}

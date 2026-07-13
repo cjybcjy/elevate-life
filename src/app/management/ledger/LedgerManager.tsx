@@ -181,10 +181,14 @@ import { useToast } from '@/components/common/Toast';
 import { useSWRConfig } from 'swr';
 import useSWR from 'swr';
 import { getCategories } from '@/lib/actions/categories';
+import { getBudgetProgress, getBudgetsForCategory } from '@/lib/actions/budget';
 import { buildTransactionUpdateInput } from '@/lib/ledger-edit';
-import LedgerAgentQuickEntry from '@/components/widgets/LedgerAgentQuickEntry';
+import MobileQuickEntry, {
+  type QuickEntrySubmitResult,
+  type QuickEntrySubmitValues,
+} from '@/components/ledger/MobileQuickEntry';
 import {
-  buildLedgerCreateFormValues,
+  buildQuickEntryFeedback,
   refreshLedgerCaches,
   withLedgerLoading,
 } from '@/lib/ledger-quick-entry';
@@ -228,7 +232,6 @@ export default function LedgerManager() {
     name: '', amount: '', frequency: 'monthly', interval: 1, nextDueDate: '', categoryId: '', fromAccountId: '', toAccountId: '',
   });
   const createFormRef = useRef<HTMLFormElement>(null);
-  const [quickEntryResetKey, setQuickEntryResetKey] = useState(0);
   const [formValues, setFormValues] = useState({
     type: 'EXPENSE',
     amount: '',
@@ -363,6 +366,7 @@ export default function LedgerManager() {
         amount: formData.get('amount') as string,
         currency: (formData.get('currency') as string) || 'CNY',
         categoryId: (formData.get('categoryId') as string) || undefined,
+        budgetId: (formData.get('budgetId') as string) || undefined,
         fromAccountId: (formData.get('fromAccountId') as string) || undefined,
         toAccountId: (formData.get('toAccountId') as string) || undefined,
         liabilityId: (formData.get('liabilityId') as string) || undefined,
@@ -382,7 +386,6 @@ export default function LedgerManager() {
           description: '',
           occurredAt: new Date().toISOString().split('T')[0],
         });
-        setQuickEntryResetKey((current) => current + 1);
         toast.success('已记账');
         await refreshLedgerCaches(mutate);
       } else if (result.error?.includes('会话密钥')) {
@@ -391,6 +394,46 @@ export default function LedgerManager() {
         setError(result.error || '创建失败');
       }
     });
+  }
+
+  async function submitMobileQuickEntry(
+    values: QuickEntrySubmitValues,
+  ): Promise<QuickEntrySubmitResult> {
+    setError('');
+    const result = await createTransaction({
+      ...values,
+      categoryId: values.categoryId || undefined,
+      budgetId: values.budgetId || undefined,
+      fromAccountId: values.fromAccountId || undefined,
+      toAccountId: values.toAccountId || undefined,
+      description: values.description || undefined,
+    });
+    if (!result.success) {
+      if (result.error?.includes('会话密钥')) {
+        window.location.href = '/login';
+        return { success: false, error: result.error, sessionExpired: true };
+      }
+      return { success: false, error: result.error || '创建失败' };
+    }
+
+    await refreshLedgerCaches(mutate);
+    const categoryName = categories.find((category: any) => category.id === values.categoryId)?.name
+      ?? (values.type === 'TRANSFER' ? '转账' : '未分类');
+    let budgetRemaining: number | undefined;
+    if (values.budgetId) {
+      const progress = await getBudgetProgress(values.occurredAt);
+      budgetRemaining = progress.success
+        ? progress.data?.find((item: any) => item.id === values.budgetId)?.remaining
+        : undefined;
+    }
+    const feedback = buildQuickEntryFeedback({
+      amount: values.amount,
+      currency: values.currency,
+      categoryName,
+      budgetRemaining,
+    });
+    toast.success(feedback);
+    return { success: true, feedback };
   }
 
   async function handleDelete(formData: FormData) {
@@ -651,7 +694,7 @@ export default function LedgerManager() {
         <>
           {/* Template Quick Bar */}
           {templates.length > 0 && (
-            <div className="mb-4 flex items-center gap-2 flex-wrap">
+            <div className={`mb-4 items-center gap-2 flex-wrap ${isCreateFocus ? 'hidden md:flex' : 'flex'}`}>
               <span className="text-xs text-ledger-muted shrink-0">模板:</span>
               {templates.map(t => (
                 <div key={t.name} className="group flex items-center gap-1">
@@ -677,7 +720,7 @@ export default function LedgerManager() {
           )}
 
           {isCreateFocus && (
-            <section className="mb-4 rounded-xl border border-ledger-accent/20 bg-ledger-surface p-4">
+            <section className="mb-4 hidden rounded-xl border border-ledger-accent/20 bg-ledger-surface p-4 md:block">
               <div className="text-xs font-semibold text-ledger-muted">流水行动</div>
               <h2 className="mt-1 text-lg font-bold" style={{ color: 'var(--color-text-primary)' }}>
                 先补齐本月流水
@@ -690,17 +733,31 @@ export default function LedgerManager() {
 
           {isCreateFocus ? (
             <section className="mb-4 md:hidden" aria-label="快速记一笔">
-              <LedgerAgentQuickEntry
-                key={quickEntryResetKey}
+              <MobileQuickEntry
                 categories={categories}
                 assets={assets}
-                onApply={(draft) => {
-                  setFormValues(buildLedgerCreateFormValues(draft));
-                  requestAnimationFrame(() => {
-                    const form = createFormRef.current;
-                    form?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                    form?.querySelector<HTMLInputElement>('input[name="amount"]')?.focus({ preventScroll: true });
-                  });
+                categoriesReady={catData !== undefined}
+                assetsReady={assetData !== undefined}
+                loadBudgets={async (date, categoryId) => {
+                  const result = await getBudgetsForCategory(date, categoryId);
+                  return result.success
+                    ? (result.data ?? []).map(({ id, name }) => ({ id, name }))
+                    : [];
+                }}
+                onSubmit={submitMobileQuickEntry}
+                onSaveTemplate={(name, values) => {
+                  saveTemplates([
+                    ...templates.filter((template) => template.name !== name),
+                    {
+                      name,
+                      type: values.type,
+                      amount: values.amount,
+                      categoryId: values.categoryId,
+                      fromAccountId: values.fromAccountId,
+                      toAccountId: values.toAccountId,
+                      description: values.description,
+                    },
+                  ]);
                 }}
               />
             </section>
@@ -712,9 +769,7 @@ export default function LedgerManager() {
             id="create-form"
             data-ledger-create-form="true"
             action={handleCreate}
-            className={`mb-4 grid grid-cols-1 items-end gap-3 rounded-xl bg-ledger-surface p-4 md:flex md:flex-wrap ${
-              isCreateFocus ? 'border border-ledger-accent/30' : ''
-            }`}
+            className="mb-4 hidden items-end gap-3 rounded-xl bg-ledger-surface p-4 md:flex md:flex-wrap"
           >
             <div className="min-w-0 w-full md:w-auto">
               <label className="block text-xs text-ledger-muted mb-1">类型</label>

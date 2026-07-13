@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useSearchParams } from 'next/navigation';
 import BirdLogo from '@/components/common/BirdLogo';
 import ThemeToggle from '@/components/common/ThemeToggle';
 import {
@@ -13,6 +13,7 @@ import {
 
 type MobileNavigationViewProps = {
   pathname: string;
+  focus: string | null;
   menuOpen: boolean;
   onMenuToggle: () => void;
   onMenuClose: () => void;
@@ -21,6 +22,7 @@ type MobileNavigationViewProps = {
 
 export function MobileNavigationView({
   pathname,
+  focus,
   menuOpen,
   onMenuToggle,
   onMenuClose,
@@ -155,7 +157,7 @@ export function MobileNavigationView({
         style={{ gridTemplateColumns: 'repeat(5, minmax(0, 1fr))' }}
       >
         {MOBILE_PRIMARY_NAV_ITEMS.map((item) => {
-          const active = isMobileNavItemActive(pathname, item.id);
+          const active = isMobileNavItemActive(pathname, item.id, focus);
           const primary = item.id === 'quick-entry';
           return (
             <Link
@@ -186,11 +188,13 @@ export function MobileNavigationView({
 
 export default function MobileNavigation({ onLogout }: { onLogout: () => void | Promise<void> }) {
   const pathname = usePathname();
+  const searchParams = useSearchParams();
   const [menuOpen, setMenuOpen] = useState(false);
 
   return (
     <MobileNavigationView
       pathname={pathname}
+      focus={searchParams.get('focus')}
       menuOpen={menuOpen}
       onMenuToggle={() => setMenuOpen((current) => !current)}
       onMenuClose={() => setMenuOpen(false)}

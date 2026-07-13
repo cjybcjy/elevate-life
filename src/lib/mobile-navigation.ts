@@ -28,10 +28,15 @@ export const MOBILE_MORE_NAV_ITEMS: MobileMoreNavItem[] = [
   { label: '修改密码', href: '/account/password', icon: '🔐' },
 ];
 
-export function isMobileNavItemActive(pathname: string, id: MobilePrimaryNavId) {
-  if (id === 'quick-entry') return false;
+export function isMobileNavItemActive(
+  pathname: string,
+  id: MobilePrimaryNavId,
+  focus: string | null = null,
+) {
+  const quickEntryFocused = pathname === '/management/ledger' && focus === 'create';
+  if (id === 'quick-entry') return quickEntryFocused;
+  if (id === 'ledger') return pathname.startsWith('/management/ledger') && !quickEntryFocused;
   if (id === 'home') return pathname === '/';
   if (id === 'assets') return pathname.startsWith('/management/assets');
-  if (id === 'ledger') return pathname.startsWith('/management/ledger');
   return pathname.startsWith('/management/budget');
 }
