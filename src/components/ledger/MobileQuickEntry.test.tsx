@@ -4,6 +4,7 @@ import { renderToString } from 'react-dom/server';
 import MobileQuickEntry, {
   buildQuickEntrySubmitValues,
   getQuickEntryAmountError,
+  mergeSuccessfulQuickEntryPreferences,
   resolveQuickEntryPreferenceApplication,
   resolveQuickEntryBudgetId,
   saveQuickEntryTemplate,
@@ -154,4 +155,28 @@ test('template save failures report partial failure after the ledger succeeds', 
   });
 
   assert.equal(error, '记账已成功，但模板保存失败。');
+});
+
+test('successful account clearing updates the canonical snapshot before late assets arrive', () => {
+  const afterSuccess = mergeSuccessfulQuickEntryPreferences({
+    categoryByType: { EXPENSE: 'daily', INCOME: 'salary' },
+    accountByType: { EXPENSE: 'cash', INCOME: 'bank' },
+  }, 'EXPENSE', 'daily', '');
+
+  assert.deepEqual(afterSuccess, {
+    categoryByType: { EXPENSE: 'daily', INCOME: 'salary' },
+    accountByType: { INCOME: 'bank' },
+  });
+  assert.deepEqual(resolveQuickEntryPreferenceApplication(
+    afterSuccess,
+    categories,
+    [{ id: 'cash', name: '现金' }, { id: 'bank', name: '银行卡' }],
+    { categoriesReady: true, assetsReady: true },
+  ), {
+    categoryReady: true,
+    accountReady: true,
+    complete: true,
+    categoryByType: { EXPENSE: 'daily', INCOME: 'salary' },
+    accountByType: { INCOME: 'bank' },
+  });
 });

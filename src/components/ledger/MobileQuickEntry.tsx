@@ -136,6 +136,23 @@ export function buildQuickEntrySubmitValues(
   };
 }
 
+export function mergeSuccessfulQuickEntryPreferences(
+  preferences: QuickEntryPreferences,
+  type: Exclude<QuickEntryType, 'TRANSFER'>,
+  categoryId: string,
+  accountId: string,
+): QuickEntryPreferences {
+  const categoryByType = {
+    ...preferences.categoryByType,
+    [type]: categoryId,
+  };
+  const accountByType = { ...preferences.accountByType };
+  if (accountId) accountByType[type] = accountId;
+  else delete accountByType[type];
+
+  return { categoryByType, accountByType };
+}
+
 export function saveQuickEntryTemplate(
   enabled: boolean,
   name: string,
@@ -214,6 +231,10 @@ export default function MobileQuickEntry({
 
     if (application.categoryReady && !categoryPreferencesAppliedRef.current) {
       categoryPreferencesAppliedRef.current = true;
+      storedPreferencesRef.current = {
+        ...storedPreferencesRef.current,
+        categoryByType: application.categoryByType,
+      };
       preferencesRef.current = {
         ...preferencesRef.current,
         categoryByType: application.categoryByType,
@@ -225,6 +246,10 @@ export default function MobileQuickEntry({
 
     if (application.accountReady && !accountPreferencesAppliedRef.current) {
       accountPreferencesAppliedRef.current = true;
+      storedPreferencesRef.current = {
+        ...storedPreferencesRef.current,
+        accountByType: application.accountByType,
+      };
       preferencesRef.current = {
         ...preferencesRef.current,
         accountByType: application.accountByType,
@@ -364,16 +389,13 @@ export default function MobileQuickEntry({
 
     if (type !== 'TRANSFER') {
       const accountId = type === 'EXPENSE' ? fromAccountId : toAccountId;
-      const accountByType = { ...preferencesRef.current.accountByType };
-      if (accountId) accountByType[type] = accountId;
-      else delete accountByType[type];
-      const nextPreferences: QuickEntryPreferences = {
-        categoryByType: {
-          ...preferencesRef.current.categoryByType,
-          [type]: categoryId,
-        },
-        accountByType,
-      };
+      const nextPreferences = mergeSuccessfulQuickEntryPreferences(
+        storedPreferencesRef.current,
+        type,
+        categoryId,
+        accountId,
+      );
+      storedPreferencesRef.current = nextPreferences;
       preferencesRef.current = nextPreferences;
       try {
         window.localStorage.setItem(
