@@ -49,6 +49,7 @@ type MobileQuickEntryProps = {
 
 const emptyPreferences: QuickEntryPreferences = { categoryByType: {}, accountByType: {} };
 const currencySymbols: Record<string, string> = { CNY: '¥', USD: '$', HKD: 'HK$', JPY: 'JP¥' };
+const invalidAmountError = '请输入大于 0 的有效金额。';
 
 function localDate() {
   const date = new Date();
@@ -76,21 +77,72 @@ function validAccountPreference(assets: QuickEntryAsset[], accountId: string | u
   return accountId && assets.some((asset) => asset.id === accountId) ? accountId : '';
 }
 
-function sanitizePreferences(
+export function sanitizeQuickEntryPreferences(
   preferences: QuickEntryPreferences,
   categories: QuickEntryCategory[],
   assets: QuickEntryAsset[],
 ): QuickEntryPreferences {
+  const categoryByType: QuickEntryPreferences['categoryByType'] = {};
+  const accountByType: QuickEntryPreferences['accountByType'] = {};
+
+  for (const type of ['EXPENSE', 'INCOME'] as const) {
+    const categoryId = validCategoryPreference(categories, type, preferences.categoryByType[type]);
+    const accountId = validAccountPreference(assets, preferences.accountByType[type]);
+    if (categoryId) categoryByType[type] = categoryId;
+    if (accountId) accountByType[type] = accountId;
+  }
+
   return {
-    categoryByType: {
-      EXPENSE: validCategoryPreference(categories, 'EXPENSE', preferences.categoryByType.EXPENSE) || undefined,
-      INCOME: validCategoryPreference(categories, 'INCOME', preferences.categoryByType.INCOME) || undefined,
-    },
-    accountByType: {
-      EXPENSE: validAccountPreference(assets, preferences.accountByType.EXPENSE) || undefined,
-      INCOME: validAccountPreference(assets, preferences.accountByType.INCOME) || undefined,
-    },
+    categoryByType,
+    accountByType,
   };
+}
+
+export function canApplyQuickEntryPreferences(
+  preferences: QuickEntryPreferences,
+  categories: QuickEntryCategory[],
+  assets: QuickEntryAsset[],
+) {
+  if (categories.length === 0) return false;
+  const hasStoredAccount = Boolean(
+    preferences.accountByType.EXPENSE || preferences.accountByType.INCOME,
+  );
+  return !hasStoredAccount || assets.length > 0;
+}
+
+export function resolveQuickEntryBudgetId(options: QuickEntryBudgetOption[]) {
+  return options.length === 1 ? options[0].id : '';
+}
+
+export function getQuickEntryAmountError(expression: string) {
+  return expression && !evaluateAmountExpression(expression).valid ? invalidAmountError : '';
+}
+
+export function buildQuickEntrySubmitValues(
+  values: QuickEntrySubmitValues,
+): QuickEntrySubmitValues {
+  return {
+    ...values,
+    categoryId: values.type === 'TRANSFER' ? '' : values.categoryId,
+    budgetId: values.type === 'TRANSFER' ? '' : values.budgetId,
+    fromAccountId: values.type === 'INCOME' ? '' : values.fromAccountId,
+    toAccountId: values.type === 'EXPENSE' ? '' : values.toAccountId,
+  };
+}
+
+export function saveQuickEntryTemplate(
+  enabled: boolean,
+  name: string,
+  values: QuickEntrySubmitValues,
+  onSave: (templateName: string, templateValues: QuickEntrySubmitValues) => void,
+) {
+  if (!enabled || !name.trim()) return '';
+  try {
+    onSave(name.trim(), values);
+    return '';
+  } catch {
+    return '记账已成功，但模板保存失败。';
+  }
 }
 
 export default function MobileQuickEntry({
@@ -124,6 +176,7 @@ export default function MobileQuickEntry({
   const budgetRequestRef = useRef(0);
 
   const evaluation = evaluateAmountExpression(expression);
+  const amountError = getQuickEntryAmountError(expression);
   const categorySections = useMemo(
     () => partitionQuickEntryCategories(categories, type === 'INCOME' ? 'INCOME' : 'EXPENSE'),
     [categories, type],
@@ -131,7 +184,6 @@ export default function MobileQuickEntry({
 
   useEffect(() => {
     if (preferencesLoadedRef.current) return;
-    preferencesLoadedRef.current = true;
 
     let stored = emptyPreferences;
     try {
@@ -139,7 +191,10 @@ export default function MobileQuickEntry({
     } catch {
       // Access can throw when storage is blocked; defaults remain usable.
     }
-    const preferences = sanitizePreferences(stored, categories, assets);
+    if (!canApplyQuickEntryPreferences(stored, categories, assets)) return;
+
+    preferencesLoadedRef.current = true;
+    const preferences = sanitizeQuickEntryPreferences(stored, categories, assets);
     preferencesRef.current = preferences;
     setCategoryId(preferences.categoryByType.EXPENSE ?? firstCategory(categories, 'EXPENSE'));
     setFromAccountId(preferences.accountByType.EXPENSE ?? '');
@@ -154,7 +209,7 @@ export default function MobileQuickEntry({
       .then((options) => {
         if (!active || requestId !== budgetRequestRef.current) return;
         setBudgets(options);
-        setBudgetId(options.length === 1 ? options[0].id : '');
+        setBudgetId(resolveQuickEntryBudgetId(options));
       })
       .catch(() => {
         if (!active || requestId !== budgetRequestRef.current) return;
@@ -221,18 +276,18 @@ export default function MobileQuickEntry({
     setAgentOpen(false);
   }
 
-  function buildSubmitValues(): QuickEntrySubmitValues {
-    return {
+  function currentSubmitValues(): QuickEntrySubmitValues {
+    return buildQuickEntrySubmitValues({
       type,
       amount: evaluation.amount,
       currency,
-      categoryId: type === 'TRANSFER' ? '' : categoryId,
-      budgetId: type === 'TRANSFER' ? '' : budgetId,
-      fromAccountId: type === 'INCOME' ? '' : fromAccountId,
-      toAccountId: type === 'EXPENSE' ? '' : toAccountId,
+      categoryId,
+      budgetId,
+      fromAccountId,
+      toAccountId,
       description,
       occurredAt,
-    };
+    });
   }
 
   async function submit() {
@@ -240,7 +295,7 @@ export default function MobileQuickEntry({
     clearMessage();
 
     if (!evaluation.valid) {
-      setError('请输入大于 0 的有效金额。');
+      setError(invalidAmountError);
       return;
     }
     if (type !== 'TRANSFER' && !categoryId) {
@@ -252,50 +307,58 @@ export default function MobileQuickEntry({
       return;
     }
 
-    const values = buildSubmitValues();
+    const values = currentSubmitValues();
     setSubmitting(true);
+    let result: QuickEntrySubmitResult;
     try {
-      const result = await onSubmit(values);
-      if (!result.success) {
-        setError(result.error);
-        return;
-      }
-
-      setExpression('');
-      setAgentOpen(false);
-      setFeedback(result.feedback);
-
-      if (type !== 'TRANSFER') {
-        const accountId = type === 'EXPENSE' ? fromAccountId : toAccountId;
-        const accountByType = { ...preferencesRef.current.accountByType };
-        if (accountId) accountByType[type] = accountId;
-        else delete accountByType[type];
-        const nextPreferences: QuickEntryPreferences = {
-          categoryByType: {
-            ...preferencesRef.current.categoryByType,
-            [type]: categoryId,
-          },
-          accountByType,
-        };
-        preferencesRef.current = nextPreferences;
-        try {
-          window.localStorage.setItem(
-            QUICK_ENTRY_PREFERENCES_KEY,
-            serializeQuickEntryPreferences(nextPreferences),
-          );
-        } catch {
-          // Storage can be unavailable in private browsing; the successful ledger write still stands.
-        }
-      }
-
-      if (saveAsTemplate && templateName.trim()) {
-        onSaveTemplate(templateName.trim(), values);
-      }
+      result = await onSubmit(values);
     } catch {
       setError('记账失败，请稍后重试。');
-    } finally {
       setSubmitting(false);
+      return;
     }
+
+    if (!result.success) {
+      setError(result.error);
+      setSubmitting(false);
+      return;
+    }
+
+    setExpression('');
+    setAgentOpen(false);
+    setFeedback(result.feedback);
+
+    if (type !== 'TRANSFER') {
+      const accountId = type === 'EXPENSE' ? fromAccountId : toAccountId;
+      const accountByType = { ...preferencesRef.current.accountByType };
+      if (accountId) accountByType[type] = accountId;
+      else delete accountByType[type];
+      const nextPreferences: QuickEntryPreferences = {
+        categoryByType: {
+          ...preferencesRef.current.categoryByType,
+          [type]: categoryId,
+        },
+        accountByType,
+      };
+      preferencesRef.current = nextPreferences;
+      try {
+        window.localStorage.setItem(
+          QUICK_ENTRY_PREFERENCES_KEY,
+          serializeQuickEntryPreferences(nextPreferences),
+        );
+      } catch {
+        // Storage can be unavailable in private browsing; the successful ledger write still stands.
+      }
+    }
+
+    const templateError = saveQuickEntryTemplate(
+      saveAsTemplate,
+      templateName,
+      values,
+      onSaveTemplate,
+    );
+    if (templateError) setError(templateError);
+    setSubmitting(false);
   }
 
   const selectedAccountName = type === 'EXPENSE'
@@ -340,7 +403,7 @@ export default function MobileQuickEntry({
         {submitting ? '记账中…' : '确认记账'}
       </button>
       <button type="button" onClick={() => setAgentOpen((open) => !open)} className="min-h-11 w-full">说一句记账</button>
-      {error ? <div role="alert" className="text-sm text-ledger-danger">{error}</div> : null}
+      {amountError || error ? <div role="alert" className="text-sm text-ledger-danger">{amountError || error}</div> : null}
       {feedback ? <div role="status" className="text-sm text-ledger-success">{feedback}</div> : null}
       {agentOpen ? (
         <LedgerAgentQuickEntry embedded title="说一句记账" actionLabel="识别并填入" categories={categories} assets={assets} onApply={applyAgentDraft} />

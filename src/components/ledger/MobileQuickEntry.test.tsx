@@ -1,7 +1,14 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { renderToString } from 'react-dom/server';
-import MobileQuickEntry from './MobileQuickEntry';
+import MobileQuickEntry, {
+  buildQuickEntrySubmitValues,
+  canApplyQuickEntryPreferences,
+  getQuickEntryAmountError,
+  resolveQuickEntryBudgetId,
+  saveQuickEntryTemplate,
+  sanitizeQuickEntryPreferences,
+} from './MobileQuickEntry';
 
 const categories = [
   { id: 'food', name: '餐饮', type: 'EXPENSE' },
@@ -29,4 +36,104 @@ test('mobile quick entry renders the approved single-screen hierarchy', () => {
   assert.match(markup, />确认记账<\/button>/);
   assert.match(markup, />说一句记账<\/button>/);
   assert.match(markup, />更多选项<\/button>/);
+});
+
+test('quick-entry preferences keep only matching categories and existing accounts', () => {
+  assert.deepEqual(
+    sanitizeQuickEntryPreferences({
+      categoryByType: { EXPENSE: 'food', INCOME: 'food' },
+      accountByType: { EXPENSE: 'cash', INCOME: 'missing' },
+    }, categories, [{ id: 'cash', name: '现金' }]),
+    {
+      categoryByType: { EXPENSE: 'food' },
+      accountByType: { EXPENSE: 'cash' },
+    },
+  );
+});
+
+test('submit values map accounts and category fields by transaction type', () => {
+  const base = {
+    amount: '32',
+    currency: 'CNY',
+    categoryId: 'food',
+    budgetId: 'monthly-food',
+    fromAccountId: 'cash',
+    toAccountId: 'bank',
+    description: '午饭',
+    occurredAt: '2026-07-13',
+  };
+
+  assert.deepEqual(buildQuickEntrySubmitValues({ ...base, type: 'EXPENSE' }), {
+    ...base,
+    type: 'EXPENSE',
+    toAccountId: '',
+  });
+  assert.deepEqual(buildQuickEntrySubmitValues({ ...base, type: 'INCOME' }), {
+    ...base,
+    type: 'INCOME',
+    fromAccountId: '',
+  });
+  assert.deepEqual(buildQuickEntrySubmitValues({ ...base, type: 'TRANSFER' }), {
+    ...base,
+    type: 'TRANSFER',
+    categoryId: '',
+    budgetId: '',
+  });
+});
+
+test('budget selection clears for zero or multiple options and selects exactly one', () => {
+  assert.equal(resolveQuickEntryBudgetId([]), '');
+  assert.equal(resolveQuickEntryBudgetId([{ id: 'only', name: '唯一预算' }]), 'only');
+  assert.equal(resolveQuickEntryBudgetId([
+    { id: 'first', name: '预算一' },
+    { id: 'second', name: '预算二' },
+  ]), '');
+});
+
+test('non-empty invalid amount expressions expose a responsive error', () => {
+  const error = '请输入大于 0 的有效金额。';
+  assert.equal(getQuickEntryAmountError(''), '');
+  assert.equal(getQuickEntryAmountError('32'), '');
+  assert.equal(getQuickEntryAmountError('0'), error);
+  assert.equal(getQuickEntryAmountError('2-3'), error);
+  assert.equal(getQuickEntryAmountError('12+'), error);
+});
+
+test('preference application waits for async category and referenced account inventories', () => {
+  const withAccountPreference = {
+    categoryByType: { EXPENSE: 'food' },
+    accountByType: { EXPENSE: 'cash' },
+  };
+
+  assert.equal(canApplyQuickEntryPreferences(withAccountPreference, [], []), false);
+  assert.equal(canApplyQuickEntryPreferences(withAccountPreference, categories, []), false);
+  assert.equal(canApplyQuickEntryPreferences(
+    withAccountPreference,
+    categories,
+    [{ id: 'cash', name: '现金' }],
+  ), true);
+  assert.equal(canApplyQuickEntryPreferences(
+    { categoryByType: { EXPENSE: 'food' }, accountByType: {} },
+    categories,
+    [],
+  ), true);
+});
+
+test('template save failures report partial failure after the ledger succeeds', () => {
+  const values = buildQuickEntrySubmitValues({
+    type: 'EXPENSE',
+    amount: '32',
+    currency: 'CNY',
+    categoryId: 'food',
+    budgetId: '',
+    fromAccountId: 'cash',
+    toAccountId: '',
+    description: '午饭',
+    occurredAt: '2026-07-13',
+  });
+  const error = saveQuickEntryTemplate(true, '午饭模板', values, () => {
+    throw new Error('template unavailable');
+  });
+
+  assert.equal(error, '记账已成功，但模板保存失败。');
 });
