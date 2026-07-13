@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef, type ReactNode } from 'react';
+import { createPortal } from 'react-dom';
 
 type QuickEntryMoreSheetProps = {
   open: boolean;
@@ -79,7 +80,7 @@ export default function QuickEntryMoreSheet({
 
   if (!open) return null;
 
-  return (
+  const sheet = (
     <>
       <button
         type="button"
@@ -110,4 +111,6 @@ export default function QuickEntryMoreSheet({
       </section>
     </>
   );
+
+  return typeof document === 'undefined' ? sheet : createPortal(sheet, document.body);
 }

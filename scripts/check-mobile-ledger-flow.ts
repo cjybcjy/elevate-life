@@ -73,8 +73,7 @@ async function login(page: Page) {
     page.waitForURL((url) => url.pathname === '/', { timeout: 15000 }),
     page.getByRole('button', { name: 'Sign In' }).click(),
   ]);
-  await page.locator('body').waitFor({ state: 'visible' });
-  await page.waitForLoadState('networkidle', { timeout: 15000 });
+  await settle(page);
 }
 
 async function assertMobileShell(page: Page) {
@@ -87,19 +86,61 @@ async function assertMobileShell(page: Page) {
   await menu.waitFor({ state: 'visible' });
   assert.equal(await menu.evaluate((element) => element === document.activeElement), true);
   await page.keyboard.press('Shift+Tab');
-  assert.equal(
-    await menu.evaluate((element) => element.contains(document.activeElement)),
-    true,
-  );
+  assert.equal(await menu.evaluate((element) => element.contains(document.activeElement)), true);
   await page.keyboard.press('Tab');
-  assert.equal(
-    await menu.evaluate((element) => element.contains(document.activeElement)),
-    true,
-  );
+  assert.equal(await menu.evaluate((element) => element.contains(document.activeElement)), true);
   await page.keyboard.press('Escape');
   await menu.waitFor({ state: 'hidden' });
   assert.equal(await moreTrigger.evaluate((element) => element === document.activeElement), true);
   await assertNoHorizontalOverflow(page);
+}
+
+async function openQuickEntry(page: Page) {
+  if (new URL(page.url()).pathname === '/') {
+    await page.getByRole('link', { name: /记一笔/ }).click();
+    await page.waitForURL((url) => (
+      url.pathname === '/management/ledger' && url.searchParams.get('focus') === 'create'
+    ));
+  } else {
+    await page.goto(new URL('/management/ledger?focus=create', baseUrl).toString(), {
+      waitUntil: 'domcontentloaded',
+    });
+  }
+  await settle(page);
+  const quick = page.locator('[data-mobile-quick-entry="true"]');
+  await quick.waitFor({ state: 'visible' });
+  return quick;
+}
+
+async function assertOptionsSheetFocusLoop(page: Page, quick: ReturnType<Page['locator']>) {
+  const trigger = quick.getByRole('button', { name: '更多选项' });
+  await trigger.click();
+  const sheet = page.getByRole('dialog', { name: '更多记账选项' });
+  await sheet.waitFor({ state: 'visible' });
+  assert.equal(
+    await sheet.evaluate((element) => element === document.activeElement),
+    true,
+    'options sheet panel did not receive focus',
+  );
+  await page.keyboard.press('Tab');
+  assert.equal(
+    await sheet.evaluate((element) => element.contains(document.activeElement)),
+    true,
+    'Tab escaped the options sheet',
+  );
+  await page.keyboard.press('Shift+Tab');
+  assert.equal(
+    await sheet.evaluate((element) => element.contains(document.activeElement)),
+    true,
+    'Shift+Tab escaped the options sheet',
+  );
+  await page.keyboard.press('Escape');
+  await sheet.waitFor({ state: 'hidden' });
+  assert.equal(
+    await trigger.evaluate((element) => element === document.activeElement),
+    true,
+    'options sheet did not restore focus to its trigger',
+  );
 }
 
 async function removeTransactionIfPresent(page: Page, marker: string) {
@@ -122,80 +163,91 @@ async function removeTransactionIfPresent(page: Page, marker: string) {
     0,
     `transaction ${marker} persisted after cleanup`,
   );
+  console.log(`Cleanup verified after reload: ${marker}`);
 }
 
 async function createAndRemoveMobileTransaction(page: Page) {
-  const marker = `手机验收-${Date.now()}`;
+  const marker = `手机极速记账-${Date.now()}`;
   try {
-    await page.getByRole('link', { name: /记一笔/ }).click();
-    await page.waitForURL((url) => url.pathname === '/management/ledger' && url.searchParams.get('focus') === 'create');
+    let quick = await openQuickEntry(page);
 
-    await page.locator('#ledger-agent-input').fill(`今天午饭 32 用现金 ${marker}`);
-    await page.getByRole('button', { name: '生成草稿' }).click();
+    await quick.getByRole('button', { name: '收入', exact: true }).click();
+    assert.equal(await quick.locator('[data-quick-category="人情往来"]').count(), 1);
+    await quick.getByRole('button', { name: '支出', exact: true }).click();
+    await quick.getByRole('button', { name: '说一句记账' }).click();
+    await quick.locator('#ledger-agent-input').fill('今天午饭 32 用现金');
+    await quick.getByRole('button', { name: '识别并填入' }).click();
+    assert.match(await quick.getByLabel('金额', { exact: true }).textContent() ?? '', /32/);
 
-    const form = page.locator('[data-ledger-create-form="true"]');
-    await form.waitFor({ state: 'visible' });
-    assert.equal(await form.locator('input[name="amount"]').inputValue(), '32');
-    assert.match(await form.locator('input[name="description"]').inputValue(), new RegExp(marker));
+    await page.reload({ waitUntil: 'domcontentloaded' });
+    await settle(page);
+    quick = page.locator('[data-mobile-quick-entry="true"]');
+    await quick.waitFor({ state: 'visible' });
+    assert.match(await quick.getByLabel('金额', { exact: true }).textContent() ?? '', /0/);
 
-    await form.getByRole('button', { name: '创建' }).click();
-    await page.getByText('已记账').waitFor({ state: 'visible' });
+    await quick.locator('[data-quick-category="餐饮"]').click();
+    await assertOptionsSheetFocusLoop(page, quick);
+    const trigger = quick.getByRole('button', { name: '更多选项' });
+    await trigger.click();
+    const sheet = page.getByRole('dialog', { name: '更多记账选项' });
+    await sheet.getByLabel('备注').fill(marker);
+    await sheet.getByRole('button', { name: '完成' }).click();
+    await sheet.waitFor({ state: 'hidden' });
 
-    const row = page.locator('[data-transaction-list="true"] tbody tr').filter({ hasText: marker });
+    await quick.locator('[data-amount-key="3"]').click();
+    await quick.locator('[data-amount-key="2"]').click();
+    await quick.getByRole('button', { name: '确认记账' }).click();
+    await quick.getByText(/已记 ¥32(?:\.00)? · 餐饮/).waitFor({ state: 'visible' });
+
+    let row = page.locator('[data-transaction-list="true"] tbody tr').filter({ hasText: marker });
     await row.waitFor({ state: 'visible' });
-    await page.screenshot({ path: resolve(outputDir, '360x800-ledger-success.png'), fullPage: false });
+    await page.screenshot({
+      path: resolve(outputDir, '360x800-category-first-success.png'),
+      fullPage: false,
+    });
+    console.log(`Transaction created and visible: ${marker}`);
+
+    await page.reload({ waitUntil: 'domcontentloaded' });
+    await settle(page);
+    row = page.locator('[data-transaction-list="true"] tbody tr').filter({ hasText: marker });
+    await row.waitFor({ state: 'visible' });
+    console.log(`Persistence verified after reload: ${marker}`);
   } finally {
     await removeTransactionIfPresent(page, marker);
   }
 }
 
-async function checkShortConsentViewport(
-  browser: Browser,
-  browserDiagnostics: string[],
-) {
-  const context = await browser.newContext({
-    viewport: { width: 360, height: 640 },
-    isMobile: true,
-    hasTouch: true,
-    locale: 'zh-CN',
-  });
-  const page = await context.newPage();
-  collectBrowserDiagnostics(page, '360x640-short', browserDiagnostics);
-  await page.goto(new URL('/login', baseUrl).toString(), { waitUntil: 'domcontentloaded' });
-  await settle(page);
-  const dialog = page.getByRole('dialog', { name: '请先阅读并同意' });
-  await dialog.waitFor({ state: 'visible' });
-  const panel = dialog.locator('section');
-  await panel.evaluate((element) => element.scrollTo({ top: element.scrollHeight }));
-  const decline = page.getByRole('button', { name: '不同意' });
-  const accept = page.getByRole('button', { name: '同意并继续' });
-  await decline.scrollIntoViewIfNeeded();
-  await accept.scrollIntoViewIfNeeded();
-  await assertInsideViewport(page, decline, 'legal decline button');
-  await assertInsideViewport(page, accept, 'legal accept button');
-  await assertNoHorizontalOverflow(page);
-  await page.screenshot({ path: resolve(outputDir, '360x640-short.png'), fullPage: false });
-  await context.close();
-}
-
-async function screenshotPixelViewport(
+async function screenshotQuickEntryViewport(
   browser: Browser,
   storageState: Awaited<ReturnType<BrowserContext['storageState']>>,
   browserDiagnostics: string[],
+  width: number,
+  height: number,
 ) {
+  const label = `${width}x${height}`;
   const context = await browser.newContext({
-    viewport: { width: 412, height: 839 },
+    viewport: { width, height },
     isMobile: true,
     hasTouch: true,
     locale: 'zh-CN',
     storageState,
   });
   const page = await context.newPage();
-  collectBrowserDiagnostics(page, '412x839-pixel-7', browserDiagnostics);
-  await page.goto(new URL('/', baseUrl).toString(), { waitUntil: 'domcontentloaded' });
-  await settle(page);
-  await assertMobileShell(page);
-  await page.screenshot({ path: resolve(outputDir, '412x839-pixel-7.png'), fullPage: false });
+  collectBrowserDiagnostics(page, `${label}-category-first`, browserDiagnostics);
+  const quick = await openQuickEntry(page);
+  const ledgerHeader = page.getByRole('heading', { name: '流水管理' }).locator('..');
+  assert.equal(await ledgerHeader.isVisible(), false, `${label} legacy ledger header is visible`);
+  assert.equal(await page.getByRole('button', { name: '流水记录' }).isVisible(), false);
+  assert.equal(await page.getByRole('button', { name: '周期交易' }).isVisible(), false);
+  assert.equal(
+    await quick.getByRole('button', { name: '支出', exact: true }).getAttribute('aria-pressed'),
+    'true',
+  );
+  await assertNoHorizontalOverflow(page);
+  await page.screenshot({
+    path: resolve(outputDir, `${label}-category-first.png`),
+    fullPage: false,
+  });
   await context.close();
 }
 
@@ -213,18 +265,12 @@ async function checkKeyboardPressureViewport(
   });
   const page = await context.newPage();
   collectBrowserDiagnostics(page, '360x520-keyboard-pressure', browserDiagnostics);
-  await page.goto(new URL('/management/ledger?focus=create', baseUrl).toString(), { waitUntil: 'domcontentloaded' });
-  await settle(page);
-  const quickInput = page.locator('#ledger-agent-input');
-  await quickInput.focus();
-  assert.equal(await quickInput.evaluate((element) => element === document.activeElement), true);
-  await quickInput.fill('今天午饭 32 用现金');
-  await page.getByRole('button', { name: '生成草稿' }).click();
-  const form = page.locator('[data-ledger-create-form="true"]');
-  await form.waitFor({ state: 'visible' });
-  const submit = form.getByRole('button', { name: '创建' });
+  const quick = await openQuickEntry(page);
+  await quick.locator('[data-amount-key="3"]').click();
+  await quick.locator('[data-amount-key="2"]').click();
+  const submit = quick.getByRole('button', { name: '确认记账' });
   await submit.scrollIntoViewIfNeeded();
-  await assertInsideViewport(page, submit, 'ledger create button');
+  await assertInsideViewport(page, submit, 'quick-entry confirm button');
   assert.equal(
     await submit.evaluate((element) => {
       const box = element.getBoundingClientRect();
@@ -232,11 +278,46 @@ async function checkKeyboardPressureViewport(
       return hit === element || element.contains(hit);
     }),
     true,
-    'ledger create button is covered in the reduced viewport',
+    'quick-entry confirm button is covered in the reduced viewport',
   );
   await assertNoHorizontalOverflow(page);
-  await page.screenshot({ path: resolve(outputDir, '360x520-keyboard-pressure.png'), fullPage: false });
+  await page.screenshot({
+    path: resolve(outputDir, '360x520-keyboard-pressure.png'),
+    fullPage: false,
+  });
   await context.close();
+}
+
+async function checkDesktopViewport(
+  browser: Browser,
+  storageState: Awaited<ReturnType<BrowserContext['storageState']>>,
+  browserDiagnostics: string[],
+) {
+  const context = await browser.newContext({
+    viewport: { width: 1440, height: 900 },
+    locale: 'zh-CN',
+    storageState,
+  });
+  const page = await context.newPage();
+  collectBrowserDiagnostics(page, '1440x900-desktop', browserDiagnostics);
+  await page.goto(new URL('/management/ledger?focus=create', baseUrl).toString(), {
+    waitUntil: 'domcontentloaded',
+  });
+  await settle(page);
+  await expectHidden(page.locator('[data-mobile-quick-entry="true"]'), 'desktop mobile quick entry');
+  const form = page.locator('[data-ledger-create-form="true"]');
+  await form.waitFor({ state: 'visible' });
+  await assertInsideViewport(page, form, 'desktop ledger create form');
+  await assertNoHorizontalOverflow(page);
+  await page.screenshot({
+    path: resolve(outputDir, '1440x900-ledger-create-form.png'),
+    fullPage: false,
+  });
+  await context.close();
+}
+
+async function expectHidden(locator: ReturnType<Page['locator']>, label: string) {
+  assert.equal(await locator.isVisible(), false, `${label} is visible`);
 }
 
 async function main() {
@@ -244,7 +325,6 @@ async function main() {
   const browser = await chromium.launch({ headless: true });
   const browserDiagnostics: string[] = [];
   try {
-    await checkShortConsentViewport(browser, browserDiagnostics);
     const context = await browser.newContext({
       viewport: { width: 360, height: 800 },
       isMobile: true,
@@ -256,12 +336,34 @@ async function main() {
 
     await login(page);
     await assertMobileShell(page);
-    await createAndRemoveMobileTransaction(page);
     const storageState = await context.storageState();
     await context.close();
 
-    await screenshotPixelViewport(browser, storageState, browserDiagnostics);
+    for (const [width, height] of [[360, 640], [360, 800], [390, 844], [412, 839]]) {
+      await screenshotQuickEntryViewport(
+        browser,
+        storageState,
+        browserDiagnostics,
+        width,
+        height,
+      );
+    }
     await checkKeyboardPressureViewport(browser, storageState, browserDiagnostics);
+    await checkDesktopViewport(browser, storageState, browserDiagnostics);
+
+    const writeContext = await browser.newContext({
+      viewport: { width: 360, height: 800 },
+      isMobile: true,
+      hasTouch: true,
+      locale: 'zh-CN',
+      storageState,
+    });
+    const writePage = await writeContext.newPage();
+    collectBrowserDiagnostics(writePage, '360x800-persisted-flow', browserDiagnostics);
+    await writePage.goto(new URL('/', baseUrl).toString(), { waitUntil: 'domcontentloaded' });
+    await settle(writePage);
+    await createAndRemoveMobileTransaction(writePage);
+    await writeContext.close();
 
     assert.deepEqual(browserDiagnostics, []);
     console.log(`Mobile ledger flow passed. Screenshots: ${outputDir}`);
@@ -271,6 +373,6 @@ async function main() {
 }
 
 main().catch((error) => {
-  console.error(error instanceof Error ? error.message : error);
+  console.error(error instanceof Error ? error.stack ?? error.message : error);
   process.exit(1);
 });

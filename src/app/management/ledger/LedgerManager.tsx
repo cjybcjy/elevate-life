@@ -655,7 +655,7 @@ export default function LedgerManager() {
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-6">
+      <div className={`items-center justify-between mb-6 ${isCreateFocus ? 'hidden md:flex' : 'flex'}`}>
         <h1 className="text-2xl font-bold" style={{ color: 'var(--color-text-primary)' }}>流水管理</h1>
         <div className="flex rounded-lg bg-ledger-surface p-1">
           <button
