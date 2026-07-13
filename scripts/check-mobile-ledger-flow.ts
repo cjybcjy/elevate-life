@@ -109,7 +109,42 @@ async function openQuickEntry(page: Page) {
   await settle(page);
   const quick = page.locator('[data-mobile-quick-entry="true"]');
   await quick.waitFor({ state: 'visible' });
+  await waitForTransactionsReady(page);
   return quick;
+}
+
+async function waitForTransactionsReady(page: Page) {
+  const list = page.locator(
+    '[data-transaction-list="true"][data-transactions-ready="true"]',
+  );
+  await list.waitFor({ state: 'attached' });
+  return list;
+}
+
+function markerRows(page: Page, marker: string) {
+  return page.locator('[data-transaction-list="true"] tbody tr').filter({ hasText: marker });
+}
+
+async function waitForMarkerRowCount(page: Page, marker: string, expected: number) {
+  await page.waitForFunction(({ rowMarker, expectedCount }) => (
+    Array.from(document.querySelectorAll('[data-transaction-list="true"] tbody tr'))
+      .filter((row) => row.textContent?.includes(rowMarker)).length === expectedCount
+  ), { rowMarker: marker, expectedCount: expected });
+}
+
+async function assertPersistedTransaction(page: Page, marker: string, phase: string) {
+  await waitForTransactionsReady(page);
+  const rows = markerRows(page, marker);
+  assert.equal(await rows.count(), 1, `${phase}: expected exactly one transaction ${marker}`);
+  const cells = rows.first().locator('td');
+  assert.match(
+    (await cells.nth(1).innerText()).trim(),
+    /^¥32(?:\.0+)?$/,
+    `${phase}: persisted amount is not exactly ¥32`,
+  );
+  assert.equal((await cells.nth(2).innerText()).trim(), '餐饮', `${phase}: persisted category mismatch`);
+  assert.equal((await cells.nth(7).innerText()).trim(), marker, `${phase}: persisted note mismatch`);
+  console.log(`${phase} fields verified: amount=¥32 category=餐饮 note=${marker}`);
 }
 
 async function assertOptionsSheetFocusLoop(page: Page, quick: ReturnType<Page['locator']>) {
@@ -146,24 +181,46 @@ async function assertOptionsSheetFocusLoop(page: Page, quick: ReturnType<Page['l
 async function removeTransactionIfPresent(page: Page, marker: string) {
   await page.goto(new URL('/management/ledger', baseUrl).toString(), { waitUntil: 'domcontentloaded' });
   await settle(page);
-  const row = page.locator('[data-transaction-list="true"] tbody tr').filter({ hasText: marker });
-  if (await row.isVisible({ timeout: 5000 }).catch(() => false)) {
-    const deletionSettled = page.waitForResponse((response) => (
-      response.request().method() === 'POST' &&
-      new URL(response.url()).pathname === '/management/ledger'
-    ));
-    await row.getByRole('button', { name: '删除' }).click();
-    await deletionSettled;
-    await row.waitFor({ state: 'detached' });
+  await waitForTransactionsReady(page);
+  const rows = markerRows(page, marker);
+  const initialCount = await rows.count();
+  const uniquenessError = initialCount > 1
+    ? new Error(`cleanup found ${initialCount} transactions for unique marker ${marker}`)
+    : null;
+  const deletionErrors: Error[] = [];
+
+  let attempts = 0;
+  const maxAttempts = Math.max(initialCount * 2, 1);
+  while (await markerRows(page, marker).count() > 0 && attempts < maxAttempts) {
+    attempts += 1;
+    const beforeCount = await markerRows(page, marker).count();
+    const row = markerRows(page, marker).first();
+    try {
+      const transactionId = await row.locator('input[name="id"]').inputValue();
+      const deletionSettled = page.waitForResponse((response) => (
+        response.request().method() === 'POST' &&
+        new URL(response.url()).pathname === '/management/ledger' &&
+        response.request().postData()?.includes(transactionId) === true
+      ));
+      await row.getByRole('button', { name: '删除' }).click();
+      await deletionSettled;
+      await waitForMarkerRowCount(page, marker, beforeCount - 1);
+    } catch (error) {
+      deletionErrors.push(error instanceof Error ? error : new Error(String(error)));
+    }
   }
+
   await page.reload({ waitUntil: 'domcontentloaded' });
   await settle(page);
+  await waitForTransactionsReady(page);
   assert.equal(
-    await page.locator('[data-transaction-list="true"] tbody tr').filter({ hasText: marker }).count(),
+    await markerRows(page, marker).count(),
     0,
     `transaction ${marker} persisted after cleanup`,
   );
   console.log(`Cleanup verified after reload: ${marker}`);
+  if (deletionErrors.length > 0) throw deletionErrors[0];
+  if (uniquenessError) throw uniquenessError;
 }
 
 async function createAndRemoveMobileTransaction(page: Page) {
@@ -183,7 +240,11 @@ async function createAndRemoveMobileTransaction(page: Page) {
     await settle(page);
     quick = page.locator('[data-mobile-quick-entry="true"]');
     await quick.waitFor({ state: 'visible' });
-    assert.match(await quick.getByLabel('金额', { exact: true }).textContent() ?? '', /0/);
+    await waitForTransactionsReady(page);
+    assert.equal(
+      (await quick.getByLabel('金额', { exact: true }).textContent() ?? '').trim(),
+      '¥0',
+    );
 
     await quick.locator('[data-quick-category="餐饮"]').click();
     await assertOptionsSheetFocusLoop(page, quick);
@@ -196,11 +257,16 @@ async function createAndRemoveMobileTransaction(page: Page) {
 
     await quick.locator('[data-amount-key="3"]').click();
     await quick.locator('[data-amount-key="2"]').click();
+    const createSettled = page.waitForResponse((response) => (
+      response.request().method() === 'POST' &&
+      new URL(response.url()).pathname === '/management/ledger' &&
+      response.request().postData()?.includes(marker) === true
+    ));
     await quick.getByRole('button', { name: '确认记账' }).click();
+    await createSettled;
     await quick.getByText(/已记 ¥32(?:\.00)? · 餐饮/).waitFor({ state: 'visible' });
 
-    let row = page.locator('[data-transaction-list="true"] tbody tr').filter({ hasText: marker });
-    await row.waitFor({ state: 'visible' });
+    await assertPersistedTransaction(page, marker, 'Initial persisted row');
     await page.screenshot({
       path: resolve(outputDir, '360x800-category-first-success.png'),
       fullPage: false,
@@ -209,8 +275,7 @@ async function createAndRemoveMobileTransaction(page: Page) {
 
     await page.reload({ waitUntil: 'domcontentloaded' });
     await settle(page);
-    row = page.locator('[data-transaction-list="true"] tbody tr').filter({ hasText: marker });
-    await row.waitFor({ state: 'visible' });
+    await assertPersistedTransaction(page, marker, 'Reloaded persisted row');
     console.log(`Persistence verified after reload: ${marker}`);
   } finally {
     await removeTransactionIfPresent(page, marker);

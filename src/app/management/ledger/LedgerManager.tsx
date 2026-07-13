@@ -1058,7 +1058,11 @@ export default function LedgerManager() {
           </div>
 
           {/* Table */}
-          <div data-transaction-list="true" className="rounded-xl bg-ledger-surface overflow-hidden">
+          <div
+            data-transaction-list="true"
+            data-transactions-ready={txData !== undefined ? 'true' : 'false'}
+            className="rounded-xl bg-ledger-surface overflow-hidden"
+          >
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-ledger-bg text-left text-ledger-muted">
