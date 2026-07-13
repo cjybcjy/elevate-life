@@ -405,6 +405,15 @@ async function checkDesktopViewport(
     path: resolve(outputDir, '1440x900-ledger-create-form.png'),
     fullPage: false,
   });
+
+  await page.getByRole('button', { name: '周期交易' }).click();
+  await page.waitForURL((url) => (
+    url.pathname === '/management/ledger' &&
+    !url.searchParams.has('focus') &&
+    !url.searchParams.has('needsSource')
+  ));
+  await page.locator('#recurring-form').waitFor({ state: 'visible' });
+  console.log('Desktop query-gated tab verified: focus=create -> 周期交易 -> clean URL + recurring form');
   await context.close();
 }
 

@@ -115,6 +115,18 @@ export function resolveLedgerTabSelection(input: {
   return input.selectedTab ?? input.storedTab;
 }
 
+export function resolveLedgerTabNavigation(input: {
+  tab: 'transactions' | 'recurring';
+  queryGated: boolean;
+}) {
+  return {
+    tab: input.tab,
+    replaceHref: input.tab === 'recurring' && input.queryGated
+      ? '/management/ledger'
+      : null,
+  };
+}
+
 export function persistLedgerTemplates(
   storage: Pick<Storage, 'setItem'>,
   templates: unknown[],

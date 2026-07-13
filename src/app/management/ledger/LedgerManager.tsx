@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef, useSyncExternalStore } from 'react';
 import Link from 'next/link';
-import { useSearchParams } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { createTransaction, deleteTransaction, updateTransactionReconciled, updateTransaction } from '@/lib/actions/ledger';
 import {
   getRecurringRules,
@@ -190,6 +190,7 @@ import {
   LEDGER_TEMPLATES_KEY as TEMPLATES_KEY,
   persistLedgerTemplates,
   refreshLedgerCaches,
+  resolveLedgerTabNavigation,
   resolveLedgerTabSelection,
   withLedgerLoading,
 } from '@/lib/ledger-quick-entry';
@@ -197,6 +198,7 @@ import {
 // ... (keep all existing type definitions and utility functions above)
 
 export default function LedgerManager() {
+  const router = useRouter();
   const searchParams = useSearchParams();
   const needsSourceFromQuery = searchParams.get('needsSource') === '1';
   const isCreateFocus = searchParams.get('focus') === 'create';
@@ -217,6 +219,16 @@ export default function LedgerManager() {
     storedTab: storedLedgerTab,
     forceTransactions: needsSourceFromQuery || isCreateFocus,
   });
+
+  function selectLedgerTab(tab: LedgerTab) {
+    const decision = resolveLedgerTabNavigation({
+      tab,
+      queryGated: needsSourceFromQuery || isCreateFocus,
+    });
+    setSelectedTab(decision.tab);
+    saveLedgerTab(decision.tab);
+    if (decision.replaceHref) router.replace(decision.replaceHref, { scroll: false });
+  }
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [processingRecurring, setProcessingRecurring] = useState(false);
@@ -671,7 +683,7 @@ export default function LedgerManager() {
         <h1 className="text-2xl font-bold" style={{ color: 'var(--color-text-primary)' }}>流水管理</h1>
         <div className="flex rounded-lg bg-ledger-surface p-1">
           <button
-            onClick={() => { setSelectedTab('transactions'); saveLedgerTab('transactions'); }}
+            onClick={() => selectLedgerTab('transactions')}
             className={`px-4 py-1.5 text-sm rounded-md transition-colors ${
               activeTab === 'transactions'
                 ? 'bg-ledger-accent text-white'
@@ -681,7 +693,7 @@ export default function LedgerManager() {
             流水记录
           </button>
           <button
-            onClick={() => { setSelectedTab('recurring'); saveLedgerTab('recurring'); }}
+            onClick={() => selectLedgerTab('recurring')}
             className={`px-4 py-1.5 text-sm rounded-md transition-colors ${
               activeTab === 'recurring'
                 ? 'bg-ledger-accent text-white'

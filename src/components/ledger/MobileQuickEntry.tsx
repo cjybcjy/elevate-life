@@ -510,10 +510,15 @@ export default function MobileQuickEntry({
       <button
         type="button"
         disabled={submitting || !evaluation.valid || !budgetResolved}
+        aria-busy={submitting || !budgetResolved}
         onClick={submit}
         className="min-h-12 w-full rounded-xl bg-[var(--color-accent)] font-bold text-[var(--color-text-inverse)] disabled:opacity-50"
       >
-        {submitting ? '记账中…' : '确认记账'}
+        {submitting
+          ? '记账中…'
+          : !budgetResolved
+            ? <span role="status" aria-live="polite">预算匹配中…</span>
+            : '确认记账'}
       </button>
       <button type="button" onClick={() => setAgentOpen((open) => !open)} className="min-h-11 w-full">说一句记账</button>
       {amountError || error ? <div role="alert" className="text-sm text-ledger-danger">{amountError || error}</div> : null}

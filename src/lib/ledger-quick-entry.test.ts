@@ -355,6 +355,32 @@ test('query-gated create flow overrides a stale recurring tab selection', () => 
   }), 'recurring');
 });
 
+test('an explicit recurring-tab action clears query gates without weakening render priority', () => {
+  const resolveLedgerTabNavigation = (ledgerQuickEntry as {
+    resolveLedgerTabNavigation?: (input: {
+      tab: 'transactions' | 'recurring';
+      queryGated: boolean;
+    }) => {
+      tab: 'transactions' | 'recurring';
+      replaceHref: string | null;
+    };
+  }).resolveLedgerTabNavigation;
+  assert.equal(typeof resolveLedgerTabNavigation, 'function');
+
+  assert.deepEqual(resolveLedgerTabNavigation!({ tab: 'recurring', queryGated: true }), {
+    tab: 'recurring',
+    replaceHref: '/management/ledger',
+  });
+  assert.deepEqual(resolveLedgerTabNavigation!({ tab: 'recurring', queryGated: false }), {
+    tab: 'recurring',
+    replaceHref: null,
+  });
+  assert.deepEqual(resolveLedgerTabNavigation!({ tab: 'transactions', queryGated: true }), {
+    tab: 'transactions',
+    replaceHref: null,
+  });
+});
+
 test('template persistence reports successful localStorage writes', () => {
   const persistLedgerTemplates = (ledgerQuickEntry as {
     persistLedgerTemplates?: (
