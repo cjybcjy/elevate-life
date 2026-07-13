@@ -33,3 +33,20 @@ test('LedgerAgentQuickEntry gives every interactive control a 44px touch target'
   assert.match(markup, /class="[^"]*min-h-11[^"]*"[^>]*>生成草稿<\/button>/);
   assert.match(markup, /class="[^"]*min-h-11[^"]*"[^>]*>今天午饭 32 用现金<\/button>/);
 });
+
+test('LedgerAgentQuickEntry supports embedded quick-entry copy', () => {
+  const markup = renderToString(
+    <LedgerAgentQuickEntry
+      categories={[]}
+      assets={[]}
+      onApply={() => {}}
+      title="说一句记账"
+      actionLabel="识别并填入"
+      embedded
+    />,
+  );
+
+  assert.match(markup, />说一句记账<\/label>/);
+  assert.match(markup, />识别并填入<\/button>/);
+  assert.doesNotMatch(markup, /<section class="mb-4/);
+});

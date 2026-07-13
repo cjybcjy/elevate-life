@@ -8,6 +8,9 @@ type LedgerAgentQuickEntryProps = {
   assets: Array<{ id: string; name: string }>;
   onApply: (draft: LedgerAgentDraft) => void;
   examples?: string[];
+  title?: string;
+  actionLabel?: string;
+  embedded?: boolean;
 };
 
 const defaultExamples = [
@@ -27,6 +30,9 @@ export default function LedgerAgentQuickEntry({
   assets,
   onApply,
   examples = defaultExamples,
+  title = 'Agent 记一笔',
+  actionLabel = '生成草稿',
+  embedded = false,
 }: LedgerAgentQuickEntryProps) {
   const [input, setInput] = useState('');
   const [message, setMessage] = useState('');
@@ -53,11 +59,11 @@ export default function LedgerAgentQuickEntry({
       : 'text-ledger-muted';
 
   return (
-    <section className="mb-4 rounded-lg border border-ledger-primary/15 bg-ledger-surface px-3 py-3">
+    <section className={`${embedded ? '' : 'mb-4 '}rounded-lg border border-ledger-primary/15 bg-ledger-surface px-3 py-3`}>
       <div className="flex flex-col gap-2 md:flex-row md:items-end">
         <div className="min-w-0 flex-1">
           <label className="mb-1 block text-xs font-semibold text-ledger-muted" htmlFor="ledger-agent-input">
-            Agent 记一笔
+            {title}
           </label>
           <input
             id="ledger-agent-input"
@@ -84,7 +90,7 @@ export default function LedgerAgentQuickEntry({
           disabled={!input.trim()}
           className="min-h-11 rounded-md bg-ledger-accent px-4 text-sm font-medium text-[var(--color-text-inverse)] transition-opacity hover:opacity-90 disabled:opacity-50"
         >
-          生成草稿
+          {actionLabel}
         </button>
       </div>
       {message && (
