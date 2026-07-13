@@ -43,6 +43,7 @@
     "release:smoke": "npx tsx scripts/smoke-test-store-deployment.ts",
     "review:check": "npx tsx scripts/check-review-account-readiness.ts",
     "review:seed": "npx tsx prisma/seed.ts",
+    "ledger:categories:backfill": "npx tsx scripts/backfill-ledger-categories.ts",
     "screenshots:check": "npx tsx scripts/check-store-screenshot-readiness.ts",
     "screenshots:store": "npx tsx scripts/capture-store-screenshots.ts"
   },

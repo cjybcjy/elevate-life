@@ -1,5 +1,6 @@
 import { loadEnvConfig } from '@next/env';
 import bcrypt from 'bcrypt';
+import { LEDGER_CATEGORY_PRESETS, ledgerCategoryKey } from '../src/lib/ledger-category-presets';
 
 loadEnvConfig(process.cwd());
 
@@ -54,21 +55,12 @@ async function main() {
 
   // Create categories
   const categories = await prisma.category.createMany({
-    data: [
-      { name: '工资', type: 'INCOME', icon: '薪', color: '#10b981', userId: user.id },
-      { name: '理财收益', type: 'INCOME', icon: '收', color: '#14b8a6', userId: user.id },
-      { name: '餐饮', type: 'EXPENSE', icon: '餐', color: '#ef4444', isEssential: true, userId: user.id },
-      { name: '房租', type: 'EXPENSE', icon: '住', color: '#f59e0b', isEssential: true, userId: user.id },
-      { name: '交通', type: 'EXPENSE', icon: '行', color: '#3b82f6', userId: user.id },
-      { name: '医疗', type: 'EXPENSE', icon: '医', color: '#ef4444', userId: user.id },
-      { name: '固定支出', type: 'EXPENSE', icon: '固', color: '#f59e0b', isEssential: true, userId: user.id },
-      { name: '提升品质', type: 'EXPENSE', icon: '品', color: '#8b5cf6', userId: user.id },
-      { name: '旅行', type: 'EXPENSE', icon: '旅', color: '#06b6d4', userId: user.id },
-      { name: '人情往来', type: 'EXPENSE', icon: '礼', color: '#ec4899', userId: user.id },
-    ],
+    data: LEDGER_CATEGORY_PRESETS.map((category) => ({ ...category, userId: user.id })),
   });
   const categoryList = await prisma.category.findMany({ where: { userId: user.id } });
-  const categoryByName = new Map(categoryList.map((category) => [category.name, category.id]));
+  const categoryByKey = new Map(
+    categoryList.map((category) => [ledgerCategoryKey(category.type, category.name), category.id]),
+  );
 
   // Create assets (plain text balances for demo)
   const assets = await prisma.asset.createMany({
@@ -116,7 +108,7 @@ async function main() {
     data: [
       {
         name: '餐饮预算',
-        categoryId: categoryByName.get('餐饮'),
+        categoryId: categoryByKey.get(ledgerCategoryKey('EXPENSE', '餐饮')),
         amount: '5000.0000',
         startDate: currentMonthStart,
         endDate: currentMonthEnd,
@@ -124,7 +116,7 @@ async function main() {
       },
       {
         name: '交通预算',
-        categoryId: categoryByName.get('交通'),
+        categoryId: categoryByKey.get(ledgerCategoryKey('EXPENSE', '交通')),
         amount: '1600.0000',
         startDate: currentMonthStart,
         endDate: currentMonthEnd,
@@ -132,7 +124,7 @@ async function main() {
       },
       {
         name: '固定支出预算',
-        categoryId: categoryByName.get('固定支出'),
+        categoryId: categoryByKey.get(ledgerCategoryKey('EXPENSE', '固定支出')),
         amount: '9800.0000',
         startDate: currentMonthStart,
         endDate: currentMonthEnd,
@@ -148,7 +140,7 @@ async function main() {
       {
         type: 'INCOME',
         amount: '32000.0000',
-        categoryId: categoryByName.get('工资'),
+        categoryId: categoryByKey.get(ledgerCategoryKey('INCOME', '工资')),
         toAccountId: assetByName.get('招商银行卡'),
         description: '6月工资入账',
         occurredAt: daysAgo(12),
@@ -157,7 +149,7 @@ async function main() {
       {
         type: 'INCOME',
         amount: '680.0000',
-        categoryId: categoryByName.get('理财收益'),
+        categoryId: categoryByKey.get(ledgerCategoryKey('INCOME', '理财收益')),
         toAccountId: assetByName.get('货币基金'),
         description: '货币基金收益',
         occurredAt: daysAgo(6),
@@ -166,7 +158,7 @@ async function main() {
       {
         type: 'EXPENSE',
         amount: '186.5000',
-        categoryId: categoryByName.get('餐饮'),
+        categoryId: categoryByKey.get(ledgerCategoryKey('EXPENSE', '餐饮')),
         budgetId: budgetByName.get('餐饮预算'),
         fromAccountId: assetByName.get('招商银行卡'),
         description: '家庭晚餐',
@@ -177,7 +169,7 @@ async function main() {
       {
         type: 'EXPENSE',
         amount: '420.0000',
-        categoryId: categoryByName.get('交通'),
+        categoryId: categoryByKey.get(ledgerCategoryKey('EXPENSE', '交通')),
         budgetId: budgetByName.get('交通预算'),
         fromAccountId: assetByName.get('招商银行卡'),
         description: '通勤充值',
@@ -187,7 +179,7 @@ async function main() {
       {
         type: 'EXPENSE',
         amount: '9433.0000',
-        categoryId: categoryByName.get('固定支出'),
+        categoryId: categoryByKey.get(ledgerCategoryKey('EXPENSE', '固定支出')),
         budgetId: budgetByName.get('固定支出预算'),
         fromAccountId: assetByName.get('招商银行卡'),
         liabilityId: liability.id,
@@ -208,7 +200,7 @@ async function main() {
       {
         type: 'EXPENSE',
         amount: '268.0000',
-        categoryId: categoryByName.get('提升品质'),
+        categoryId: categoryByKey.get(ledgerCategoryKey('EXPENSE', '提升品质')),
         fromAccountId: null,
         description: '待补来源账户的家庭采购',
         occurredAt: daysAgo(1),
