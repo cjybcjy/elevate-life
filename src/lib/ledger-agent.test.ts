@@ -120,3 +120,17 @@ test('buildLedgerAgentDraft does not treat a full-year numeric date as the amoun
     assert.equal(result.draft?.amount, '6', input);
   }
 });
+
+test('buildLedgerAgentDraft treats 用现金 as an explicit alias for 现金备用金', async () => {
+  const { buildLedgerAgentDraft } = await loadSubject();
+  assert.equal(typeof buildLedgerAgentDraft, 'function');
+  const buildDraft = buildLedgerAgentDraft as NonNullable<LedgerAgentModule['buildLedgerAgentDraft']>;
+
+  const result = buildDraft('今天午饭 32 用现金', {
+    ...context,
+    assets: [{ id: 'asset-cash-reserve', name: '现金备用金' }],
+  });
+
+  assert.equal(result.success, true);
+  assert.equal(result.draft?.fromAccountId, 'asset-cash-reserve');
+});

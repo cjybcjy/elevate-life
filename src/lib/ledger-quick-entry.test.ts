@@ -238,3 +238,166 @@ test('budget remaining lookup returns only the matching successful item', async 
     success: false,
   })), undefined);
 });
+
+test('budget resolution uses type, category, and date as one stable request key', () => {
+  const buildQuickEntryBudgetKey = (ledgerQuickEntry as {
+    buildQuickEntryBudgetKey?: (type: string, categoryId: string, occurredAt: string) => string;
+  }).buildQuickEntryBudgetKey;
+  assert.equal(typeof buildQuickEntryBudgetKey, 'function');
+
+  assert.equal(
+    buildQuickEntryBudgetKey!('EXPENSE', 'food', '2026-07-13'),
+    'EXPENSE:food:2026-07-13',
+  );
+  assert.equal(buildQuickEntryBudgetKey!('TRANSFER', 'food', '2026-07-13'), '');
+  assert.equal(buildQuickEntryBudgetKey!('EXPENSE', '', '2026-07-13'), '');
+});
+
+test('a different budget key clears stale options and remains unresolved', () => {
+  const beginQuickEntryBudgetResolution = (ledgerQuickEntry as {
+    beginQuickEntryBudgetResolution?: (
+      state: { key: string; resolvedKey: string; options: Array<{ id: string; name: string }>; budgetId: string },
+      key: string,
+    ) => { key: string; resolvedKey: string; options: Array<{ id: string; name: string }>; budgetId: string };
+  }).beginQuickEntryBudgetResolution;
+  const isQuickEntryBudgetResolved = (ledgerQuickEntry as {
+    isQuickEntryBudgetResolved?: (key: string, resolvedKey: string) => boolean;
+  }).isQuickEntryBudgetResolved;
+  assert.equal(typeof beginQuickEntryBudgetResolution, 'function');
+  assert.equal(typeof isQuickEntryBudgetResolved, 'function');
+
+  const next = beginQuickEntryBudgetResolution!({
+    key: 'EXPENSE:food:2026-07-13',
+    resolvedKey: 'EXPENSE:food:2026-07-13',
+    options: [{ id: 'food-budget', name: '餐饮预算' }],
+    budgetId: 'food-budget',
+  }, 'EXPENSE:food:2026-07-14');
+
+  assert.deepEqual(next, {
+    key: 'EXPENSE:food:2026-07-14',
+    resolvedKey: '',
+    options: [],
+    budgetId: '',
+  });
+  assert.equal(isQuickEntryBudgetResolved!('EXPENSE:food:2026-07-14', next.resolvedKey), false);
+});
+
+test('the same resolved budget key preserves selection and skips a redundant reset', () => {
+  const beginQuickEntryBudgetResolution = (ledgerQuickEntry as {
+    beginQuickEntryBudgetResolution?: <T>(state: T, key: string) => T;
+  }).beginQuickEntryBudgetResolution;
+  assert.equal(typeof beginQuickEntryBudgetResolution, 'function');
+
+  const resolved = {
+    key: 'EXPENSE:food:2026-07-13',
+    resolvedKey: 'EXPENSE:food:2026-07-13',
+    options: [{ id: 'food-budget', name: '餐饮预算' }],
+    budgetId: 'food-budget',
+  };
+  assert.equal(beginQuickEntryBudgetResolution!(resolved, resolved.key), resolved);
+});
+
+test('only the current budget request may resolve state and auto-select one result', () => {
+  const completeQuickEntryBudgetResolution = (ledgerQuickEntry as {
+    completeQuickEntryBudgetResolution?: (
+      state: { key: string; resolvedKey: string; options: Array<{ id: string; name: string }>; budgetId: string },
+      key: string,
+      options: Array<{ id: string; name: string }>,
+    ) => { key: string; resolvedKey: string; options: Array<{ id: string; name: string }>; budgetId: string };
+  }).completeQuickEntryBudgetResolution;
+  assert.equal(typeof completeQuickEntryBudgetResolution, 'function');
+
+  const pending = {
+    key: 'EXPENSE:food:2026-07-14',
+    resolvedKey: '',
+    options: [] as Array<{ id: string; name: string }>,
+    budgetId: '',
+  };
+  const stale = completeQuickEntryBudgetResolution!(pending, 'EXPENSE:food:2026-07-13', [
+    { id: 'stale-budget', name: '旧预算' },
+  ]);
+  assert.equal(stale, pending);
+
+  assert.deepEqual(completeQuickEntryBudgetResolution!(pending, pending.key, [
+    { id: 'food-budget', name: '餐饮预算' },
+  ]), {
+    key: pending.key,
+    resolvedKey: pending.key,
+    options: [{ id: 'food-budget', name: '餐饮预算' }],
+    budgetId: 'food-budget',
+  });
+  assert.equal(completeQuickEntryBudgetResolution!(pending, pending.key, []).budgetId, '');
+  assert.equal(completeQuickEntryBudgetResolution!(pending, pending.key, [
+    { id: 'one', name: '预算一' },
+    { id: 'two', name: '预算二' },
+  ]).budgetId, '');
+});
+
+test('query-gated create flow overrides a stale recurring tab selection', () => {
+  const resolveLedgerTabSelection = (ledgerQuickEntry as {
+    resolveLedgerTabSelection?: (input: {
+      selectedTab: 'transactions' | 'recurring' | null;
+      storedTab: 'transactions' | 'recurring';
+      forceTransactions: boolean;
+    }) => 'transactions' | 'recurring';
+  }).resolveLedgerTabSelection;
+  assert.equal(typeof resolveLedgerTabSelection, 'function');
+
+  assert.equal(resolveLedgerTabSelection!({
+    selectedTab: 'recurring',
+    storedTab: 'recurring',
+    forceTransactions: true,
+  }), 'transactions');
+  assert.equal(resolveLedgerTabSelection!({
+    selectedTab: 'recurring',
+    storedTab: 'transactions',
+    forceTransactions: false,
+  }), 'recurring');
+});
+
+test('template persistence reports successful localStorage writes', () => {
+  const persistLedgerTemplates = (ledgerQuickEntry as {
+    persistLedgerTemplates?: (
+      storage: { setItem: (key: string, value: string) => void },
+      templates: unknown[],
+    ) => boolean;
+  }).persistLedgerTemplates;
+  assert.equal(typeof persistLedgerTemplates, 'function');
+
+  const writes: Array<[string, string]> = [];
+  const success = persistLedgerTemplates!({
+    setItem(key, value) {
+      writes.push([key, value]);
+    },
+  }, [{ name: '午饭模板' }]);
+
+  assert.equal(success, true);
+  assert.deepEqual(writes, [['ledger-templates', '[{"name":"午饭模板"}]']]);
+});
+
+test('template persistence returns false when localStorage rejects the write', () => {
+  const persistLedgerTemplates = (ledgerQuickEntry as {
+    persistLedgerTemplates?: (
+      storage: { setItem: (key: string, value: string) => void },
+      templates: unknown[],
+    ) => boolean;
+  }).persistLedgerTemplates;
+  assert.equal(typeof persistLedgerTemplates, 'function');
+
+  assert.equal(persistLedgerTemplates!({
+    setItem() {
+      throw new Error('quota exceeded');
+    },
+  }, [{ name: '午饭模板' }]), false);
+});
+
+test('session-expired matching covers unauthorized and encrypted-session failures only', () => {
+  const isSessionExpiredError = (ledgerQuickEntry as {
+    isSessionExpiredError?: (error: unknown) => boolean;
+  }).isSessionExpiredError;
+  assert.equal(typeof isSessionExpiredError, 'function');
+
+  assert.equal(isSessionExpiredError!('Unauthorized'), true);
+  assert.equal(isSessionExpiredError!('会话密钥已过期，请退出重新登录'), true);
+  assert.equal(isSessionExpiredError!('请选择分类。'), false);
+});

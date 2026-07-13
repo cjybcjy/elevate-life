@@ -143,8 +143,27 @@ async function assertPersistedTransaction(page: Page, marker: string, phase: str
     `${phase}: persisted amount is not exactly ¥32`,
   );
   assert.equal((await cells.nth(2).innerText()).trim(), '餐饮', `${phase}: persisted category mismatch`);
+  assert.equal((await cells.nth(3).innerText()).trim(), '餐饮预算', `${phase}: persisted budget mismatch`);
   assert.equal((await cells.nth(7).innerText()).trim(), marker, `${phase}: persisted note mismatch`);
-  console.log(`${phase} fields verified: amount=¥32 category=餐饮 note=${marker}`);
+  console.log(`${phase} fields verified: amount=¥32 category=餐饮 budget=餐饮预算 note=${marker}`);
+}
+
+async function assertQueryGatedQuickEntryFlow(page: Page) {
+  await page.goto(new URL('/management/ledger', baseUrl).toString(), { waitUntil: 'domcontentloaded' });
+  await settle(page);
+  await waitForTransactionsReady(page);
+  await expectHidden(page.locator('[data-mobile-quick-entry="true"]'), 'ordinary mobile quick entry');
+  await expectHidden(page.locator('[data-ledger-create-form="true"]'), 'ordinary mobile full create form');
+  assert.equal(await page.locator('[data-transaction-list="true"]').isVisible(), true);
+
+  await page.getByRole('button', { name: '周期交易' }).click();
+  await page.locator('#recurring-form').waitFor({ state: 'visible' });
+  await page.getByRole('link', { name: /记一笔/ }).click();
+  await page.waitForURL((url) => (
+    url.pathname === '/management/ledger' && url.searchParams.get('focus') === 'create'
+  ));
+  await page.locator('[data-mobile-quick-entry="true"]').waitFor({ state: 'visible' });
+  console.log('Query-gated flow verified: ordinary ledger -> recurring -> bottom 记一笔 -> quick entry');
 }
 
 async function assertOptionsSheetFocusLoop(page: Page, quick: ReturnType<Page['locator']>) {
@@ -178,13 +197,16 @@ async function assertOptionsSheetFocusLoop(page: Page, quick: ReturnType<Page['l
   );
 }
 
-async function removeTransactionIfPresent(page: Page, marker: string) {
+async function removeTransactionIfPresent(page: Page, marker: string, requireUnique = true) {
   await page.goto(new URL('/management/ledger', baseUrl).toString(), { waitUntil: 'domcontentloaded' });
   await settle(page);
+  if (await page.locator('[data-transaction-list="true"]').count() === 0) {
+    await page.getByRole('button', { name: '流水记录' }).click();
+  }
   await waitForTransactionsReady(page);
   const rows = markerRows(page, marker);
   const initialCount = await rows.count();
-  const uniquenessError = initialCount > 1
+  const uniquenessError = requireUnique && initialCount > 1
     ? new Error(`cleanup found ${initialCount} transactions for unique marker ${marker}`)
     : null;
   const deletionErrors: Error[] = [];
@@ -235,6 +257,11 @@ async function createAndRemoveMobileTransaction(page: Page) {
     await quick.locator('#ledger-agent-input').fill('今天午饭 32 用现金');
     await quick.getByRole('button', { name: '识别并填入' }).click();
     assert.match(await quick.getByLabel('金额', { exact: true }).textContent() ?? '', /32/);
+    await quick.getByRole('button', { name: '更多选项' }).click();
+    const agentSheet = page.getByRole('dialog', { name: '更多记账选项' });
+    assert.equal((await agentSheet.getByLabel('来源账户').locator('option:checked').innerText()).trim(), '现金备用金');
+    await agentSheet.getByRole('button', { name: '完成' }).click();
+    await agentSheet.waitFor({ state: 'hidden' });
 
     await page.reload({ waitUntil: 'domcontentloaded' });
     await settle(page);
@@ -264,7 +291,7 @@ async function createAndRemoveMobileTransaction(page: Page) {
     ));
     await quick.getByRole('button', { name: '确认记账' }).click();
     await createSettled;
-    await quick.getByText(/已记 ¥32(?:\.00)? · 餐饮/).waitFor({ state: 'visible' });
+    await quick.getByText(/已记 ¥32(?:\.00)? · 餐饮预算还剩/).waitFor({ state: 'visible' });
 
     await assertPersistedTransaction(page, marker, 'Initial persisted row');
     await page.screenshot({
@@ -427,6 +454,8 @@ async function main() {
     collectBrowserDiagnostics(writePage, '360x800-persisted-flow', browserDiagnostics);
     await writePage.goto(new URL('/', baseUrl).toString(), { waitUntil: 'domcontentloaded' });
     await settle(writePage);
+    await removeTransactionIfPresent(writePage, '手机极速记账-', false);
+    await assertQueryGatedQuickEntryFlow(writePage);
     await createAndRemoveMobileTransaction(writePage);
     await writeContext.close();
 

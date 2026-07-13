@@ -38,6 +38,7 @@ const CATEGORY_KEYWORDS: Record<string, string[]> = {
 };
 
 const ASSET_ALIASES: Record<string, string> = {
+  现金: '现金备用金',
   招行: '招商',
   工行: '工商',
   建行: '建设',

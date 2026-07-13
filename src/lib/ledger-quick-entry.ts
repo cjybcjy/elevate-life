@@ -53,6 +53,13 @@ export async function withLedgerLoading<T>(
 
 export type QuickEntryType = 'EXPENSE' | 'INCOME' | 'TRANSFER';
 export type QuickEntryCategory = { id: string; name: string; type?: string | null };
+export type QuickEntryBudgetOption = { id: string; name: string };
+export type QuickEntryBudgetResolution = {
+  key: string;
+  resolvedKey: string;
+  options: QuickEntryBudgetOption[];
+  budgetId: string;
+};
 export type AmountKey = '0' | '1' | '2' | '3' | '4' | '5' | '6' | '7' | '8' | '9' | '00' | '.' | '+' | '-' | 'backspace';
 
 export type QuickEntryPreferences = {
@@ -61,6 +68,70 @@ export type QuickEntryPreferences = {
 };
 
 export const QUICK_ENTRY_PREFERENCES_KEY = 'ledger-mobile-quick-entry-preferences-v1';
+export const LEDGER_TEMPLATES_KEY = 'ledger-templates';
+
+export function buildQuickEntryBudgetKey(
+  type: string,
+  categoryId: string,
+  occurredAt: string,
+) {
+  return type !== 'TRANSFER' && categoryId && occurredAt
+    ? `${type}:${categoryId}:${occurredAt}`
+    : '';
+}
+
+export function beginQuickEntryBudgetResolution(
+  state: QuickEntryBudgetResolution,
+  key: string,
+): QuickEntryBudgetResolution {
+  if (state.key === key) return state;
+  return { key, resolvedKey: '', options: [], budgetId: '' };
+}
+
+export function completeQuickEntryBudgetResolution(
+  state: QuickEntryBudgetResolution,
+  key: string,
+  options: QuickEntryBudgetOption[],
+): QuickEntryBudgetResolution {
+  if (state.key !== key) return state;
+  return {
+    key,
+    resolvedKey: key,
+    options,
+    budgetId: options.length === 1 ? options[0].id : '',
+  };
+}
+
+export function isQuickEntryBudgetResolved(key: string, resolvedKey: string) {
+  return !key || key === resolvedKey;
+}
+
+export function resolveLedgerTabSelection(input: {
+  selectedTab: 'transactions' | 'recurring' | null;
+  storedTab: 'transactions' | 'recurring';
+  forceTransactions: boolean;
+}) {
+  if (input.forceTransactions) return 'transactions';
+  return input.selectedTab ?? input.storedTab;
+}
+
+export function persistLedgerTemplates(
+  storage: Pick<Storage, 'setItem'>,
+  templates: unknown[],
+) {
+  try {
+    storage.setItem(LEDGER_TEMPLATES_KEY, JSON.stringify(templates));
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+export function isSessionExpiredError(error: unknown) {
+  const message = error instanceof Error ? error.message : error;
+  return typeof message === 'string'
+    && (message === 'Unauthorized' || message.includes('会话密钥'));
+}
 
 export function partitionQuickEntryCategories(
   categories: QuickEntryCategory[],

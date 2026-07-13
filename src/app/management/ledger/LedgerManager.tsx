@@ -41,7 +41,6 @@ interface RecurringRule {
 
 type LedgerTab = 'transactions' | 'recurring';
 
-const TEMPLATES_KEY = 'ledger-templates';
 const LEDGER_TAB_KEY = 'ledger-tab';
 const LEDGER_TAB_CHANGED_EVENT = 'ledger-tab-changed';
 const TEMPLATES_CHANGED_EVENT = 'ledger-templates-changed';
@@ -128,12 +127,9 @@ function readTemplatesSnapshot(): Template[] {
 }
 
 function saveTemplates(templates: Template[]) {
-  try {
-    localStorage.setItem(TEMPLATES_KEY, JSON.stringify(templates));
-    window.dispatchEvent(new Event(TEMPLATES_CHANGED_EVENT));
-  } catch {
-    // localStorage full or unavailable
-  }
+  if (!persistLedgerTemplates(localStorage, templates)) return false;
+  window.dispatchEvent(new Event(TEMPLATES_CHANGED_EVENT));
+  return true;
 }
 
 function subscribeTemplates(callback: () => void) {
@@ -190,7 +186,11 @@ import MobileQuickEntry, {
 import {
   buildQuickEntryFeedback,
   getQuickEntryBudgetRemainingSafely,
+  isSessionExpiredError,
+  LEDGER_TEMPLATES_KEY as TEMPLATES_KEY,
+  persistLedgerTemplates,
   refreshLedgerCaches,
+  resolveLedgerTabSelection,
   withLedgerLoading,
 } from '@/lib/ledger-quick-entry';
 
@@ -212,7 +212,11 @@ export default function LedgerManager() {
   const storedLedgerTab = useSyncExternalStore(subscribeLedgerTab, readLedgerTabSnapshot, () => TRANSACTIONS_TAB);
   const templates = useSyncExternalStore(subscribeTemplates, readTemplatesSnapshot, () => emptyTemplates);
   const [selectedTab, setSelectedTab] = useState<LedgerTab | null>(null);
-  const activeTab = selectedTab ?? (needsSourceFromQuery || isCreateFocus ? TRANSACTIONS_TAB : storedLedgerTab);
+  const activeTab = resolveLedgerTabSelection({
+    selectedTab,
+    storedTab: storedLedgerTab,
+    forceTransactions: needsSourceFromQuery || isCreateFocus,
+  });
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [processingRecurring, setProcessingRecurring] = useState(false);
@@ -389,7 +393,7 @@ export default function LedgerManager() {
         });
         toast.success('已记账');
         await refreshLedgerCaches(mutate);
-      } else if (result.error?.includes('会话密钥')) {
+      } else if (isSessionExpiredError(result.error)) {
         window.location.href = '/login';
       } else {
         setError(result.error || '创建失败');
@@ -410,11 +414,12 @@ export default function LedgerManager() {
       description: values.description || undefined,
     });
     if (!result.success) {
-      if (result.error?.includes('会话密钥')) {
+      const resultError = result.error || '创建失败';
+      if (isSessionExpiredError(resultError)) {
         window.location.href = '/login';
-        return { success: false, error: result.error, sessionExpired: true };
+        return { success: false, error: resultError, sessionExpired: true };
       }
-      return { success: false, error: result.error || '创建失败' };
+      return { success: false, error: resultError };
     }
 
     await refreshLedgerCaches(mutate);
@@ -433,6 +438,13 @@ export default function LedgerManager() {
     toast.success(feedback);
     return { success: true, feedback };
   }
+
+  const loadQuickEntryBudgets = useCallback(async (date: string, categoryId: string) => {
+    const result = await getBudgetsForCategory(date, categoryId);
+    return result.success
+      ? (result.data ?? []).map(({ id, name }) => ({ id, name }))
+      : [];
+  }, []);
 
   async function handleDelete(formData: FormData) {
     setError('');
@@ -736,15 +748,10 @@ export default function LedgerManager() {
                 assets={assets}
                 categoriesReady={catData !== undefined}
                 assetsReady={assetData !== undefined}
-                loadBudgets={async (date, categoryId) => {
-                  const result = await getBudgetsForCategory(date, categoryId);
-                  return result.success
-                    ? (result.data ?? []).map(({ id, name }) => ({ id, name }))
-                    : [];
-                }}
+                loadBudgets={loadQuickEntryBudgets}
                 onSubmit={submitMobileQuickEntry}
                 onSaveTemplate={(name, values) => {
-                  saveTemplates([
+                  const saved = saveTemplates([
                     ...templates.filter((template) => template.name !== name),
                     {
                       name,
@@ -756,6 +763,7 @@ export default function LedgerManager() {
                       description: values.description,
                     },
                   ]);
+                  if (!saved) throw new Error('template persistence failed');
                 }}
               />
             </section>

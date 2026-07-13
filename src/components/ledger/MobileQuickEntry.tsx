@@ -4,13 +4,18 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import type { LedgerAgentDraft } from '@/lib/ledger-agent';
 import {
   applyAmountKey,
+  beginQuickEntryBudgetResolution,
   buildLedgerCreateFormValues,
+  buildQuickEntryBudgetKey,
+  completeQuickEntryBudgetResolution,
   evaluateAmountExpression,
+  isQuickEntryBudgetResolved,
   parseQuickEntryPreferences,
   partitionQuickEntryCategories,
   QUICK_ENTRY_PREFERENCES_KEY,
   serializeQuickEntryPreferences,
   type QuickEntryCategory,
+  type QuickEntryBudgetResolution,
   type QuickEntryPreferences,
   type QuickEntryType,
 } from '@/lib/ledger-quick-entry';
@@ -216,8 +221,12 @@ export default function MobileQuickEntry({
   const [expression, setExpression] = useState('');
   const [currency, setCurrency] = useState('CNY');
   const [categoryId, setCategoryId] = useState(() => firstCategory(categories, 'EXPENSE'));
-  const [budgetId, setBudgetId] = useState('');
-  const [budgets, setBudgets] = useState<QuickEntryBudgetOption[]>([]);
+  const [budgetResolution, setBudgetResolution] = useState<QuickEntryBudgetResolution>({
+    key: '',
+    resolvedKey: '',
+    options: [],
+    budgetId: '',
+  });
   const [fromAccountId, setFromAccountId] = useState('');
   const [toAccountId, setToAccountId] = useState('');
   const [description, setDescription] = useState('');
@@ -239,6 +248,11 @@ export default function MobileQuickEntry({
 
   const evaluation = evaluateAmountExpression(expression);
   const amountError = getQuickEntryAmountError(expression);
+  const budgetKey = buildQuickEntryBudgetKey(type, categoryId, occurredAt);
+  const currentBudgetResolution = beginQuickEntryBudgetResolution(budgetResolution, budgetKey);
+  const budgets = currentBudgetResolution.options;
+  const budgetId = currentBudgetResolution.budgetId;
+  const budgetResolved = isQuickEntryBudgetResolved(budgetKey, currentBudgetResolution.resolvedKey);
   const categorySections = useMemo(
     () => partitionQuickEntryCategories(categories, type === 'INCOME' ? 'INCOME' : 'EXPENSE'),
     [categories, type],
@@ -295,41 +309,45 @@ export default function MobileQuickEntry({
 
   useEffect(() => {
     const requestId = ++budgetRequestRef.current;
-    if (type === 'TRANSFER' || !categoryId || !occurredAt) return;
+    if (!budgetKey) return;
 
     let active = true;
     void loadBudgets(occurredAt, categoryId)
       .then((options) => {
         if (!active || requestId !== budgetRequestRef.current) return;
-        setBudgets(options);
-        setBudgetId(resolveQuickEntryBudgetId(options));
+        setBudgetResolution((current) => (
+          completeQuickEntryBudgetResolution(
+            beginQuickEntryBudgetResolution(current, budgetKey),
+            budgetKey,
+            options,
+          )
+        ));
       })
       .catch(() => {
         if (!active || requestId !== budgetRequestRef.current) return;
-        setBudgets([]);
-        setBudgetId('');
+        setBudgetResolution((current) => (
+          completeQuickEntryBudgetResolution(
+            beginQuickEntryBudgetResolution(current, budgetKey),
+            budgetKey,
+            [],
+          )
+        ));
       });
 
     return () => {
       active = false;
     };
-  }, [categoryId, loadBudgets, occurredAt, type]);
+  }, [budgetKey, categoryId, loadBudgets, occurredAt]);
 
   function clearMessage() {
     setError('');
     setFeedback('');
   }
 
-  function invalidateBudgets() {
-    budgetRequestRef.current += 1;
-    setBudgets([]);
-    setBudgetId('');
-  }
-
   function selectType(nextType: QuickEntryType) {
     clearMessage();
+    if (nextType === type) return;
     setType(nextType);
-    invalidateBudgets();
 
     if (nextType === 'TRANSFER') {
       setCategoryId('');
@@ -351,7 +369,6 @@ export default function MobileQuickEntry({
 
   function selectCategory(nextCategoryId: string) {
     clearMessage();
-    invalidateBudgets();
     setCategoryId(nextCategoryId);
   }
 
@@ -363,7 +380,6 @@ export default function MobileQuickEntry({
     setExpression(values.amount);
     setCurrency(values.currency);
     setCategoryId(nextType === 'TRANSFER' ? '' : values.categoryId);
-    invalidateBudgets();
     setFromAccountId(values.fromAccountId);
     setToAccountId(values.toAccountId);
     setDescription(values.description);
@@ -395,6 +411,10 @@ export default function MobileQuickEntry({
     }
     if (type !== 'TRANSFER' && !categoryId) {
       setError('请选择分类。');
+      return;
+    }
+    if (!budgetResolved) {
+      setError('正在匹配预算，请稍候。');
       return;
     }
     if (type === 'TRANSFER' && (!fromAccountId || !toAccountId)) {
@@ -489,7 +509,7 @@ export default function MobileQuickEntry({
       <button type="button" onClick={() => setOptionsOpen(true)} className="min-h-11 w-full">更多选项</button>
       <button
         type="button"
-        disabled={submitting || !evaluation.valid}
+        disabled={submitting || !evaluation.valid || !budgetResolved}
         onClick={submit}
         className="min-h-12 w-full rounded-xl bg-[var(--color-accent)] font-bold text-[var(--color-text-inverse)] disabled:opacity-50"
       >
@@ -527,7 +547,12 @@ export default function MobileQuickEntry({
             </select>
           </label>
           <label className="block space-y-1">预算
-            <select aria-label="预算" value={budgetId} onChange={(event) => setBudgetId(event.target.value)} className={fieldClass}>
+            <select aria-label="预算" value={budgetId} onChange={(event) => {
+              const nextBudgetId = event.target.value;
+              setBudgetResolution((current) => (
+                current.key === budgetKey ? { ...current, budgetId: nextBudgetId } : current
+              ));
+            }} className={fieldClass}>
               <option value="">不关联预算</option>{budgets.map((budget) => <option key={budget.id} value={budget.id}>{budget.name}</option>)}
             </select>
           </label>
@@ -543,7 +568,6 @@ export default function MobileQuickEntry({
           </label>
           <label className="block space-y-1">日期
             <input aria-label="日期" type="date" value={occurredAt} onChange={(event) => {
-              invalidateBudgets();
               setOccurredAt(event.target.value);
             }} className={fieldClass} />
           </label>
