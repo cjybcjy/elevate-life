@@ -674,7 +674,7 @@ export default function AmountKeypad({ onKey }: { onKey: (key: AmountKey) => voi
 
 - [ ] **Step 6: Implement an accessible reusable bottom sheet**
 
-Create `src/components/ledger/QuickEntryMoreSheet.tsx` as a Client Component. Mirror the existing `MobileNavigationView` focus containment: focus the panel after opening, close on Escape/backdrop, keep Tab inside the dialog, and restore focus to the trigger supplied through `returnFocusRef`. The rendered shell must be:
+Create `src/components/ledger/QuickEntryMoreSheet.tsx` as a Client Component. Mirror the existing `MobileNavigationView` focus containment: remember `document.activeElement` when opening, focus the panel after opening, close on Escape/backdrop, keep Tab inside the dialog, and restore focus to the remembered element after closing. The rendered shell must be:
 
 ```tsx
 <>
@@ -1131,9 +1131,12 @@ await quick.getByRole('button', { name: '说一句记账' }).click();
 await quick.locator('#ledger-agent-input').fill('今天午饭 32 用现金');
 await quick.getByRole('button', { name: '识别并填入' }).click();
 assert.match(await quick.getByLabel('金额').textContent() ?? '', /32/);
+await page.reload({ waitUntil: 'domcontentloaded' });
+await settle(page);
+await page.locator('[data-mobile-quick-entry="true"]').waitFor({ state: 'visible' });
 ```
 
-Then continue the single persisted transaction path and cleanup.
+Then reacquire the quick-entry locator and continue the category-button/keypad persisted transaction path and cleanup from a fresh empty amount state.
 
 - [ ] **Step 3: Update keyboard-pressure and viewport checks**
 
