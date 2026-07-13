@@ -31,7 +31,7 @@ export default function AmountKeypad({ onKey }: { onKey: (key: AmountKey) => voi
           data-amount-key={item.key}
           aria-label={item.aria}
           onClick={() => onKey(item.key)}
-          className="min-h-11 rounded-xl border border-[var(--border-tertiary)] bg-[var(--color-container)] text-lg font-semibold text-[var(--color-text-primary)] active:scale-95"
+          className="min-h-11 min-w-11 rounded-xl border border-[var(--border-tertiary)] bg-[var(--color-container)] text-lg font-semibold text-[var(--color-text-primary)] active:scale-95"
         >
           {item.key === 'backspace'
             ? <Delete className="mx-auto" size={20} aria-hidden />

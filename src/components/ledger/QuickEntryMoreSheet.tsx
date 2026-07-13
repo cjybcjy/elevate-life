@@ -26,30 +26,24 @@ export default function QuickEntryMoreSheet({
 }: QuickEntryMoreSheetProps) {
   const panelRef = useRef<HTMLElement>(null);
   const previouslyFocusedRef = useRef<HTMLElement | null>(null);
-  const wasOpenRef = useRef(false);
+  const onCloseRef = useRef(onClose);
 
   useEffect(() => {
-    if (!open) {
-      if (wasOpenRef.current) {
-        previouslyFocusedRef.current?.focus();
-        previouslyFocusedRef.current = null;
-        wasOpenRef.current = false;
-      }
-      return;
-    }
+    onCloseRef.current = onClose;
+  }, [onClose]);
 
-    if (!wasOpenRef.current) {
-      previouslyFocusedRef.current = document.activeElement instanceof HTMLElement
-        ? document.activeElement
-        : null;
-      wasOpenRef.current = true;
-    }
+  useEffect(() => {
+    if (!open) return;
+
+    previouslyFocusedRef.current = document.activeElement instanceof HTMLElement
+      ? document.activeElement
+      : null;
 
     const focusFrame = window.requestAnimationFrame(() => panelRef.current?.focus());
     const containKeyboardFocus = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
         event.preventDefault();
-        onClose();
+        onCloseRef.current();
         return;
       }
       if (event.key !== 'Tab') return;
@@ -78,8 +72,10 @@ export default function QuickEntryMoreSheet({
     return () => {
       window.cancelAnimationFrame(focusFrame);
       window.removeEventListener('keydown', containKeyboardFocus);
+      previouslyFocusedRef.current?.focus();
+      previouslyFocusedRef.current = null;
     };
-  }, [onClose, open]);
+  }, [open]);
 
   if (!open) return null;
 

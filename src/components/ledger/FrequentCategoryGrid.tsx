@@ -1,6 +1,5 @@
 'use client';
 
-import type { ComponentType } from 'react';
 import {
   Bus,
   ChartNoAxesCombined,
@@ -15,6 +14,7 @@ import {
   Tags,
   Utensils,
   WalletCards,
+  type LucideIcon,
 } from 'lucide-react';
 import {
   partitionQuickEntryCategories,
@@ -22,7 +22,7 @@ import {
   type QuickEntryType,
 } from '@/lib/ledger-quick-entry';
 
-const categoryIcons: Record<string, ComponentType<{ size?: number; strokeWidth?: number }>> = {
+const categoryIcons: Record<string, LucideIcon> = {
   餐饮: Utensils,
   房租: House,
   交通: Bus,
@@ -38,7 +38,14 @@ const categoryIcons: Record<string, ComponentType<{ size?: number; strokeWidth?:
 
 export function CategoryIcon({ name, size = 24 }: { name: string; size?: number }) {
   const Icon = categoryIcons[name] ?? Tags;
-  return <Icon size={size} strokeWidth={1.8} aria-hidden />;
+  return (
+    <Icon
+      size={size}
+      strokeWidth={1.8}
+      data-category-icon={categoryIcons[name] ? name : 'fallback'}
+      aria-hidden
+    />
+  );
 }
 
 export default function FrequentCategoryGrid({
@@ -65,7 +72,7 @@ export default function FrequentCategoryGrid({
           data-quick-category={category.name}
           aria-pressed={selectedId === category.id}
           onClick={() => onSelect(category.id)}
-          className="flex min-h-11 min-w-0 flex-col items-center justify-center gap-1 rounded-xl border border-[var(--border-tertiary)] bg-[var(--color-container)] px-1 py-2 text-xs text-[var(--color-text-primary)] aria-pressed:border-[var(--color-accent)] aria-pressed:bg-[var(--color-sidebar-active-bg)]"
+          className="flex min-h-11 min-w-11 flex-col items-center justify-center gap-1 rounded-xl border border-[var(--border-tertiary)] bg-[var(--color-container)] px-1 py-2 text-xs text-[var(--color-text-primary)] aria-pressed:border-[var(--color-accent)] aria-pressed:bg-[var(--color-sidebar-active-bg)]"
         >
           <CategoryIcon name={category.name} />
           <span className="w-full truncate">{category.name}</span>
@@ -75,7 +82,7 @@ export default function FrequentCategoryGrid({
         type="button"
         aria-label="更多分类"
         onClick={onMore}
-        className="flex min-h-11 min-w-0 flex-col items-center justify-center gap-1 rounded-xl border border-[var(--border-tertiary)] bg-[var(--color-container)] px-1 py-2 text-xs text-[var(--color-text-secondary)]"
+        className="flex min-h-11 min-w-11 flex-col items-center justify-center gap-1 rounded-xl border border-[var(--border-tertiary)] bg-[var(--color-container)] px-1 py-2 text-xs text-[var(--color-text-secondary)]"
       >
         <CircleEllipsis size={24} strokeWidth={1.8} aria-hidden />
         <span>更多</span>
