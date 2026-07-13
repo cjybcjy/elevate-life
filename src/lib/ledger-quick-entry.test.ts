@@ -118,6 +118,12 @@ test('amount keypad supports backspace and replaces a trailing operator', () => 
   assert.equal(applyAmountKey('12+', '-'), '12-');
 });
 
+test('amount keypad rejects operators after a trailing decimal without blocking completion', () => {
+  assert.equal(applyAmountKey('12.', '+'), '12.');
+  assert.equal(applyAmountKey('12.', '-'), '12.');
+  assert.equal(applyAmountKey(applyAmountKey('12.', '+'), '3'), '12.3');
+});
+
 test('amount expression rejects zero and negative results after calculation', () => {
   assert.equal(evaluateAmountExpression('2-2').valid, false);
   assert.equal(evaluateAmountExpression('2-3').valid, false);
@@ -130,6 +136,33 @@ test('quick-entry preferences tolerate invalid storage and round trip valid valu
     accountByType: { EXPENSE: 'cash', INCOME: 'bank' },
   };
   assert.deepEqual(parseQuickEntryPreferences(serializeQuickEntryPreferences(preferences)), preferences);
+});
+
+test('quick-entry preferences discard damaged structures and return independent fallbacks', () => {
+  assert.deepEqual(parseQuickEntryPreferences(JSON.stringify({
+    categoryByType: { EXPENSE: 42, INCOME: 'salary', TRANSFER: 'ignored' },
+    accountByType: ['cash'],
+  })), {
+    categoryByType: { INCOME: 'salary' },
+    accountByType: {},
+  });
+  assert.deepEqual(parseQuickEntryPreferences(JSON.stringify({
+    categoryByType: null,
+    accountByType: { EXPENSE: 'cash', INCOME: false, TRANSFER: 'ignored' },
+  })), {
+    categoryByType: {},
+    accountByType: { EXPENSE: 'cash' },
+  });
+
+  const firstFallback = parseQuickEntryPreferences('{bad');
+  firstFallback.categoryByType.EXPENSE = 'mutated';
+  const secondFallback = parseQuickEntryPreferences('{still bad');
+  assert.notEqual(secondFallback, firstFallback);
+  assert.notEqual(secondFallback.categoryByType, firstFallback.categoryByType);
+  assert.deepEqual(secondFallback, { categoryByType: {}, accountByType: {} });
+  assert.deepEqual(parseQuickEntryPreferences('null'), { categoryByType: {}, accountByType: {} });
+  assert.deepEqual(parseQuickEntryPreferences('42'), { categoryByType: {}, accountByType: {} });
+  assert.deepEqual(parseQuickEntryPreferences('[]'), { categoryByType: {}, accountByType: {} });
 });
 
 test('feedback includes budget remaining only when available', () => {

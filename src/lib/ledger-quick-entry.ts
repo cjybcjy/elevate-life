@@ -85,6 +85,7 @@ export function applyAmountKey(expression: string, key: AmountKey) {
   if (key === '+' || key === '-') {
     if (!expression) return expression;
     if (/[+-]$/.test(expression)) return `${expression.slice(0, -1)}${key}`;
+    if (expression.endsWith('.')) return expression;
     if (!/^\d+(?:\.\d{0,2})?(?:[+-]\d+(?:\.\d{0,2})?)*$/.test(expression)) return expression;
     return `${expression}${key}`;
   }
@@ -117,18 +118,33 @@ export function evaluateAmountExpression(expression: string) {
   return { valid: Number.isFinite(result) && result > 0, amount, result };
 }
 
-const emptyPreferences: QuickEntryPreferences = { categoryByType: {}, accountByType: {} };
+function emptyPreferences(): QuickEntryPreferences {
+  return { categoryByType: {}, accountByType: {} };
+}
+
+function isNonArrayObject(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function parsePreferenceByType(value: unknown): Partial<Record<'EXPENSE' | 'INCOME', string>> {
+  if (!isNonArrayObject(value)) return {};
+  const preferences: Partial<Record<'EXPENSE' | 'INCOME', string>> = {};
+  if (typeof value.EXPENSE === 'string') preferences.EXPENSE = value.EXPENSE;
+  if (typeof value.INCOME === 'string') preferences.INCOME = value.INCOME;
+  return preferences;
+}
 
 export function parseQuickEntryPreferences(raw: string | null): QuickEntryPreferences {
-  if (!raw) return emptyPreferences;
+  if (!raw) return emptyPreferences();
   try {
-    const parsed = JSON.parse(raw);
+    const parsed: unknown = JSON.parse(raw);
+    if (!isNonArrayObject(parsed)) return emptyPreferences();
     return {
-      categoryByType: parsed?.categoryByType && typeof parsed.categoryByType === 'object' ? parsed.categoryByType : {},
-      accountByType: parsed?.accountByType && typeof parsed.accountByType === 'object' ? parsed.accountByType : {},
+      categoryByType: parsePreferenceByType(parsed.categoryByType),
+      accountByType: parsePreferenceByType(parsed.accountByType),
     };
   } catch {
-    return emptyPreferences;
+    return emptyPreferences();
   }
 }
 
