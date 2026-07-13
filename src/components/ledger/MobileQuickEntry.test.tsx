@@ -3,8 +3,8 @@ import test from 'node:test';
 import { renderToString } from 'react-dom/server';
 import MobileQuickEntry, {
   buildQuickEntrySubmitValues,
-  canApplyQuickEntryPreferences,
   getQuickEntryAmountError,
+  resolveQuickEntryPreferenceApplication,
   resolveQuickEntryBudgetId,
   saveQuickEntryTemplate,
   sanitizeQuickEntryPreferences,
@@ -99,24 +99,42 @@ test('non-empty invalid amount expressions expose a responsive error', () => {
   assert.equal(getQuickEntryAmountError('12+'), error);
 });
 
-test('preference application waits for async category and referenced account inventories', () => {
-  const withAccountPreference = {
-    categoryByType: { EXPENSE: 'food' },
-    accountByType: { EXPENSE: 'cash' },
+test('ready empty assets apply the category and discard a deleted account preference', () => {
+  const stored = {
+    categoryByType: { EXPENSE: 'daily' },
+    accountByType: { EXPENSE: 'deleted' },
   };
 
-  assert.equal(canApplyQuickEntryPreferences(withAccountPreference, [], []), false);
-  assert.equal(canApplyQuickEntryPreferences(withAccountPreference, categories, []), false);
-  assert.equal(canApplyQuickEntryPreferences(
-    withAccountPreference,
-    categories,
-    [{ id: 'cash', name: '现金' }],
-  ), true);
-  assert.equal(canApplyQuickEntryPreferences(
-    { categoryByType: { EXPENSE: 'food' }, accountByType: {} },
+  assert.deepEqual(resolveQuickEntryPreferenceApplication(
+    stored,
     categories,
     [],
-  ), true);
+    { categoriesReady: true, assetsReady: true },
+  ), {
+    categoryReady: true,
+    accountReady: true,
+    complete: true,
+    categoryByType: { EXPENSE: 'daily' },
+    accountByType: {},
+  });
+});
+
+test('category preferences can apply while account preferences still wait for assets', () => {
+  assert.deepEqual(resolveQuickEntryPreferenceApplication(
+    {
+      categoryByType: { EXPENSE: 'daily' },
+      accountByType: { EXPENSE: 'cash' },
+    },
+    categories,
+    [],
+    { categoriesReady: true, assetsReady: false },
+  ), {
+    categoryReady: true,
+    accountReady: false,
+    complete: false,
+    categoryByType: { EXPENSE: 'daily' },
+    accountByType: {},
+  });
 });
 
 test('template save failures report partial failure after the ledger succeeds', () => {

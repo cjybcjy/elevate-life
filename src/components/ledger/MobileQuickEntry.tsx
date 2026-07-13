@@ -42,6 +42,8 @@ type QuickEntryAsset = { id: string; name: string };
 type MobileQuickEntryProps = {
   categories: QuickEntryCategory[];
   assets: QuickEntryAsset[];
+  categoriesReady?: boolean;
+  assetsReady?: boolean;
   loadBudgets: (date: string, categoryId: string) => Promise<QuickEntryBudgetOption[]>;
   onSubmit: (values: QuickEntrySubmitValues) => Promise<QuickEntrySubmitResult>;
   onSaveTemplate: (name: string, values: QuickEntrySubmitValues) => void;
@@ -98,16 +100,20 @@ export function sanitizeQuickEntryPreferences(
   };
 }
 
-export function canApplyQuickEntryPreferences(
+export function resolveQuickEntryPreferenceApplication(
   preferences: QuickEntryPreferences,
   categories: QuickEntryCategory[],
   assets: QuickEntryAsset[],
+  readiness: { categoriesReady: boolean; assetsReady: boolean },
 ) {
-  if (categories.length === 0) return false;
-  const hasStoredAccount = Boolean(
-    preferences.accountByType.EXPENSE || preferences.accountByType.INCOME,
-  );
-  return !hasStoredAccount || assets.length > 0;
+  const sanitized = sanitizeQuickEntryPreferences(preferences, categories, assets);
+  return {
+    categoryReady: readiness.categoriesReady,
+    accountReady: readiness.assetsReady,
+    complete: readiness.categoriesReady && readiness.assetsReady,
+    categoryByType: readiness.categoriesReady ? sanitized.categoryByType : {},
+    accountByType: readiness.assetsReady ? sanitized.accountByType : {},
+  };
 }
 
 export function resolveQuickEntryBudgetId(options: QuickEntryBudgetOption[]) {
@@ -148,6 +154,8 @@ export function saveQuickEntryTemplate(
 export default function MobileQuickEntry({
   categories,
   assets,
+  categoriesReady = true,
+  assetsReady = true,
   loadBudgets,
   onSubmit,
   onSaveTemplate,
@@ -172,7 +180,10 @@ export default function MobileQuickEntry({
   const [error, setError] = useState('');
   const [feedback, setFeedback] = useState('');
   const preferencesRef = useRef<QuickEntryPreferences>(emptyPreferences);
-  const preferencesLoadedRef = useRef(false);
+  const storedPreferencesRef = useRef<QuickEntryPreferences>(emptyPreferences);
+  const preferencesReadRef = useRef(false);
+  const categoryPreferencesAppliedRef = useRef(false);
+  const accountPreferencesAppliedRef = useRef(false);
   const budgetRequestRef = useRef(0);
 
   const evaluation = evaluateAmountExpression(expression);
@@ -183,22 +194,45 @@ export default function MobileQuickEntry({
   );
 
   useEffect(() => {
-    if (preferencesLoadedRef.current) return;
-
-    let stored = emptyPreferences;
-    try {
-      stored = parseQuickEntryPreferences(window.localStorage.getItem(QUICK_ENTRY_PREFERENCES_KEY));
-    } catch {
-      // Access can throw when storage is blocked; defaults remain usable.
+    if (!preferencesReadRef.current) {
+      preferencesReadRef.current = true;
+      try {
+        storedPreferencesRef.current = parseQuickEntryPreferences(
+          window.localStorage.getItem(QUICK_ENTRY_PREFERENCES_KEY),
+        );
+      } catch {
+        // Access can throw when storage is blocked; defaults remain usable.
+      }
     }
-    if (!canApplyQuickEntryPreferences(stored, categories, assets)) return;
 
-    preferencesLoadedRef.current = true;
-    const preferences = sanitizeQuickEntryPreferences(stored, categories, assets);
-    preferencesRef.current = preferences;
-    setCategoryId(preferences.categoryByType.EXPENSE ?? firstCategory(categories, 'EXPENSE'));
-    setFromAccountId(preferences.accountByType.EXPENSE ?? '');
-  }, [assets, categories]);
+    const application = resolveQuickEntryPreferenceApplication(
+      storedPreferencesRef.current,
+      categories,
+      assets,
+      { categoriesReady, assetsReady },
+    );
+
+    if (application.categoryReady && !categoryPreferencesAppliedRef.current) {
+      categoryPreferencesAppliedRef.current = true;
+      preferencesRef.current = {
+        ...preferencesRef.current,
+        categoryByType: application.categoryByType,
+      };
+      if (type !== 'TRANSFER') {
+        setCategoryId(application.categoryByType[type] ?? firstCategory(categories, type));
+      }
+    }
+
+    if (application.accountReady && !accountPreferencesAppliedRef.current) {
+      accountPreferencesAppliedRef.current = true;
+      preferencesRef.current = {
+        ...preferencesRef.current,
+        accountByType: application.accountByType,
+      };
+      setFromAccountId(application.accountByType.EXPENSE ?? '');
+      setToAccountId(application.accountByType.INCOME ?? '');
+    }
+  }, [assets, assetsReady, categories, categoriesReady, type]);
 
   useEffect(() => {
     const requestId = ++budgetRequestRef.current;
