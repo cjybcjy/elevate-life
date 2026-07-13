@@ -2,11 +2,13 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { renderToString } from 'react-dom/server';
 import MobileQuickEntry, {
+  buildSuccessfulQuickEntryPreferenceSnapshots,
   buildQuickEntrySubmitValues,
   getQuickEntryAmountError,
   mergeSuccessfulQuickEntryPreferences,
   resolveQuickEntryPreferenceApplication,
   resolveQuickEntryBudgetId,
+  resolveQuickEntryTypeSelection,
   saveQuickEntryTemplate,
   sanitizeQuickEntryPreferences,
 } from './MobileQuickEntry';
@@ -179,4 +181,33 @@ test('successful account clearing updates the canonical snapshot before late ass
     categoryByType: { EXPENSE: 'daily', INCOME: 'salary' },
     accountByType: { INCOME: 'bank' },
   });
+});
+
+test('successful expense keeps pending raw income account out of active type selection', () => {
+  const snapshots = buildSuccessfulQuickEntryPreferenceSnapshots(
+    {
+      categoryByType: { EXPENSE: 'daily', INCOME: 'salary' },
+      accountByType: { EXPENSE: 'cash', INCOME: 'bank-old' },
+    },
+    {
+      categoryByType: { EXPENSE: 'daily', INCOME: 'salary' },
+      accountByType: { EXPENSE: 'cash' },
+    },
+    'EXPENSE',
+    'daily',
+    '',
+  );
+
+  assert.deepEqual(snapshots.storedPreferences.accountByType, { INCOME: 'bank-old' });
+  assert.deepEqual(snapshots.activePreferences.accountByType, {});
+  assert.deepEqual(
+    resolveQuickEntryTypeSelection(snapshots.activePreferences, categories, 'INCOME'),
+    { categoryId: 'salary', accountId: '' },
+  );
+  assert.deepEqual(resolveQuickEntryPreferenceApplication(
+    snapshots.storedPreferences,
+    categories,
+    [{ id: 'bank-new', name: '新银行卡' }],
+    { categoriesReady: true, assetsReady: true },
+  ).accountByType, {});
 });

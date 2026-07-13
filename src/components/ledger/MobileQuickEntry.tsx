@@ -153,6 +153,40 @@ export function mergeSuccessfulQuickEntryPreferences(
   return { categoryByType, accountByType };
 }
 
+export function buildSuccessfulQuickEntryPreferenceSnapshots(
+  storedPreferences: QuickEntryPreferences,
+  activePreferences: QuickEntryPreferences,
+  type: Exclude<QuickEntryType, 'TRANSFER'>,
+  categoryId: string,
+  accountId: string,
+) {
+  return {
+    storedPreferences: mergeSuccessfulQuickEntryPreferences(
+      storedPreferences,
+      type,
+      categoryId,
+      accountId,
+    ),
+    activePreferences: mergeSuccessfulQuickEntryPreferences(
+      activePreferences,
+      type,
+      categoryId,
+      accountId,
+    ),
+  };
+}
+
+export function resolveQuickEntryTypeSelection(
+  activePreferences: QuickEntryPreferences,
+  categories: QuickEntryCategory[],
+  type: Exclude<QuickEntryType, 'TRANSFER'>,
+) {
+  return {
+    categoryId: activePreferences.categoryByType[type] ?? firstCategory(categories, type),
+    accountId: activePreferences.accountByType[type] ?? '',
+  };
+}
+
 export function saveQuickEntryTemplate(
   enabled: boolean,
   name: string,
@@ -302,14 +336,16 @@ export default function MobileQuickEntry({
       return;
     }
 
-    setCategoryId(
-      preferencesRef.current.categoryByType[nextType] ?? firstCategory(categories, nextType),
+    const selection = resolveQuickEntryTypeSelection(
+      preferencesRef.current,
+      categories,
+      nextType,
     );
-    const rememberedAccount = preferencesRef.current.accountByType[nextType] ?? '';
+    setCategoryId(selection.categoryId);
     if (nextType === 'EXPENSE') {
-      setFromAccountId(rememberedAccount);
+      setFromAccountId(selection.accountId);
     } else {
-      setToAccountId(rememberedAccount);
+      setToAccountId(selection.accountId);
     }
   }
 
@@ -389,18 +425,19 @@ export default function MobileQuickEntry({
 
     if (type !== 'TRANSFER') {
       const accountId = type === 'EXPENSE' ? fromAccountId : toAccountId;
-      const nextPreferences = mergeSuccessfulQuickEntryPreferences(
+      const nextPreferences = buildSuccessfulQuickEntryPreferenceSnapshots(
         storedPreferencesRef.current,
+        preferencesRef.current,
         type,
         categoryId,
         accountId,
       );
-      storedPreferencesRef.current = nextPreferences;
-      preferencesRef.current = nextPreferences;
+      storedPreferencesRef.current = nextPreferences.storedPreferences;
+      preferencesRef.current = nextPreferences.activePreferences;
       try {
         window.localStorage.setItem(
           QUICK_ENTRY_PREFERENCES_KEY,
-          serializeQuickEntryPreferences(nextPreferences),
+          serializeQuickEntryPreferences(nextPreferences.storedPreferences),
         );
       } catch {
         // Storage can be unavailable in private browsing; the successful ledger write still stands.
