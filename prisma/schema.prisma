@@ -7,12 +7,12 @@ datasource db {
 }
 
 model User {
-  id           String        @id @default(uuid())
-  username     String        @unique
-  passwordHash String        @map("password_hash")
-  displayName  String?       @map("display_name")
-  createdAt    DateTime      @default(now()) @map("created_at")
-  updatedAt    DateTime      @updatedAt @map("updated_at")
+  id           String   @id @default(uuid())
+  username     String   @unique
+  passwordHash String   @map("password_hash")
+  displayName  String?  @map("display_name")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
 
   assets         Asset[]
   liabilities    Liability[]
@@ -22,28 +22,29 @@ model User {
   categoryRules  CategoryRule[]
   budgets        Budget[]
   savingsGoals   SavingsGoal[]
+  possessions    Possession[]
 }
 
 model Asset {
-  id              String   @id @default(uuid())
-  userId          String   @map("user_id")
+  id              String    @id @default(uuid())
+  userId          String    @map("user_id")
   name            String
   category        String
-  balance         String   @default("0")
-  currency        String   @default("CNY")
-  valuationMethod String?  @map("valuation_method")
-  liquidityTier   String?  @map("liquidity_tier")
-  isEncrypted     Boolean  @default(false) @map("is_encrypted")
-  costPrice       String?  @map("cost_price")
+  balance         String    @default("0")
+  currency        String    @default("CNY")
+  valuationMethod String?   @map("valuation_method")
+  liquidityTier   String?   @map("liquidity_tier")
+  isEncrypted     Boolean   @default(false) @map("is_encrypted")
+  costPrice       String?   @map("cost_price")
   quantity        Decimal?  @db.Decimal(18, 4)
-  stockCode       String?  @map("stock_code")
+  stockCode       String?   @map("stock_code")
   market          String?
-  costUnitPrice   Decimal?  @db.Decimal(18, 4) @map("cost_unit_price")
+  costUnitPrice   Decimal?  @map("cost_unit_price") @db.Decimal(18, 4)
   purchaseDate    DateTime? @map("purchase_date")
   scrapDate       DateTime? @map("scrap_date")
-  scrapValue      Decimal?  @db.Decimal(18, 4) @map("scrap_value")
-  createdAt       DateTime @default(now()) @map("created_at")
-  updatedAt       DateTime @updatedAt @map("updated_at")
+  scrapValue      Decimal?  @map("scrap_value") @db.Decimal(18, 4)
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
 
   user             User          @relation(fields: [userId], references: [id], onDelete: Cascade)
   transactionsFrom Transaction[] @relation("fromAsset")
@@ -52,6 +53,25 @@ model Asset {
 
   @@index([userId, category])
   @@index([stockCode, market])
+}
+
+model Possession {
+  id            String    @id @default(uuid())
+  userId        String    @map("user_id")
+  name          String
+  category      String
+  purchasePrice String    @map("purchase_price")
+  purchaseDate  DateTime  @map("purchase_date")
+  status        String    @default("active")
+  soldPrice     String?   @map("sold_price")
+  soldDate      DateTime? @map("sold_date")
+  isEncrypted   Boolean   @default(false) @map("is_encrypted")
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, status])
 }
 
 model Liability {
@@ -93,28 +113,28 @@ model DebtMilestone {
 }
 
 model Transaction {
-  id            String    @id @default(uuid())
-  userId        String    @map("user_id")
+  id            String   @id @default(uuid())
+  userId        String   @map("user_id")
   type          String
-  amount        Decimal   @db.Decimal(18, 4)
-  categoryId    String?   @map("category_id")
-  budgetId      String?   @map("budget_id")
-  fromAccountId String?   @map("from_account_id")
-  toAccountId   String?   @map("to_account_id")
-  liabilityId   String?   @map("liability_id")
+  amount        Decimal  @db.Decimal(18, 4)
+  categoryId    String?  @map("category_id")
+  budgetId      String?  @map("budget_id")
+  fromAccountId String?  @map("from_account_id")
+  toAccountId   String?  @map("to_account_id")
+  liabilityId   String?  @map("liability_id")
   description   String?
-  occurredAt    DateTime  @map("occurred_at")
-  isEssential   Boolean   @default(false) @map("is_essential")
-  reconciled    Boolean   @default(false)
-  currency      String    @default("CNY")
-  createdAt     DateTime  @default(now()) @map("created_at")
+  occurredAt    DateTime @map("occurred_at")
+  isEssential   Boolean  @default(false) @map("is_essential")
+  reconciled    Boolean  @default(false)
+  currency      String   @default("CNY")
+  createdAt     DateTime @default(now()) @map("created_at")
 
-  user       User       @relation(fields: [userId], references: [id], onDelete: Cascade)
-  category   Category?  @relation(fields: [categoryId], references: [id])
-  budget     Budget?    @relation(fields: [budgetId], references: [id], onDelete: SetNull)
-  fromAsset  Asset?     @relation("fromAsset", fields: [fromAccountId], references: [id])
-  toAsset    Asset?     @relation("toAsset", fields: [toAccountId], references: [id])
-  liability  Liability? @relation("liabilityTransactions", fields: [liabilityId], references: [id])
+  user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  category  Category?  @relation(fields: [categoryId], references: [id])
+  budget    Budget?    @relation(fields: [budgetId], references: [id], onDelete: SetNull)
+  fromAsset Asset?     @relation("fromAsset", fields: [fromAccountId], references: [id])
+  toAsset   Asset?     @relation("toAsset", fields: [toAccountId], references: [id])
+  liability Liability? @relation("liabilityTransactions", fields: [liabilityId], references: [id])
 
   @@index([userId, occurredAt])
 }
@@ -195,19 +215,19 @@ model Budget {
 }
 
 model SavingsGoal {
-  id            String   @id @default(uuid())
-  userId        String   @map("user_id")
+  id            String    @id @default(uuid())
+  userId        String    @map("user_id")
   name          String
-  targetAmount  Decimal  @db.Decimal(18, 4) @map("target_amount")
-  currentAmount Decimal  @default(0) @db.Decimal(18, 4) @map("current_amount")
-  assetId       String?  @map("asset_id")
+  targetAmount  Decimal   @map("target_amount") @db.Decimal(18, 4)
+  currentAmount Decimal   @default(0) @map("current_amount") @db.Decimal(18, 4)
+  assetId       String?   @map("asset_id")
   deadline      DateTime?
   icon          String?
   color         String?
-  createdAt     DateTime @default(now()) @map("created_at")
-  updatedAt     DateTime @updatedAt @map("updated_at")
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @updatedAt @map("updated_at")
 
-  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user  User   @relation(fields: [userId], references: [id], onDelete: Cascade)
   asset Asset? @relation(fields: [assetId], references: [id])
 
   @@index([userId])

@@ -5,7 +5,6 @@ import { usePathname } from 'next/navigation';
 import { signOut } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import BirdLogo from '@/components/common/BirdLogo';
-import ThemeToggle from '@/components/common/ThemeToggle';
 import MobileNavigation from '@/components/layout/MobileNavigation';
 
 const navItems = [
@@ -13,6 +12,7 @@ const navItems = [
   { label: '资产管理', href: '/management/assets', icon: '💰' },
   { label: '负债管理', href: '/management/liabilities', icon: '📋' },
   { label: '流水管理', href: '/management/ledger', icon: '📝' },
+  { label: '周期交易', href: '/management/recurring', icon: '🗓️' },
   { label: '预算管理', href: '/management/budget', icon: '📊' },
   { label: '目标管理', href: '/management/goals', icon: '🎯' },
   { label: '分类管理', href: '/management/categories', icon: '🏷️' },
@@ -124,7 +124,6 @@ export default function Sidebar() {
             gap: '4px',
           }}
         >
-          <ThemeToggle />
           <Link
             href={passwordHref}
             style={{

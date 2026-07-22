@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef, useSyncExternalStore } from 'react';
 import Link from 'next/link';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useSearchParams } from 'next/navigation';
 import { createTransaction, deleteTransaction, updateTransactionReconciled, updateTransaction } from '@/lib/actions/ledger';
 import {
   getRecurringRules,
@@ -39,12 +39,9 @@ interface RecurringRule {
   isActive: boolean;
 }
 
-type LedgerTab = 'transactions' | 'recurring';
+type LedgerView = 'transactions' | 'recurring';
 
-const LEDGER_TAB_KEY = 'ledger-tab';
-const LEDGER_TAB_CHANGED_EVENT = 'ledger-tab-changed';
 const TEMPLATES_CHANGED_EVENT = 'ledger-templates-changed';
-const TRANSACTIONS_TAB: LedgerTab = 'transactions';
 const emptyTransactions: any[] = [];
 const emptyTemplates: Template[] = [];
 
@@ -66,42 +63,6 @@ function subscribeRecurringClock(callback: () => void) {
     window.clearTimeout(timeoutId);
     window.clearInterval(intervalId);
   };
-}
-
-function readLedgerTabSnapshot(): LedgerTab {
-  if (typeof window === 'undefined') return TRANSACTIONS_TAB;
-
-  try {
-    const tab = localStorage.getItem(LEDGER_TAB_KEY);
-    return tab === 'recurring' || tab === 'transactions' ? tab : TRANSACTIONS_TAB;
-  } catch {
-    return TRANSACTIONS_TAB;
-  }
-}
-
-function subscribeLedgerTab(callback: () => void) {
-  if (typeof window === 'undefined') return () => {};
-
-  const handleStorage = (event: StorageEvent) => {
-    if (event.key === LEDGER_TAB_KEY) callback();
-  };
-
-  window.addEventListener('storage', handleStorage);
-  window.addEventListener(LEDGER_TAB_CHANGED_EVENT, callback);
-
-  return () => {
-    window.removeEventListener('storage', handleStorage);
-    window.removeEventListener(LEDGER_TAB_CHANGED_EVENT, callback);
-  };
-}
-
-function saveLedgerTab(tab: LedgerTab) {
-  try {
-    localStorage.setItem(LEDGER_TAB_KEY, tab);
-    window.dispatchEvent(new Event(LEDGER_TAB_CHANGED_EVENT));
-  } catch {
-    // localStorage can be unavailable in private or restricted browser modes.
-  }
 }
 
 function readTemplatesSnapshot(): Template[] {
@@ -182,6 +143,7 @@ import { buildTransactionUpdateInput } from '@/lib/ledger-edit';
 import MobileQuickEntry, {
   type QuickEntrySubmitResult,
   type QuickEntrySubmitValues,
+  type QuickEntryUndoResult,
 } from '@/components/ledger/MobileQuickEntry';
 import {
   buildQuickEntryFeedback,
@@ -190,18 +152,16 @@ import {
   LEDGER_TEMPLATES_KEY as TEMPLATES_KEY,
   persistLedgerTemplates,
   refreshLedgerCaches,
-  resolveLedgerTabNavigation,
-  resolveLedgerTabSelection,
   withLedgerLoading,
 } from '@/lib/ledger-quick-entry';
 
 // ... (keep all existing type definitions and utility functions above)
 
-export default function LedgerManager() {
-  const router = useRouter();
+export default function LedgerManager({ view = 'transactions' }: { view?: LedgerView }) {
   const searchParams = useSearchParams();
   const needsSourceFromQuery = searchParams.get('needsSource') === '1';
   const isCreateFocus = searchParams.get('focus') === 'create';
+  const activeTab = view;
   const { data: txData } = useTransactions();
   const transactions = txData?.data ?? emptyTransactions;
   const { data: assetData } = useAssets();
@@ -211,24 +171,7 @@ export default function LedgerManager() {
   const { data: catData } = useSWR('categories', () => getCategories().then(r => r.success ? (r.data ?? []) : []));
   const categories = catData ?? [];
 
-  const storedLedgerTab = useSyncExternalStore(subscribeLedgerTab, readLedgerTabSnapshot, () => TRANSACTIONS_TAB);
   const templates = useSyncExternalStore(subscribeTemplates, readTemplatesSnapshot, () => emptyTemplates);
-  const [selectedTab, setSelectedTab] = useState<LedgerTab | null>(null);
-  const activeTab = resolveLedgerTabSelection({
-    selectedTab,
-    storedTab: storedLedgerTab,
-    forceTransactions: needsSourceFromQuery || isCreateFocus,
-  });
-
-  function selectLedgerTab(tab: LedgerTab) {
-    const decision = resolveLedgerTabNavigation({
-      tab,
-      queryGated: needsSourceFromQuery || isCreateFocus,
-    });
-    setSelectedTab(decision.tab);
-    saveLedgerTab(decision.tab);
-    if (decision.replaceHref) router.replace(decision.replaceHref, { scroll: false });
-  }
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [processingRecurring, setProcessingRecurring] = useState(false);
@@ -437,8 +380,9 @@ export default function LedgerManager() {
     await refreshLedgerCaches(mutate);
     const categoryName = categories.find((category: any) => category.id === values.categoryId)?.name
       ?? (values.type === 'TRANSFER' ? '转账' : '未分类');
+    const resolvedBudgetId = result.budgetId || values.budgetId;
     const budgetRemaining = await getQuickEntryBudgetRemainingSafely(
-      values.budgetId,
+      resolvedBudgetId,
       () => getBudgetProgress(values.occurredAt),
     );
     const feedback = buildQuickEntryFeedback({
@@ -448,7 +392,22 @@ export default function LedgerManager() {
       budgetRemaining,
     });
     toast.success(feedback);
-    return { success: true, feedback };
+    return { success: true, feedback, transactionId: result.transactionId };
+  }
+
+  async function undoMobileQuickEntry(transactionId: string): Promise<QuickEntryUndoResult> {
+    const result = await deleteTransaction(transactionId);
+    if (!result.success) {
+      const resultError = result.error || '撤销失败';
+      if (isSessionExpiredError(resultError)) {
+        window.location.href = '/login';
+        return { success: false, error: resultError, sessionExpired: true };
+      }
+      return { success: false, error: resultError };
+    }
+
+    await refreshLedgerCaches(mutate);
+    return { success: true, feedback: '已撤销上一笔记账' };
   }
 
   const loadQuickEntryBudgets = useCallback(async (date: string, categoryId: string) => {
@@ -679,30 +638,23 @@ export default function LedgerManager() {
 
   return (
     <div>
-      <div className={`items-center justify-between mb-6 ${isCreateFocus ? 'hidden md:flex' : 'flex'}`}>
-        <h1 className="text-2xl font-bold" style={{ color: 'var(--color-text-primary)' }}>流水管理</h1>
-        <div className="flex rounded-lg bg-ledger-surface p-1">
-          <button
-            onClick={() => selectLedgerTab('transactions')}
-            className={`px-4 py-1.5 text-sm rounded-md transition-colors ${
-              activeTab === 'transactions'
-                ? 'bg-ledger-accent text-white'
-                : 'text-ledger-muted hover:text-white'
-            }`}
-          >
-            流水记录
-          </button>
-          <button
-            onClick={() => selectLedgerTab('recurring')}
-            className={`px-4 py-1.5 text-sm rounded-md transition-colors ${
-              activeTab === 'recurring'
-                ? 'bg-ledger-accent text-white'
-                : 'text-ledger-muted hover:text-white'
-            }`}
-          >
-            周期交易
-          </button>
+      <div className={`items-start justify-between gap-3 mb-6 ${isCreateFocus ? 'hidden md:flex' : 'flex'}`}>
+        <div>
+          <h1 className="text-2xl font-bold" style={{ color: 'var(--color-text-primary)' }}>
+            {activeTab === 'recurring' ? '周期交易' : '流水管理'}
+          </h1>
+          {activeTab === 'recurring' ? (
+            <p className="mt-1 text-sm text-ledger-muted">管理固定收支和定期转账，到期后自动记入流水。</p>
+          ) : null}
         </div>
+        {activeTab === 'recurring' ? (
+          <Link
+            href="/management/ledger"
+            className="inline-flex min-h-11 shrink-0 items-center rounded-lg border border-[var(--border-tertiary)] px-3 text-sm text-[var(--color-text-primary)] no-underline"
+          >
+            查看流水
+          </Link>
+        ) : null}
       </div>
 
       {error && (
@@ -762,21 +714,7 @@ export default function LedgerManager() {
                 assetsReady={assetData !== undefined}
                 loadBudgets={loadQuickEntryBudgets}
                 onSubmit={submitMobileQuickEntry}
-                onSaveTemplate={(name, values) => {
-                  const saved = saveTemplates([
-                    ...templates.filter((template) => template.name !== name),
-                    {
-                      name,
-                      type: values.type,
-                      amount: values.amount,
-                      categoryId: values.categoryId,
-                      fromAccountId: values.fromAccountId,
-                      toAccountId: values.toAccountId,
-                      description: values.description,
-                    },
-                  ]);
-                  if (!saved) throw new Error('template persistence failed');
-                }}
+                onUndo={undoMobileQuickEntry}
               />
             </section>
           ) : null}
@@ -1306,6 +1244,7 @@ export default function LedgerManager() {
               >
                 <option value="EXPENSE">支出</option>
                 <option value="INCOME">收入</option>
+                <option value="TRANSFER">转账</option>
               </select>
             </div>
             <div>

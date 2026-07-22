@@ -3,13 +3,46 @@
 import { Suspense, useEffect, useRef, useState, type ReactNode } from 'react';
 import Link from 'next/link';
 import { usePathname, useSearchParams } from 'next/navigation';
+import {
+  CalendarClock,
+  ChartNoAxesColumnIncreasing,
+  Goal,
+  Home,
+  KeyRound,
+  Landmark,
+  LogOut,
+  Menu,
+  Plus,
+  Tags,
+  UserRound,
+  WalletCards,
+  type LucideIcon,
+} from 'lucide-react';
 import BirdLogo from '@/components/common/BirdLogo';
-import ThemeToggle from '@/components/common/ThemeToggle';
 import {
   MOBILE_MORE_NAV_ITEMS,
   MOBILE_PRIMARY_NAV_ITEMS,
   isMobileNavItemActive,
+  type MobileNavigationIconName,
 } from '@/lib/mobile-navigation';
+
+const NAV_ICONS: Record<MobileNavigationIconName, LucideIcon> = {
+  home: Home,
+  assets: WalletCards,
+  plus: Plus,
+  budget: ChartNoAxesColumnIncreasing,
+  user: UserRound,
+  liability: Landmark,
+  goal: Goal,
+  category: Tags,
+  recurring: CalendarClock,
+  security: KeyRound,
+};
+
+function NavigationIcon({ name, size = 19 }: { name: MobileNavigationIconName; size?: number }) {
+  const Icon = NAV_ICONS[name];
+  return <Icon size={size} strokeWidth={1.9} aria-hidden />;
+}
 
 type MobileNavigationViewProps = {
   pathname: string;
@@ -101,7 +134,7 @@ export function MobileNavigationView({
           onClick={onMenuToggle}
           style={menuOpen ? { pointerEvents: 'auto' } : undefined}
         >
-          ☰
+          <Menu size={20} strokeWidth={1.9} aria-hidden />
         </button>
       </header>
 
@@ -131,13 +164,10 @@ export function MobileNavigationView({
                   onClick={onMenuClose}
                   className="flex min-h-11 items-center gap-2 rounded-lg border border-[var(--border-tertiary)] px-3 py-2 text-sm text-[var(--color-text-primary)] no-underline"
                 >
-                  <span aria-hidden>{item.icon}</span>
+                  <NavigationIcon name={item.icon} size={18} />
                   <span>{item.label}</span>
                 </Link>
               ))}
-            </div>
-            <div className="[&_button]:min-h-11 [&_button]:min-w-11">
-              <ThemeToggle />
             </div>
             <button
               type="button"
@@ -147,7 +177,10 @@ export function MobileNavigationView({
                 await onLogout();
               }}
             >
-              🚪 退出登录
+              <span className="inline-flex items-center gap-2">
+                <LogOut size={18} strokeWidth={1.9} aria-hidden />
+                退出登录
+              </span>
             </button>
           </section>
         </>
@@ -162,10 +195,9 @@ export function MobileNavigationView({
           const active = isMobileNavItemActive(pathname, item.id, focus);
           const primary = item.id === 'quick-entry';
           return (
-            <Link
+            <a
               key={item.id}
               href={item.href}
-              prefetch
               data-mobile-primary-nav={item.id}
               aria-current={active ? 'page' : undefined}
               className={active
@@ -178,9 +210,11 @@ export function MobileNavigationView({
                 boxShadow: 'var(--shadow-md)',
               } : undefined}
             >
-              <span className="mobile-bottom-nav__icon" aria-hidden>{item.icon}</span>
+              <span className="mobile-bottom-nav__icon" aria-hidden>
+                <NavigationIcon name={item.icon} size={primary ? 22 : 19} />
+              </span>
               <span className="mobile-bottom-nav__label">{item.label}</span>
-            </Link>
+            </a>
           );
         })}
       </nav>

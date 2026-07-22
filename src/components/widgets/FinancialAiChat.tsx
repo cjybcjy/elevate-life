@@ -1,6 +1,7 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useState } from 'react';
+import { createTransaction } from '@/lib/actions/ledger';
 import {
   DEFAULT_FINANCE_AI_CONFIG,
   FINANCE_AI_PROVIDER_PRESETS,
@@ -11,12 +12,20 @@ import {
   type FinanceAiProvider,
   type FinanceAiSnapshot,
 } from '@/lib/finance-ai';
+import { useSWRConfig } from 'swr';
+import LedgerAgentQuickEntry from './LedgerAgentQuickEntry';
+import type { LedgerAgentDraft } from '@/lib/ledger-agent';
 
 const quickQuestions = [
   '我的资产配比哪里偏了？',
   '一级流动性够覆盖几个月？',
   '本月预算应该先调整哪一项？',
 ];
+
+type LedgerAgentContext = {
+  categories: Array<{ id: string; name: string; type?: string | null }>;
+  assets: Array<{ id: string; name: string }>;
+};
 
 function readStoredConfig() {
   if (typeof window === 'undefined') return null;
@@ -41,7 +50,22 @@ function storeConfig(config: FinanceAiConfig) {
   localStorage.setItem(FINANCE_AI_CONFIG_STORAGE_KEY, JSON.stringify(config));
 }
 
-export default function FinancialAiChat({ snapshot }: { snapshot: FinanceAiSnapshot }) {
+function ledgerDraftSummary(draft: LedgerAgentDraft, context: LedgerAgentContext) {
+  const typeLabel = draft.type === 'INCOME' ? '收入' : draft.type === 'TRANSFER' ? '转账' : '支出';
+  const category = context.categories.find((item) => item.id === draft.categoryId)?.name ?? '未指定分类';
+  const accountId = draft.type === 'INCOME' ? draft.toAccountId : draft.fromAccountId;
+  const account = context.assets.find((item) => item.id === accountId)?.name ?? '未指定账户';
+  return `${typeLabel} ${draft.currency} ${draft.amount} · ${category} · ${account} · ${draft.occurredAt}`;
+}
+
+export default function FinancialAiChat({
+  snapshot,
+  ledgerAgentContext,
+}: {
+  snapshot: FinanceAiSnapshot;
+  ledgerAgentContext?: LedgerAgentContext;
+}) {
+  const { mutate } = useSWRConfig();
   const [open, setOpen] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [config, setConfig] = useState<FinanceAiConfig>(() => readStoredConfig() ?? DEFAULT_FINANCE_AI_CONFIG);
@@ -49,11 +73,11 @@ export default function FinancialAiChat({ snapshot }: { snapshot: FinanceAiSnaps
   const [draft, setDraft] = useState('');
   const [status, setStatus] = useState('');
   const [loading, setLoading] = useState(false);
-  const configComplete = useMemo(() => hasCompleteFinanceAiConfig(config), [config]);
-
+  const [ledgerDraft, setLedgerDraft] = useState<LedgerAgentDraft | null>(null);
+  const [ledgerStatus, setLedgerStatus] = useState('');
+  const [ledgerLoading, setLedgerLoading] = useState(false);
   function openChat() {
     setOpen(true);
-    setShowSettings(!configComplete);
   }
 
   function handleProviderChange(provider: FinanceAiProvider) {
@@ -114,24 +138,54 @@ export default function FinancialAiChat({ snapshot }: { snapshot: FinanceAiSnaps
     }
   }
 
+  async function confirmLedgerDraft() {
+    if (!ledgerDraft || ledgerLoading) return;
+
+    setLedgerStatus('');
+    setLedgerLoading(true);
+
+    const result = await createTransaction({
+      type: ledgerDraft.type,
+      amount: ledgerDraft.amount,
+      currency: ledgerDraft.currency,
+      categoryId: ledgerDraft.categoryId || undefined,
+      fromAccountId: ledgerDraft.fromAccountId || undefined,
+      toAccountId: ledgerDraft.toAccountId || undefined,
+      description: ledgerDraft.description || undefined,
+      occurredAt: ledgerDraft.occurredAt,
+    });
+
+    if (result.success) {
+      setLedgerDraft(null);
+      setLedgerStatus('已记账');
+      mutate('transactions');
+      mutate('assets');
+      mutate((key) => typeof key === 'string' && (key.startsWith('budgets') || key.startsWith('forecast')));
+    } else if (result.error?.includes('会话密钥')) {
+      window.location.href = '/login';
+    } else {
+      setLedgerStatus(result.error || '记账失败');
+    }
+
+    setLedgerLoading(false);
+  }
+
   return (
     <div
+      className="financial-ai-chat"
       style={{
-        position: 'absolute',
-        right: 16,
-        bottom: 16,
-        zIndex: 20,
         display: 'flex',
         flexDirection: 'column',
-        alignItems: 'flex-end',
+        alignItems: 'flex-start',
         gap: 10,
+        width: '100%',
       }}
     >
       {open && (
         <section
           aria-label="AI 财务聊天"
           style={{
-            width: 'min(390px, calc(100vw - 32px))',
+            width: 'min(390px, 100%)',
             maxHeight: 'min(620px, calc(100vh - 120px))',
             display: 'flex',
             flexDirection: 'column',
@@ -275,6 +329,81 @@ export default function FinancialAiChat({ snapshot }: { snapshot: FinanceAiSnaps
               padding: 12,
             }}
           >
+            {ledgerAgentContext && (
+              <div
+                style={{
+                  display: 'grid',
+                  gap: 8,
+                  paddingBottom: 10,
+                  borderBottom: '1px solid var(--border-tertiary)',
+                }}
+              >
+                <LedgerAgentQuickEntry
+                  categories={ledgerAgentContext.categories}
+                  assets={ledgerAgentContext.assets}
+                  onApply={(nextDraft) => {
+                    setLedgerDraft(nextDraft);
+                    setLedgerStatus('请确认后记账');
+                  }}
+                />
+                {ledgerDraft && (
+                  <div
+                    style={{
+                      display: 'grid',
+                      gap: 8,
+                      border: '1px solid var(--border-tertiary)',
+                      borderRadius: 8,
+                      background: 'var(--color-container-inset)',
+                      padding: 10,
+                    }}
+                  >
+                    <div style={{ fontSize: 11, fontWeight: 800, color: 'var(--color-text-secondary)' }}>
+                      待确认草稿
+                    </div>
+                    <div style={{ fontSize: 12, lineHeight: 1.5, color: 'var(--color-text-primary)' }}>
+                      {ledgerDraftSummary(ledgerDraft, ledgerAgentContext)}
+                    </div>
+                    {ledgerDraft.description && (
+                      <div style={{ fontSize: 11, color: 'var(--color-text-secondary)', lineHeight: 1.45 }}>
+                        备注：{ledgerDraft.description}
+                      </div>
+                    )}
+                    <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', flexWrap: 'wrap' }}>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setLedgerDraft(null);
+                          setLedgerStatus('');
+                        }}
+                        className="btn btn-outline btn-sm"
+                      >
+                        取消
+                      </button>
+                      <button
+                        type="button"
+                        onClick={confirmLedgerDraft}
+                        disabled={ledgerLoading}
+                        className="btn btn-primary btn-sm"
+                      >
+                        {ledgerLoading ? '记账中...' : '确认记账'}
+                      </button>
+                    </div>
+                  </div>
+                )}
+                {ledgerStatus && (
+                  <div
+                    aria-live="polite"
+                    style={{
+                      fontSize: 11,
+                      color: ledgerStatus === '已记账' ? 'var(--color-success)' : ledgerStatus === '请确认后记账' ? 'var(--color-text-secondary)' : 'var(--color-danger)',
+                    }}
+                  >
+                    {ledgerStatus}
+                  </div>
+                )}
+              </div>
+            )}
+
             {messages.length === 0 ? (
               <div style={{ display: 'grid', gap: 8 }}>
                 {quickQuestions.map((question) => (

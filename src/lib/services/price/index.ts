@@ -14,13 +14,42 @@ export interface PriceResult {
 }
 
 const MARKET_PRICED_CATEGORIES = ['gold_physical', 'gold_paper', 'stock', 'fund'];
+const DEFAULT_STALE_MS = 60 * 60 * 1000;
+const ACTIVE_CN_MARKET_STALE_MS = 5 * 60 * 1000;
 
 export function isMarketPriced(category: string): boolean {
   return MARKET_PRICED_CATEGORIES.includes(category);
 }
 
-export function isStale(updatedAt: Date): boolean {
-  return Date.now() - updatedAt.getTime() > 60 * 60 * 1000; // 1 hour
+function getBeijingWeekdayAndMinute(date: Date) {
+  const beijing = new Date(date.getTime() + 8 * 60 * 60 * 1000);
+  return {
+    weekday: beijing.getUTCDay(),
+    minuteOfDay: beijing.getUTCHours() * 60 + beijing.getUTCMinutes(),
+  };
+}
+
+function isCnMarketActive(now: Date) {
+  const { weekday, minuteOfDay } = getBeijingWeekdayAndMinute(now);
+  if (weekday === 0 || weekday === 6) return false;
+
+  const morningOpen = 9 * 60 + 25;
+  const morningClose = 11 * 60 + 35;
+  const afternoonOpen = 12 * 60 + 55;
+  const afternoonClose = 15 * 60 + 5;
+
+  return (
+    (minuteOfDay >= morningOpen && minuteOfDay <= morningClose) ||
+    (minuteOfDay >= afternoonOpen && minuteOfDay <= afternoonClose)
+  );
+}
+
+export function isStale(updatedAt: Date, market?: string, now = new Date()): boolean {
+  const staleMs = market === 'cn' && isCnMarketActive(now)
+    ? ACTIVE_CN_MARKET_STALE_MS
+    : DEFAULT_STALE_MS;
+
+  return now.getTime() - updatedAt.getTime() > staleMs;
 }
 
 export async function fetchSinglePrice(code: string, market: string): Promise<PriceResult> {

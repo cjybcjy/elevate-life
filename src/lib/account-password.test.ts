@@ -19,6 +19,11 @@ type AccountPasswordModule = {
       currentBalance: string;
       monthlyPayment: string | null;
     }>;
+    possessions: Array<{
+      id: string;
+      purchasePrice: string;
+      soldPrice: string | null;
+    }>;
   }) => {
     assets: Array<{ id: string; balance: string; costPrice: string | null }>;
     liabilities: Array<{
@@ -26,6 +31,11 @@ type AccountPasswordModule = {
       principal: string;
       currentBalance: string;
       monthlyPayment: string | null;
+    }>;
+    possessions: Array<{
+      id: string;
+      purchasePrice: string;
+      soldPrice: string | null;
     }>;
   };
 };
@@ -83,7 +93,7 @@ test('validatePasswordChangeInput accepts a valid password change and rejects un
   );
 });
 
-test('rotateUserEncryptedFields re-encrypts user asset and liability secrets for the new password key', async () => {
+test('rotateUserEncryptedFields re-encrypts asset, liability, and possession secrets for the new password key', async () => {
   const { rotateUserEncryptedFields } = await loadSubject();
   assert.equal(typeof rotateUserEncryptedFields, 'function');
   const rotate = rotateUserEncryptedFields as NonNullable<
@@ -123,6 +133,18 @@ test('rotateUserEncryptedFields re-encrypts user asset and liability secrets for
         monthlyPayment: null,
       },
     ],
+    possessions: [
+      {
+        id: 'possession-1',
+        purchasePrice: encryptValue('8799.00', oldDerivedKey, userId),
+        soldPrice: encryptValue('3200.00', oldDerivedKey, userId),
+      },
+      {
+        id: 'possession-2',
+        purchasePrice: encryptValue('299.00', oldDerivedKey, userId),
+        soldPrice: null,
+      },
+    ],
   });
 
   assert.equal(decryptValue(rotated.assets[0].balance, newDerivedKey, userId), '123.4500');
@@ -132,5 +154,8 @@ test('rotateUserEncryptedFields re-encrypts user asset and liability secrets for
   assert.equal(decryptValue(rotated.liabilities[0].currentBalance, newDerivedKey, userId), '3200.0000');
   assert.equal(decryptValue(rotated.liabilities[0].monthlyPayment!, newDerivedKey, userId), '250.0000');
   assert.equal(rotated.liabilities[1].monthlyPayment, null);
+  assert.equal(decryptValue(rotated.possessions[0].purchasePrice, newDerivedKey, userId), '8799.00');
+  assert.equal(decryptValue(rotated.possessions[0].soldPrice!, newDerivedKey, userId), '3200.00');
+  assert.equal(rotated.possessions[1].soldPrice, null);
   assert.throws(() => decryptValue(rotated.assets[0].balance, oldDerivedKey, userId));
 });

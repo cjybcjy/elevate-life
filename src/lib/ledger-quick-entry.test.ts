@@ -249,6 +249,7 @@ test('budget resolution uses type, category, and date as one stable request key'
     buildQuickEntryBudgetKey!('EXPENSE', 'food', '2026-07-13'),
     'EXPENSE:food:2026-07-13',
   );
+  assert.equal(buildQuickEntryBudgetKey!('INCOME', 'salary', '2026-07-13'), '');
   assert.equal(buildQuickEntryBudgetKey!('TRANSFER', 'food', '2026-07-13'), '');
   assert.equal(buildQuickEntryBudgetKey!('EXPENSE', '', '2026-07-13'), '');
 });
@@ -331,54 +332,6 @@ test('only the current budget request may resolve state and auto-select one resu
     { id: 'one', name: '预算一' },
     { id: 'two', name: '预算二' },
   ]).budgetId, '');
-});
-
-test('query-gated create flow overrides a stale recurring tab selection', () => {
-  const resolveLedgerTabSelection = (ledgerQuickEntry as {
-    resolveLedgerTabSelection?: (input: {
-      selectedTab: 'transactions' | 'recurring' | null;
-      storedTab: 'transactions' | 'recurring';
-      forceTransactions: boolean;
-    }) => 'transactions' | 'recurring';
-  }).resolveLedgerTabSelection;
-  assert.equal(typeof resolveLedgerTabSelection, 'function');
-
-  assert.equal(resolveLedgerTabSelection!({
-    selectedTab: 'recurring',
-    storedTab: 'recurring',
-    forceTransactions: true,
-  }), 'transactions');
-  assert.equal(resolveLedgerTabSelection!({
-    selectedTab: 'recurring',
-    storedTab: 'transactions',
-    forceTransactions: false,
-  }), 'recurring');
-});
-
-test('an explicit recurring-tab action clears query gates without weakening render priority', () => {
-  const resolveLedgerTabNavigation = (ledgerQuickEntry as {
-    resolveLedgerTabNavigation?: (input: {
-      tab: 'transactions' | 'recurring';
-      queryGated: boolean;
-    }) => {
-      tab: 'transactions' | 'recurring';
-      replaceHref: string | null;
-    };
-  }).resolveLedgerTabNavigation;
-  assert.equal(typeof resolveLedgerTabNavigation, 'function');
-
-  assert.deepEqual(resolveLedgerTabNavigation!({ tab: 'recurring', queryGated: true }), {
-    tab: 'recurring',
-    replaceHref: '/management/ledger',
-  });
-  assert.deepEqual(resolveLedgerTabNavigation!({ tab: 'recurring', queryGated: false }), {
-    tab: 'recurring',
-    replaceHref: null,
-  });
-  assert.deepEqual(resolveLedgerTabNavigation!({ tab: 'transactions', queryGated: true }), {
-    tab: 'transactions',
-    replaceHref: null,
-  });
 });
 
 test('template persistence reports successful localStorage writes', () => {

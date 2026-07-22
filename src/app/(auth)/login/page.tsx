@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { loginUser } from '@/lib/actions/auth';
+import { submitLoginForm } from '@/lib/login-submit';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -14,18 +15,18 @@ export default function LoginPage() {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    setError('');
-    setLoading(true);
 
-    const result = await loginUser(username, password);
-
-    if (result.success) {
-      router.push('/');
-      router.refresh();
-    } else {
-      setError(result.error || 'Login failed');
-      setLoading(false);
-    }
+    await submitLoginForm({
+      username,
+      password,
+      login: loginUser,
+      onSuccess: () => {
+        router.push('/');
+        router.refresh();
+      },
+      setError,
+      setLoading,
+    });
   }
 
   return (

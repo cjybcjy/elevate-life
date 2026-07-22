@@ -9,6 +9,7 @@ import Decimal from 'decimal.js';
 import { autoCategorize } from './category-rules';
 import type { Prisma } from '@prisma/client';
 import { buildTransactionEffectDeltas } from '@/lib/transaction-effects';
+import { selectTransactionBudgetId } from '@/lib/transaction-budget';
 
 type TransactionEffect = {
   amount: Decimal;
@@ -16,6 +17,10 @@ type TransactionEffect = {
   toAccountId: string | null;
   liabilityId: string | null;
 };
+
+type CreateTransactionResult =
+  | { success: true; transactionId: string; budgetId: string }
+  | { success: false; error: string };
 
 function getErrorMessage(error: unknown): string {
   return error instanceof Error ? error.message : '操作失败';
@@ -74,6 +79,9 @@ async function adjustLiabilityBalance(
     decryptValue(liability.currentBalance, derivedKey, userId),
   );
   const newBalance = currentBalance.plus(delta);
+  if (newBalance.isNegative()) {
+    throw new Error('还款金额不能超过剩余负债');
+  }
 
   await tx.liability.update({
     where: { id: liability.id },
@@ -213,7 +221,7 @@ export async function createTransaction(data: {
   description?: string;
   occurredAt: string;
   isEssential?: boolean;
-}) {
+}): Promise<CreateTransactionResult> {
   const session = await auth();
   const userId = session?.user?.id;
   if (!userId) return { success: false, error: 'Unauthorized' };
@@ -221,17 +229,55 @@ export async function createTransaction(data: {
   const derivedKey = session?.user?.derivedKey || await getUserKey(userId);
   if (!derivedKey) return { success: false, error: '会话密钥已过期，请退出重新登录' };
 
-  const amount = new Decimal(data.amount);
-
-  // Auto-categorize if no category provided but description is available
-  let resolvedCategoryId = data.categoryId || undefined;
-  if (!resolvedCategoryId && data.description) {
-    const autoCat = await autoCategorize(userId, data.description);
-    if (autoCat) resolvedCategoryId = autoCat;
-  }
-
   try {
-    await prisma.$transaction(async (tx) => {
+    const amount = new Decimal(data.amount);
+    if (!amount.isFinite() || !amount.isPositive()) {
+      return { success: false, error: '金额必须大于 0' };
+    }
+    const occurredAt = new Date(data.occurredAt);
+    if (!Number.isFinite(occurredAt.getTime())) {
+      return { success: false, error: '日期格式不正确' };
+    }
+
+    // Auto-categorize if no category provided but description is available
+    let resolvedCategoryId = data.categoryId || undefined;
+    if (!resolvedCategoryId && data.description) {
+      const autoCat = await autoCategorize(userId, data.description);
+      if (autoCat) resolvedCategoryId = autoCat;
+    }
+
+    const createdTransaction = await prisma.$transaction(async (tx) => {
+      let requestedBudgetId: string | undefined;
+      if (data.budgetId) {
+        const requestedBudget = await tx.budget.findFirst({
+          where: { id: data.budgetId, userId },
+          select: { id: true },
+        });
+        if (!requestedBudget) throw new Error('Budget not found');
+        requestedBudgetId = requestedBudget.id;
+      }
+
+      const automaticBudgetCandidates = !requestedBudgetId
+        && data.type === 'EXPENSE'
+        && resolvedCategoryId
+        ? await tx.budget.findMany({
+            where: {
+              userId,
+              categoryId: resolvedCategoryId,
+              startDate: { lte: occurredAt },
+              endDate: { gte: occurredAt },
+            },
+            select: { id: true },
+            take: 2,
+          })
+        : [];
+      const resolvedBudgetId = selectTransactionBudgetId({
+        requestedBudgetId,
+        type: data.type,
+        categoryId: resolvedCategoryId,
+        candidates: automaticBudgetCandidates,
+      });
+
       // Deduct from source account (if set)
       if (data.fromAccountId) {
         const [asset] = await tx.$queryRaw<
@@ -299,6 +345,9 @@ export async function createTransaction(data: {
           decryptValue(liability.currentBalance, derivedKey, userId),
         );
         const newBalance = currentBalance.minus(amount);
+        if (newBalance.isNegative()) {
+          throw new Error('还款金额不能超过剩余负债');
+        }
 
         await tx.liability.update({
           where: { id: liability.id },
@@ -313,26 +362,31 @@ export async function createTransaction(data: {
         });
       }
 
-      await tx.transaction.create({
+      return tx.transaction.create({
         data: {
           type: data.type,
           amount,
           categoryId: resolvedCategoryId || null,
-          budgetId: data.budgetId || null,
+          budgetId: resolvedBudgetId || null,
           fromAccountId: data.fromAccountId || null,
           toAccountId: data.toAccountId || null,
           liabilityId: data.liabilityId || null,
           description: data.description,
-          occurredAt: new Date(data.occurredAt),
+          occurredAt,
           isEssential: data.isEssential ?? false,
           currency: data.currency || 'CNY',
           userId,
         },
+        select: { id: true, budgetId: true },
       });
     });
 
     revalidateTag(`user-${userId}`, 'default');
-    return { success: true };
+    return {
+      success: true,
+      transactionId: createdTransaction.id,
+      budgetId: createdTransaction.budgetId || '',
+    };
   } catch (error: unknown) {
     return { success: false, error: getErrorMessage(error) };
   }

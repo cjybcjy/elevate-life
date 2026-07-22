@@ -11,6 +11,7 @@ import { useTransactions } from '@/hooks/useTransactions';
 import { useAssets } from '@/hooks/useAssets';
 import { useSWRConfig } from 'swr';
 import useSWR from 'swr';
+import { buildAnnualBudgetOverview, getEffectiveBudgetRemaining } from '@/lib/annual-budget';
 
 interface Budget {
   id: string;
@@ -80,7 +81,8 @@ export default function BudgetManager({ currentDate }: { currentDate: string }) 
     fromAccountId: '',
   });
   const overBudgetCount = progress.filter((item) => item.isOverBudget).length;
-  const totalRemaining = progress.reduce((sum, item) => sum + item.remaining, 0);
+  const annualOverview = buildAnnualBudgetOverview(progress);
+  const totalRemaining = getEffectiveBudgetRemaining(progress);
 
   const budgetFocusCopy = (() => {
     if (budgetFocus === 'over') {
@@ -106,7 +108,7 @@ export default function BudgetManager({ currentDate }: { currentDate: string }) 
     return {
       title: '检查本月预算执行',
       detail: progress.length > 0
-        ? `本月预算合计剩余 ${totalRemaining.toLocaleString('zh-CN', { maximumFractionDigits: 0 })} 元；顺手补录今天的支出。`
+        ? `${annualOverview ? '年度预算' : '本月预算合计'}剩余 ${totalRemaining.toLocaleString('zh-CN', { maximumFractionDigits: 0 })} 元；顺手补录今天的支出。`
         : '还没有本月预算，先创建一个总预算或常用分类预算。',
       cta: progress.length > 0 ? '快速记录支出' : '创建预算',
       href: progress.length > 0 ? '#budget-progress' : '#budget-form',

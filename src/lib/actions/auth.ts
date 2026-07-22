@@ -80,6 +80,10 @@ export async function changePassword(data: {
           monthlyPayment: true,
         },
       });
+      const possessions = await tx.possession.findMany({
+        where: { userId },
+        select: { id: true, purchasePrice: true, soldPrice: true },
+      });
 
       const rotated = rotateUserEncryptedFields({
         userId,
@@ -87,6 +91,7 @@ export async function changePassword(data: {
         newDerivedKey,
         assets,
         liabilities,
+        possessions,
       });
 
       for (const asset of rotated.assets) {
@@ -107,6 +112,17 @@ export async function changePassword(data: {
             principal: liability.principal,
             currentBalance: liability.currentBalance,
             monthlyPayment: liability.monthlyPayment,
+            isEncrypted: true,
+          },
+        });
+      }
+
+      for (const possession of rotated.possessions) {
+        await tx.possession.update({
+          where: { id: possession.id },
+          data: {
+            purchasePrice: possession.purchasePrice,
+            soldPrice: possession.soldPrice,
             isEncrypted: true,
           },
         });

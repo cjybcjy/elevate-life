@@ -21,7 +21,7 @@ export default async function AccountDeletionPage() {
 
       <section style={{ marginTop: 28, lineHeight: 1.75, color: 'var(--color-text-secondary)' }}>
         <h2 style={{ fontSize: 18, fontWeight: 700, color: 'var(--color-text-primary)' }}>删除范围</h2>
-        <p>删除范围包括账号信息、资产、负债、预算、流水、资金账户、分类、目标、预测数据和与账号关联的配置。法律法规要求保留的安全日志或交易审计信息，将按适用要求保留到期后删除或匿名化。</p>
+        <p>删除范围包括账号信息、资产、物品、负债、预算、流水、资金账户、分类、目标、预测数据和与账号关联的配置。法律法规要求保留的安全日志或交易审计信息，将按适用要求保留到期后删除或匿名化。</p>
       </section>
 
       <section style={{ marginTop: 28, lineHeight: 1.75, color: 'var(--color-text-secondary)' }}>

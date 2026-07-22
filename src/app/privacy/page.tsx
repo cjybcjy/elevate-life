@@ -25,7 +25,7 @@ export default async function PrivacyPage() {
 
       <section style={sectionStyle}>
         <h2 style={{ fontSize: 18, fontWeight: 700, color: 'var(--color-text-primary)' }}>我们收集的信息</h2>
-        <p>为了提供家庭财务管理能力，应用会处理账号信息、家庭财务数据、预算、资产、负债、流水、资金账户、用户备注、偏好设置、本地设备数据和必要的诊断日志。请不要在备注中填写身份证号、完整银行卡号或其他与记账无关的敏感信息。</p>
+        <p>为了提供家庭财务管理能力，应用会处理账号信息、家庭财务数据、预算、资产、物品、负债、流水、资金账户、用户备注、偏好设置、本地设备数据和必要的诊断日志。请不要在备注中填写身份证号、完整银行卡号或其他与记账无关的敏感信息。</p>
       </section>
 
       <section style={sectionStyle}>
@@ -50,7 +50,7 @@ export default async function PrivacyPage() {
 
       <section style={sectionStyle}>
         <h2 style={{ fontSize: 18, fontWeight: 700, color: 'var(--color-text-primary)' }}>数据删除</h2>
-        <p>你可以通过 <Link href="/account-deletion" style={{ color: 'var(--color-primary)' }}>账号与数据删除</Link> 页面查看删除范围、处理时限和申请方式。删除完成后，账号、资产、预算、负债、流水和相关家庭财务数据将无法恢复。</p>
+        <p>你可以通过 <Link href="/account-deletion" style={{ color: 'var(--color-primary)' }}>账号与数据删除</Link> 页面查看删除范围、处理时限和申请方式。删除完成后，账号、资产、物品、预算、负债、流水和相关家庭财务数据将无法恢复。</p>
       </section>
 
       <section style={sectionStyle}>

@@ -14,17 +14,8 @@ export default function BirdLogo({ size = 32, className }: BirdLogoProps) {
       style={{ width: size, height: size }}
     >
       <Image
-        className="bird-logo__image bird-logo__image--light"
+        className="bird-logo__image"
         src="/logo-bird-a-light.png"
-        alt=""
-        width={512}
-        height={512}
-        aria-hidden="true"
-        draggable={false}
-      />
-      <Image
-        className="bird-logo__image bird-logo__image--dark"
-        src="/logo-bird-a-dark.png"
         alt=""
         width={512}
         height={512}

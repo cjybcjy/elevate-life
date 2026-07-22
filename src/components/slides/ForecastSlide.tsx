@@ -8,7 +8,6 @@ interface Props { forecast: { months: ForecastMonth[]; warningLevel: string }; n
 
 export default function ForecastSlide({ forecast, netWorth }: Props) {
   const months = forecast?.months?.map((m) => m.month) || [];
-  const surplus = forecast?.months?.map((m) => parseFloat(m.projectedSurplus) || 0) || [];
   const cumulative = forecast?.months?.map((m) => parseFloat(m.cumulativeSurplus) || 0) || [];
   const freedomTarget = 20000 * 12 * 25;
   const freedomProgress = freedomTarget > 0 ? Math.min(100, (netWorth / freedomTarget) * 100) : 0;
@@ -27,7 +26,7 @@ export default function ForecastSlide({ forecast, netWorth }: Props) {
         <span className="text-ledger-muted">预警 <span className="font-bold">{warningLabel[forecast?.warningLevel] || '健康'}</span></span>
       </div>
       <div className="bg-ledger-surface rounded-lg p-4" style={{ height: 280 }}>
-        <CashflowForecastChart months={months} surplus={surplus} cumulative={cumulative} />
+        <CashflowForecastChart months={months} cumulative={cumulative} />
       </div>
     </div>
   );

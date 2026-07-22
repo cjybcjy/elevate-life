@@ -58,7 +58,7 @@ export async function getAssets() {
   // Check if any price is stale
   let pricesStale = false;
   for (const p of prices) {
-    if (isStale(p.updatedAt)) {
+    if (isStale(p.updatedAt, p.market)) {
       pricesStale = true;
       break;
     }

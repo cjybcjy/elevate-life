@@ -2,14 +2,15 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { renderToString } from 'react-dom/server';
 import MobileQuickEntry, {
+  buildQuickEntryContextSummary,
   buildSuccessfulQuickEntryPreferenceSnapshots,
   buildQuickEntrySubmitValues,
+  getQuickEntryOptionalFieldVisibility,
   getQuickEntryAmountError,
   mergeSuccessfulQuickEntryPreferences,
   resolveQuickEntryPreferenceApplication,
   resolveQuickEntryBudgetId,
   resolveQuickEntryTypeSelection,
-  saveQuickEntryTemplate,
   sanitizeQuickEntryPreferences,
 } from './MobileQuickEntry';
 
@@ -26,8 +27,8 @@ test('mobile quick entry renders the approved single-screen hierarchy', () => {
       categories={categories}
       assets={[{ id: 'cash', name: '现金' }]}
       loadBudgets={async () => []}
-      onSubmit={async () => ({ success: true, feedback: '已记 ¥32 · 餐饮' })}
-      onSaveTemplate={() => {}}
+      onSubmit={async () => ({ success: true, feedback: '已记 ¥32 · 餐饮', transactionId: 'tx-1' })}
+      onUndo={async () => ({ success: true, feedback: '已撤销上一笔记账' })}
     />,
   );
 
@@ -36,24 +37,26 @@ test('mobile quick entry renders the approved single-screen hierarchy', () => {
   assert.match(markup, /aria-label="交易类型"/);
   assert.match(markup, /aria-label="常用分类"/);
   assert.match(markup, /aria-label="金额键盘"/);
-  assert.match(markup, /预算匹配中…/);
-  assert.match(markup, />说一句记账<\/button>/);
-  assert.match(markup, />更多选项<\/button>/);
+  assert.match(markup, /data-amount-complete="true"/);
+  assert.match(markup, /说一句/);
+  assert.match(markup, /更多选项/);
+  assert.doesNotMatch(markup, /不指定账户|预算匹配中|确认记账/);
+  assert.ok(markup.indexOf('说一句') < markup.indexOf('aria-label="交易类型"'));
 });
 
-test('unresolved budget matching exposes readable busy and status semantics', () => {
+test('budget lookup stays in the background and never becomes a submit status', () => {
   const markup = renderToString(
     <MobileQuickEntry
       categories={categories}
       assets={[{ id: 'cash', name: '现金' }]}
       loadBudgets={async () => []}
-      onSubmit={async () => ({ success: true, feedback: '已记 ¥32 · 餐饮' })}
-      onSaveTemplate={() => {}}
+      onSubmit={async () => ({ success: true, feedback: '已记 ¥32 · 餐饮', transactionId: 'tx-1' })}
+      onUndo={async () => ({ success: true, feedback: '已撤销上一笔记账' })}
     />,
   );
 
-  assert.match(markup, /<button[^>]*disabled=""[^>]*aria-busy="true"[^>]*>/);
-  assert.match(markup, /<span[^>]*role="status"[^>]*aria-live="polite"[^>]*>预算匹配中…<\/span>/);
+  assert.match(markup, /data-amount-complete="true"[^>]*aria-busy="false"/);
+  assert.doesNotMatch(markup, /预算匹配中|正在匹配预算/);
 });
 
 test('quick-entry preferences keep only matching categories and existing accounts', () => {
@@ -155,23 +158,62 @@ test('category preferences can apply while account preferences still wait for as
   });
 });
 
-test('template save failures report partial failure after the ledger succeeds', () => {
-  const values = buildQuickEntrySubmitValues({
+test('a single ready account becomes the automatic income and expense account', () => {
+  assert.deepEqual(resolveQuickEntryPreferenceApplication(
+    { categoryByType: {}, accountByType: {} },
+    categories,
+    [{ id: 'cash', name: '现金', currency: 'CNY' }],
+    { categoriesReady: true, assetsReady: true },
+  ).accountByType, {
+    EXPENSE: 'cash',
+    INCOME: 'cash',
+  });
+});
+
+test('context summary uses plain-language automatic values', () => {
+  assert.deepEqual(buildQuickEntryContextSummary({
     type: 'EXPENSE',
-    amount: '32',
+    occurredAt: '2026-07-15',
+    today: '2026-07-15',
     currency: 'CNY',
-    categoryId: 'food',
-    budgetId: '',
     fromAccountId: 'cash',
     toAccountId: '',
-    description: '午饭',
-    occurredAt: '2026-07-13',
+    assets: [{ id: 'cash', name: '现金' }],
+  }), {
+    dateLabel: '今天',
+    accountLabel: '现金',
+    currencyLabel: '人民币',
   });
-  const error = saveQuickEntryTemplate(true, '午饭模板', values, () => {
-    throw new Error('template unavailable');
-  });
+  assert.equal(buildQuickEntryContextSummary({
+    type: 'INCOME',
+    occurredAt: '2026-07-14',
+    today: '2026-07-15',
+    currency: 'USD',
+    fromAccountId: '',
+    toAccountId: '',
+    assets: [],
+  }).accountLabel, '仅记总收支');
+});
 
-  assert.equal(error, '记账已成功，但模板保存失败。');
+test('optional fields only expose accounts relevant to the selected type', () => {
+  assert.deepEqual(getQuickEntryOptionalFieldVisibility('EXPENSE'), {
+    budget: true,
+    fromAccount: true,
+    toAccount: false,
+    transferAccountsRequired: false,
+  });
+  assert.deepEqual(getQuickEntryOptionalFieldVisibility('INCOME'), {
+    budget: false,
+    fromAccount: false,
+    toAccount: true,
+    transferAccountsRequired: false,
+  });
+  assert.deepEqual(getQuickEntryOptionalFieldVisibility('TRANSFER'), {
+    budget: false,
+    fromAccount: true,
+    toAccount: true,
+    transferAccountsRequired: true,
+  });
 });
 
 test('successful account clearing updates the canonical snapshot before late assets arrive', () => {
@@ -222,7 +264,7 @@ test('successful expense keeps pending raw income account out of active type sel
   assert.deepEqual(resolveQuickEntryPreferenceApplication(
     snapshots.storedPreferences,
     categories,
-    [{ id: 'bank-new', name: '新银行卡' }],
+    [{ id: 'bank-new', name: '新银行卡' }, { id: 'cash-new', name: '新现金' }],
     { categoriesReady: true, assetsReady: true },
   ).accountByType, {});
 });

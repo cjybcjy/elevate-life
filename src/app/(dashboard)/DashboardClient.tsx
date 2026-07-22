@@ -9,19 +9,27 @@ import AssetRingChart from '@/components/charts/AssetRingChart';
 import DebtFunnelChart from '@/components/charts/DebtFunnelChart';
 import ScissorChart from '@/components/charts/ScissorChart';
 import CashflowForecastChart from '@/components/charts/CashflowForecastChart';
-import TargetCashflow from '@/components/widgets/TargetCashflow';
 import FamilySafetySummary from '@/components/widgets/FamilySafetySummary';
 import StockTable from '@/components/widgets/StockTable';
 import LiabilityCards from '@/components/widgets/LiabilityCards';
 import BudgetTracker from '@/components/widgets/BudgetTracker';
 import GoalTracker from '@/components/widgets/GoalTracker';
-import MonthFlow from '@/components/widgets/MonthFlow';
 import { ExpandableDetail, isCollapsibleCat } from '@/components/widgets/SpecialAccountsPanel';
 import { PriceRefresher } from '@/components/widgets/PriceRefresher';
 import { useDashboard } from '@/hooks/useDashboard';
 import { useBudgets } from '@/hooks/useBudgets';
+import { getCategories } from '@/lib/actions/categories';
 import { getGoals } from '@/lib/actions/goals';
 import { getCurrentGoldPrice } from '@/lib/actions/gold';
+import { getRecurringRules } from '@/lib/actions/recurring';
+import {
+  getAssetDisplayGroupKey,
+  isGoldAssetCategory,
+} from '@/lib/asset-special-groups';
+import {
+  buildGoalContributionPlan,
+  buildProjectedAvailableCash,
+} from '@/lib/goal-forecast';
 import useSWR from 'swr';
 
 const categoryConfig: Record<string, { icon: string; color: string; label: string }> = {
@@ -29,8 +37,7 @@ const categoryConfig: Record<string, { icon: string; color: string; label: strin
   cash: { icon: '💰', color: '#10b981', label: '现金' },
   provident_fund: { icon: '🏦', color: '#06b6d4', label: '公积金' },
   pension: { icon: '🏛️', color: '#8b5cf6', label: '养老保险' },
-  gold_physical: { icon: '🟡', color: '#f59e0b', label: '实物黄金' },
-  gold_paper: { icon: '📄', color: '#eab308', label: '纸黄金' },
+  gold: { icon: '🟡', color: '#f59e0b', label: '黄金' },
   stock: { icon: '📈', color: '#ef4444', label: '股票' },
   fund: { icon: '📊', color: '#8b5cf6', label: '基金' },
   bond: { icon: '📜', color: '#06b6d4', label: '债券' },
@@ -59,9 +66,16 @@ export default function DashboardClient({ currentDate }: { currentDate: string }
 
   const { data: budgetProgressData } = useBudgets(currentDate);
   const budgetProgress = budgetProgressData?.data ?? [];
+  const { data: categoriesData } = useSWR('categories', () => getCategories().then(r => r.success ? (r.data ?? []) : []));
+  const categories = categoriesData ?? [];
 
   const { data: goalsData } = useSWR('goals', () => getGoals().then(r => r.success ? (r.data ?? []) : []));
   const goals = goalsData ?? [];
+  const { data: recurringRulesData } = useSWR(
+    goals.length > 0 ? 'recurring-rules' : null,
+    () => getRecurringRules().then(r => r.success ? (r.data ?? []) : []),
+  );
+  const recurringRules = recurringRulesData ?? [];
   const { data: goldPriceData } = useSWR('gold-price', () => getCurrentGoldPrice().then(r => r.success ? r.data : null));
 
   // Idle cash from localStorage (synced with StockTable)
@@ -116,7 +130,8 @@ export default function DashboardClient({ currentDate }: { currentDate: string }
     if ((a.category === 'stock' || a.category === 'fund') && a.priceCurrency && a.priceCurrency !== 'CNY') {
       v = v * (cnyRate[a.priceCurrency] || 1);
     }
-    catTotals[a.category || 'other'] = (catTotals[a.category || 'other'] || 0) + v;
+    const displayGroup = getAssetDisplayGroupKey(a.category);
+    catTotals[displayGroup] = (catTotals[displayGroup] || 0) + v;
   }
   // Include idle cash in stock total (matches StockTable's account total = market value + idle cash)
   if (idleCash > 0) {
@@ -126,7 +141,18 @@ export default function DashboardClient({ currentDate }: { currentDate: string }
     .map(([cat, value]) => ({ name: categoryConfig[cat]?.label || cat, value, itemStyle: { color: categoryConfig[cat]?.color || '#94a3b8' } }))
     .sort((a, b) => b.value - a.value);
 
-  const funnelData = liabilities.map((l: any) => ({ name: l.name, value: parseFloat(l.currentBalance) || 0, rate: l.interestRate * 100 }));
+  const funnelData = liabilities.map((l: any) => {
+    const value = parseFloat(l.currentBalance) || 0;
+    const principal = parseFloat(l.principal) || value;
+
+    return {
+      name: l.name,
+      value,
+      paid: Math.max(0, principal - value),
+      principal,
+      rate: l.interestRate * 100,
+    };
+  });
   const wacr = liabilities.length > 0 ? liabilities.reduce((sum: number, l: any) => sum + (parseFloat(l.currentBalance) || 0) * l.interestRate, 0) / (totalLiabilities.toNumber() || 1) : 0;
 
   const now = new Date();
@@ -144,11 +170,32 @@ export default function DashboardClient({ currentDate }: { currentDate: string }
   }
   const curIncome = incomeData[11] || 0, curExpense = expenseData[11] || 0;
   const fmonths = forecast.months?.map((m: any) => m.month) || [];
-  const fsurplus = forecast.months?.map((m: any) => parseFloat(m.projectedSurplus) || 0) || [];
   const fcumulative = forecast.months?.map((m: any) => parseFloat(m.cumulativeSurplus) || 0) || [];
-  const runwayMonths = fcumulative.filter((v: number) => v >= 0).length;
-  const freedomProgress = Math.min(100, (netWorth / (20000 * 12 * 25)) * 100);
-  const currentCash = assets.filter((a: any) => a.category === 'cash' || a.category === 'current_deposit').reduce((s: number, a: any) => s + parseFloat(a.balance || '0'), 0);
+  const goalAssetIds = new Set(goals.map((goal: any) => goal.assetId).filter(Boolean));
+  const currentCash = assets
+    .filter((a: any) => (a.category === 'cash' || a.category === 'current_deposit') && !goalAssetIds.has(a.id))
+    .reduce((s: number, a: any) => s + parseFloat(a.balance || '0'), 0);
+  const goalContributionPlan = buildGoalContributionPlan({
+    goals,
+    months: fmonths,
+    rules: recurringRules.map((rule: any) => ({
+      ...rule,
+      amount: toCny(rule.amount, rule.currency),
+    })),
+  });
+  const projectedAvailableCash = buildProjectedAvailableCash({
+    months: fmonths,
+    cumulative: fcumulative,
+    currentCash,
+    events: goalContributionPlan.events,
+  });
+  const firstRiskMonthIndex = projectedAvailableCash.findIndex((value) => value < 0);
+  const runwayLabel = fmonths.length === 0
+    ? '—'
+    : firstRiskMonthIndex === -1
+      ? `≥${fmonths.length}个月`
+      : `${firstRiskMonthIndex}个月`;
+  const forecastWarningLevel = firstRiskMonthIndex >= 0 ? 'red' : forecast.warningLevel;
 
   // Liquidity tiers
   const tier1Categories = ['stock', 'current_deposit', 'cash'];
@@ -180,39 +227,13 @@ export default function DashboardClient({ currentDate }: { currentDate: string }
           currentExpense={curExpense}
           budgetProgress={budgetProgress}
           transactions={transactions}
+          assets={assets}
+          categories={categories}
           pricesStale={pricesStale}
           goldUnitPrice={goldUnitPrice}
           goldPriceCurrency={goldPriceCurrency}
         />
       </ErrorBoundary>
-
-      {/* MonthFlow + Budget — side by side */}
-      <ErrorBoundary name="MonthFlow">
-        <MonthFlow curIncome={curIncome} curExpense={curExpense} transactions={transactions} />
-      </ErrorBoundary>
-
-      {budgetProgress.length > 0 ? (
-        <ErrorBoundary name="Budget">
-          <div className="card">
-            <div className="card-header">
-              <span>预算追踪</span>
-              <Link href="/management/budget" className="btn btn-outline btn-sm">管理</Link>
-            </div>
-            <div className="card-body">
-              <BudgetTracker progress={budgetProgress} transactions={transactions as any} assets={assets} />
-            </div>
-          </div>
-        </ErrorBoundary>
-      ) : (
-        <ErrorBoundary name="BudgetEmpty">
-          <div className="card">
-            <div className="card-header"><span>预算追踪</span></div>
-            <div className="card-body" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: 120, color: 'var(--color-text-secondary)', fontSize: 13 }}>
-              暂无预算 · <Link href="/management/budget" className="btn btn-outline btn-sm" style={{ marginLeft: 8 }}>创建</Link>
-            </div>
-          </div>
-        </ErrorBoundary>
-      )}
 
       {/* Assets */}
       <ErrorBoundary name="Assets">
@@ -221,8 +242,8 @@ export default function DashboardClient({ currentDate }: { currentDate: string }
             <span>资产配置</span>
             <Link href="/management/assets" className="btn btn-outline btn-sm">管理</Link>
           </div>
-          <div className="card-body" style={{ display: 'flex', gap: 16, alignItems: 'flex-start' }}>
-            <div style={{ flexShrink: 0 }}>
+          <div className="card-body" style={{ display: 'flex', gap: 16, alignItems: 'flex-start', flexWrap: 'wrap' }}>
+            <div style={{ flex: '0 0 280px', width: 280, maxWidth: '100%', display: 'flex', justifyContent: 'center' }}>
               {ringData.length > 0 ? (
                 <AssetRingChart
                   data={ringData}
@@ -236,24 +257,29 @@ export default function DashboardClient({ currentDate }: { currentDate: string }
                 <div style={{ width: 260, height: 260, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--color-text-secondary)' }}>暂无数据</div>
               )}
             </div>
-            <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ flex: '1 1 260px', minWidth: 0 }}>
               {Object.entries(catTotals).sort(([, a], [, b]) => b - a).map(([cat, total]) => {
                 const cfg = categoryConfig[cat] || categoryConfig.other;
                 const pct = totalAssets.gt(0) ? (total / totalAssets.toNumber() * 100).toFixed(1) : '0';
-                const count = assets.filter((a: any) => (a.category || 'other') === cat).length;
+                const count = assets.filter((a: any) => getAssetDisplayGroupKey(a.category) === cat).length;
                 const isCollapsible = isCollapsibleCat(cat);
-                const isGoldCat = cat === 'gold_physical' || cat === 'gold_paper';
+                const isGoldCat = cat === 'gold';
                 return (
-                  <div key={cat} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, padding: '3px 0' }}>
-                    {isCollapsible && <ExpandableDetail cat={cat} assets={assets} />}
-                    <span style={{
-                      display: 'inline-block', width: 10, height: 10, borderRadius: 2.5,
-                      background: cfg.color, flexShrink: 0,
-                    }} />
-                    <span style={{ color: 'var(--color-text-primary)' }}>{cfg.label}</span>
+                  <div key={cat} style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 8, fontSize: 13, padding: '3px 0' }}>
+                    {isCollapsible ? (
+                      <ExpandableDetail cat={cat} assets={assets} color={cfg.color} label={cfg.label} />
+                    ) : (
+                      <>
+                        <span style={{
+                          display: 'inline-block', width: 10, height: 10, borderRadius: 2.5,
+                          background: cfg.color, flexShrink: 0,
+                        }} />
+                        <span style={{ color: 'var(--color-text-primary)' }}>{cfg.label}</span>
+                      </>
+                    )}
                     {!isCollapsible && count > 1 && <span style={{ color: 'var(--color-text-secondary)', fontSize: 11 }}>({count}项)</span>}
                     {isGoldCat && (() => {
-                      const grams = assets.filter((a: any) => (a.category||'other') === cat).reduce((s: number, a: any) => s + (a.quantity || 0), 0);
+                      const grams = assets.filter((a: any) => isGoldAssetCategory(a.category)).reduce((s: number, a: any) => s + (a.quantity || 0), 0);
                       return <span style={{ color: 'var(--color-text-secondary)', fontSize: 11, width: 48, textAlign: 'right' }}>{Number(grams).toFixed(0)}克</span>;
                     })()}
                     <span style={{ color: 'var(--color-text-secondary)', fontSize: 11, width: 40, textAlign: 'right', marginLeft: 'auto' }}>{pct}%</span>
@@ -262,29 +288,6 @@ export default function DashboardClient({ currentDate }: { currentDate: string }
                 );
               })}
               {assets.length === 0 && <div style={{ color: 'var(--color-text-secondary)', fontSize: 13, padding: '16px 0', textAlign: 'center' }}>暂无资产</div>}
-            </div>
-          </div>
-        </div>
-      </ErrorBoundary>
-
-      {/* Debts */}
-      <ErrorBoundary name="Debts">
-        <div className="card">
-          <div className="card-header">
-            <span>负债总览</span>
-            <Link href="/management/liabilities" className="btn btn-outline btn-sm">管理</Link>
-          </div>
-          <div className="card-body" style={{ display: 'flex', gap: 20, alignItems: 'flex-start' }}>
-            <div style={{ flexShrink: 0 }}>
-              {funnelData.length > 0 ? <DebtFunnelChart data={funnelData} /> : (
-                <div style={{ width: 220, height: 220, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--color-text-secondary)', fontSize: 13 }}>暂无负债</div>
-              )}
-            </div>
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ fontSize: 13, color: 'var(--color-text-secondary)', marginBottom: 8 }}>
-                总额 <AmountDisplay amount={totalLiabilities.toNumber()} className="font-bold" /> · WACR <span style={{ color: 'var(--color-text-primary)', fontWeight: 500 }}>{(wacr * 100).toFixed(2)}%</span>
-              </div>
-              <LiabilityCards liabilities={liabilities} transactions={transactions} />
             </div>
           </div>
         </div>
@@ -306,13 +309,51 @@ export default function DashboardClient({ currentDate }: { currentDate: string }
         </div>
       </ErrorBoundary>
 
-      <ErrorBoundary name="Goals">
-        <div className="card" style={{ gridColumn: '1 / -1' }}>
-          <div className="card-body">
-            <GoalTracker goals={goals} />
+      {/* Debts */}
+      <ErrorBoundary name="Debts">
+        <div className="card">
+          <div className="card-header">
+            <span>负债总览</span>
+            <Link href="/management/liabilities" className="btn btn-outline btn-sm">管理</Link>
+          </div>
+          <div className="card-body" style={{ display: 'flex', gap: 20, alignItems: 'flex-start', flexWrap: 'wrap' }}>
+            <div style={{ flex: '0 1 300px', width: 'min(300px, 100%)', maxWidth: '100%', display: 'flex', justifyContent: 'center' }}>
+              {funnelData.length > 0 ? <DebtFunnelChart data={funnelData} size={300} /> : (
+                <div style={{ width: 'min(300px, 100%)', height: 300, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--color-text-secondary)', fontSize: 13 }}>暂无负债</div>
+              )}
+            </div>
+            <div style={{ flex: '1 1 320px', minWidth: 0 }}>
+              <div style={{ fontSize: 13, color: 'var(--color-text-secondary)', marginBottom: 8, width: '100%' }}>
+                总额 <AmountDisplay amount={totalLiabilities.toNumber()} className="font-bold" /> · WACR <span style={{ color: 'var(--color-text-primary)', fontWeight: 500 }}>{(wacr * 100).toFixed(2)}%</span>
+              </div>
+              <LiabilityCards liabilities={liabilities} transactions={transactions} assets={assets} />
+            </div>
           </div>
         </div>
       </ErrorBoundary>
+
+      {budgetProgress.length > 0 ? (
+        <ErrorBoundary name="Budget">
+          <div className="card" style={{ gridColumn: '1 / -1' }}>
+            <div className="card-header">
+              <span>预算追踪</span>
+              <Link href="/management/budget" className="btn btn-outline btn-sm">管理</Link>
+            </div>
+            <div className="card-body">
+              <BudgetTracker progress={budgetProgress} transactions={transactions as any} assets={assets} />
+            </div>
+          </div>
+        </ErrorBoundary>
+      ) : (
+        <ErrorBoundary name="BudgetEmpty">
+          <div className="card" style={{ gridColumn: '1 / -1' }}>
+            <div className="card-header"><span>预算追踪</span></div>
+            <div className="card-body" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: 120, color: 'var(--color-text-secondary)', fontSize: 13 }}>
+              暂无预算 · <Link href="/management/budget" className="btn btn-outline btn-sm" style={{ marginLeft: 8 }}>创建</Link>
+            </div>
+          </div>
+        </ErrorBoundary>
+      )}
 
       {/* Scissor */}
       <ErrorBoundary name="Scissor">
@@ -336,17 +377,32 @@ export default function DashboardClient({ currentDate }: { currentDate: string }
       <ErrorBoundary name="Forecast">
         <div className="card">
           <div className="card-header">
-            <span>现金流预测</span>
-            <div style={{ display: 'flex', gap: 16, fontSize: 12, color: 'var(--color-text-secondary)' }}>
-              <span>生存月数 <span style={{ color: 'var(--color-text-primary)', fontWeight: 700 }}>{runwayMonths}</span></span>
-              <span>财务自由 <span style={{ color: 'var(--color-text-primary)', fontWeight: 700 }}>{freedomProgress.toFixed(1)}%</span></span>
-              <span>预警 <span style={{ fontWeight: 700, color: forecast.warningLevel === 'red' ? 'var(--color-danger)' : forecast.warningLevel === 'yellow' ? 'var(--color-warning)' : 'var(--color-text-primary)' }}>{forecast.warningLevel === 'red' ? '危险' : forecast.warningLevel === 'yellow' ? '预警' : '健康'}</span></span>
+            <span style={{ whiteSpace: 'nowrap' }}>现金流预测</span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap', fontSize: 12, color: 'var(--color-text-secondary)' }}>
+              <span>覆盖 <span style={{ color: 'var(--color-text-primary)', fontWeight: 700 }}>未来 {fmonths.length || 12} 个月</span></span>
+              <span>现金安全期 <span style={{ color: 'var(--color-text-primary)', fontWeight: 700 }}>{runwayLabel}</span></span>
+              <span>预警 <span style={{ fontWeight: 700, color: forecastWarningLevel === 'red' ? 'var(--color-danger)' : forecastWarningLevel === 'yellow' ? 'var(--color-warning)' : 'var(--color-text-primary)' }}>{forecastWarningLevel === 'red' ? '危险' : forecastWarningLevel === 'yellow' ? '预警' : '健康'}</span></span>
             </div>
           </div>
           <div className="card-body">
-            <CashflowForecastChart months={fmonths} surplus={fsurplus} cumulative={fcumulative} />
-            <TargetCashflow monthlyIncome={curIncome} monthlyExpense={curExpense} currentCash={currentCash} />
+            <CashflowForecastChart
+              months={fmonths}
+              cumulative={fcumulative}
+              currentCash={currentCash}
+              contributionEvents={goalContributionPlan.events}
+            />
           </div>
+        </div>
+      </ErrorBoundary>
+
+      {/* Goals — long-term direction after near-term cash safety */}
+      <ErrorBoundary name="Goals">
+        <div style={{ gridColumn: '1 / -1' }}>
+          <GoalTracker
+            goals={goals}
+            assets={assets}
+            monthlyContributionByGoal={goalContributionPlan.monthlyByGoal}
+          />
         </div>
       </ErrorBoundary>
     </div>

@@ -37,10 +37,10 @@ test('MobileNavigationSearchBoundary keeps all five fallback actions while searc
   );
 
   assert.equal((markup.match(/data-mobile-primary-nav=/g) ?? []).length, 5);
-  assert.match(markup, /data-mobile-primary-nav="ledger" aria-current="page"/);
+  assert.match(markup, /data-mobile-primary-nav="me" aria-current="page"/);
 });
 
-test('MobileNavigationView selects quick-entry only for focus=create', () => {
+test('MobileNavigationView selects quick-entry only for focus=create and otherwise keeps My active', () => {
   const focusedMarkup = renderToString(
     <MobileNavigationView
       pathname="/management/ledger"
@@ -68,7 +68,7 @@ test('MobileNavigationView selects quick-entry only for focus=create', () => {
   );
   assert.doesNotMatch(
     focusedMarkup,
-    /data-mobile-primary-nav="ledger" aria-current="page"/,
+    /data-mobile-primary-nav="me" aria-current="page"/,
   );
   assert.doesNotMatch(
     normalMarkup,
@@ -76,7 +76,7 @@ test('MobileNavigationView selects quick-entry only for focus=create', () => {
   );
   assert.match(
     normalMarkup,
-    /data-mobile-primary-nav="ledger" aria-current="page"/,
+    /data-mobile-primary-nav="me" aria-current="page"/,
   );
 });
 
@@ -113,6 +113,7 @@ test('MobileNavigationView exposes all approved more-menu actions', () => {
 
   assert.match(markup, /role="dialog"/);
   assert.match(markup, /aria-label="更多功能菜单"/);
+  assert.match(markup, /周期交易/);
   assert.match(markup, /负债管理/);
   assert.match(markup, /目标管理/);
   assert.match(markup, /分类管理/);
@@ -136,7 +137,7 @@ test('MobileNavigationView gives topbar controls 44px minimum touch targets', ()
   assert.match(markup, /class="mobile-icon-button min-h-11 min-w-11"/);
 });
 
-test('MobileNavigationView expands the actual theme button to a 44px target', () => {
+test('MobileNavigationView does not expose a theme switcher', () => {
   const markup = renderToString(
     <MobileNavigationView
       pathname="/"
@@ -146,12 +147,9 @@ test('MobileNavigationView expands the actual theme button to a 44px target', ()
       onMenuClose={() => {}}
       onLogout={() => {}}
     />,
-  ).replaceAll('&amp;', '&');
-
-  assert.match(
-    markup,
-    /class="\[&_button\]:min-h-11 \[&_button\]:min-w-11"><button[^>]*aria-label="切换主题"/,
   );
+
+  assert.doesNotMatch(markup, /切换主题|切换到暗色模式|切换到亮色模式/);
 });
 
 test('MobileNavigationView keeps only the More trigger pointer-active above the backdrop', () => {

@@ -4,6 +4,7 @@ import { prisma } from '@/lib/prisma';
 import { auth } from '@/lib/auth';
 import { revalidateTag } from 'next/cache';
 import Decimal from 'decimal.js';
+import { budgetIncludesExpense } from '@/lib/budget-progress';
 
 function serializeBudget(b: any) {
   const result: any = {
@@ -149,10 +150,6 @@ export async function getBudgetProgress(date: string) {
       userId,
       type: 'EXPENSE',
       occurredAt: { gte: minStart, lte: maxEnd },
-      OR: [
-        { budgetId: { not: null } },
-        { categoryId: { not: null } },
-      ],
     },
     select: { budgetId: true, categoryId: true, amount: true, occurredAt: true },
   });
@@ -160,14 +157,7 @@ export async function getBudgetProgress(date: string) {
   const progress = budgets.map(b => {
     let spent = new Decimal(0);
     for (const t of transactions) {
-      if (t.occurredAt < b.startDate || t.occurredAt > b.endDate) continue;
-      // Explicit budgetId link takes priority
-      if (t.budgetId === b.id) {
-        spent = spent.plus(t.amount);
-      } else if (t.budgetId === null && t.categoryId === b.categoryId) {
-        // Fallback: unlinked transaction matches by category (historical data)
-        spent = spent.plus(t.amount);
-      }
+      if (budgetIncludesExpense(b, t)) spent = spent.plus(t.amount);
     }
 
     const budgetAmount = Number(b.amount);
@@ -177,12 +167,16 @@ export async function getBudgetProgress(date: string) {
     return {
       id: b.id,
       name: b.name,
+      categoryId: b.categoryId,
       categoryName: b.category?.name || '总计',
+      categoryColor: b.category?.color || null,
       budgetAmount,
       spent: spentNum,
       remaining: budgetAmount - spentNum,
       pct: Math.min(pct, 100),
       isOverBudget: spentNum > budgetAmount,
+      startDate: b.startDate.toISOString(),
+      endDate: b.endDate.toISOString(),
     };
   });
 

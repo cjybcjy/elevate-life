@@ -7,7 +7,7 @@ const config: CapacitorConfig = {
   appId,
   appName: 'Elevate Life',
   webDir: 'mobile-web',
-  backgroundColor: '#0f172a',
+  backgroundColor: '#F7F7F7',
   ...(serverUrl
     ? {
         server: {
@@ -18,11 +18,11 @@ const config: CapacitorConfig = {
     : {}),
   android: {
     path: 'android',
-    backgroundColor: '#0f172a',
+    backgroundColor: '#F7F7F7',
   },
   ios: {
     path: 'ios',
-    backgroundColor: '#0f172a',
+    backgroundColor: '#F7F7F7',
   },
 };
 

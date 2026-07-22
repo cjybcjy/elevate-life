@@ -56,7 +56,7 @@ assert(
     configSource.includes("appName: 'Elevate Life'") &&
     configSource.includes("webDir: 'mobile-web'") &&
     configSource.includes('cleartext: false') &&
-    configSource.includes("backgroundColor: '#0f172a'"),
+    configSource.includes("backgroundColor: '#F7F7F7'"),
   'Capacitor config should support env-driven HTTPS server URL, package id, fallback webDir, and store-safe defaults.',
 );
 

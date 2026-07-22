@@ -125,6 +125,22 @@ function markerRows(page: Page, marker: string) {
   return page.locator('[data-transaction-list="true"] tbody tr').filter({ hasText: marker });
 }
 
+async function readAccountBalance(context: BrowserContext, accountName: string) {
+  const page = await context.newPage();
+  try {
+    await page.goto(new URL('/management/assets', baseUrl).toString(), { waitUntil: 'domcontentloaded' });
+    await settle(page);
+    const account = page.getByRole('button').filter({ hasText: accountName }).first();
+    await account.waitFor({ state: 'visible' });
+    const amountText = await account.locator('.font-mono').first().innerText();
+    const balance = Number(amountText.replace(/[^\d.-]/g, ''));
+    assert.equal(Number.isFinite(balance), true, `could not parse ${accountName} balance: ${amountText}`);
+    return balance;
+  } finally {
+    await page.close();
+  }
+}
+
 async function waitForMarkerRowCount(page: Page, marker: string, expected: number) {
   await page.waitForFunction(({ rowMarker, expectedCount }) => (
     Array.from(document.querySelectorAll('[data-transaction-list="true"] tbody tr'))
@@ -148,7 +164,7 @@ async function assertPersistedTransaction(page: Page, marker: string, phase: str
   console.log(`${phase} fields verified: amount=¥32 category=餐饮 budget=餐饮预算 note=${marker}`);
 }
 
-async function assertQueryGatedQuickEntryFlow(page: Page) {
+async function assertIndependentRecurringAndQuickEntryFlow(page: Page) {
   await page.goto(new URL('/management/ledger', baseUrl).toString(), { waitUntil: 'domcontentloaded' });
   await settle(page);
   await waitForTransactionsReady(page);
@@ -156,14 +172,20 @@ async function assertQueryGatedQuickEntryFlow(page: Page) {
   await expectHidden(page.locator('[data-ledger-create-form="true"]'), 'ordinary mobile full create form');
   assert.equal(await page.locator('[data-transaction-list="true"]').isVisible(), true);
 
-  await page.getByRole('button', { name: '周期交易' }).click();
+  assert.equal(await page.getByRole('button', { name: '周期交易' }).count(), 0);
+  await page.getByRole('button', { name: '更多功能' }).click();
+  await page.getByRole('dialog', { name: '更多功能菜单' })
+    .getByRole('link', { name: '周期交易', exact: true })
+    .click();
+  await page.waitForURL((url) => url.pathname === '/management/recurring');
   await page.locator('#recurring-form').waitFor({ state: 'visible' });
+  await page.getByRole('heading', { name: '周期交易', exact: true }).waitFor({ state: 'visible' });
   await page.getByRole('link', { name: /记一笔/ }).click();
   await page.waitForURL((url) => (
     url.pathname === '/management/ledger' && url.searchParams.get('focus') === 'create'
   ));
   await page.locator('[data-mobile-quick-entry="true"]').waitFor({ state: 'visible' });
-  console.log('Query-gated flow verified: ordinary ledger -> recurring -> bottom 记一笔 -> quick entry');
+  console.log('Independent flow verified: ordinary ledger -> More/周期交易 -> standalone page -> bottom 记一笔');
 }
 
 async function assertOptionsSheetFocusLoop(page: Page, quick: ReturnType<Page['locator']>) {
@@ -195,6 +217,35 @@ async function assertOptionsSheetFocusLoop(page: Page, quick: ReturnType<Page['l
     true,
     'options sheet did not restore focus to its trigger',
   );
+}
+
+async function assertTypeSpecificOptionalFields(page: Page, quick: ReturnType<Page['locator']>) {
+  await quick.getByRole('button', { name: '收入', exact: true }).click();
+  await quick.locator('button[aria-label^="更多选项："]').click();
+  let sheet = page.getByRole('dialog', { name: '更多记账选项' });
+  await sheet.waitFor({ state: 'visible' });
+  assert.equal(await sheet.getByLabel('收款账户（选填）').count(), 1);
+  assert.equal(await sheet.getByLabel('付款账户（选填）').count(), 0);
+  assert.equal(await sheet.getByLabel('预算（选填）').count(), 0);
+  await sheet.getByRole('button', { name: '完成', exact: true }).click();
+
+  await quick.getByRole('button', { name: '转账', exact: true }).click();
+  sheet = page.getByRole('dialog', { name: '选择转账账户' });
+  await sheet.waitFor({ state: 'visible' });
+  assert.equal(await sheet.getByLabel('转出账户').count(), 1);
+  assert.equal(await sheet.getByLabel('转入账户').count(), 1);
+  assert.equal(await sheet.getByLabel('预算（选填）').count(), 0);
+  await sheet.getByRole('button', { name: '完成', exact: true }).click();
+
+  await quick.getByRole('button', { name: '支出', exact: true }).click();
+  await quick.locator('button[aria-label^="更多选项："]').click();
+  sheet = page.getByRole('dialog', { name: '更多记账选项' });
+  await sheet.waitFor({ state: 'visible' });
+  assert.equal(await sheet.getByLabel('付款账户（选填）').count(), 1);
+  assert.equal(await sheet.getByLabel('收款账户（选填）').count(), 0);
+  assert.equal(await sheet.getByLabel('预算（选填）').count(), 1);
+  await sheet.getByRole('button', { name: '完成', exact: true }).click();
+  await sheet.waitFor({ state: 'hidden' });
 }
 
 async function removeTransactionIfPresent(page: Page, marker: string, requireUnique = true) {
@@ -247,19 +298,20 @@ async function removeTransactionIfPresent(page: Page, marker: string, requireUni
 
 async function createAndRemoveMobileTransaction(page: Page) {
   const marker = `手机极速记账-${Date.now()}`;
+  const cashBalanceBefore = await readAccountBalance(page.context(), '现金备用金');
   try {
     let quick = await openQuickEntry(page);
 
     await quick.getByRole('button', { name: '收入', exact: true }).click();
     assert.equal(await quick.locator('[data-quick-category="人情往来"]').count(), 1);
     await quick.getByRole('button', { name: '支出', exact: true }).click();
-    await quick.getByRole('button', { name: '说一句记账' }).click();
+    await quick.getByRole('button', { name: '说一句', exact: true }).click();
     await quick.locator('#ledger-agent-input').fill('今天午饭 32 用现金');
     await quick.getByRole('button', { name: '识别并填入' }).click();
     assert.match(await quick.getByLabel('金额', { exact: true }).textContent() ?? '', /32/);
     await quick.getByRole('button', { name: '更多选项' }).click();
     const agentSheet = page.getByRole('dialog', { name: '更多记账选项' });
-    assert.equal((await agentSheet.getByLabel('来源账户').locator('option:checked').innerText()).trim(), '现金备用金');
+    assert.equal((await agentSheet.getByLabel('付款账户（选填）').locator('option:checked').innerText()).trim(), '现金备用金');
     await agentSheet.getByRole('button', { name: '完成' }).click();
     await agentSheet.waitFor({ state: 'hidden' });
 
@@ -275,10 +327,13 @@ async function createAndRemoveMobileTransaction(page: Page) {
 
     await quick.locator('[data-quick-category="餐饮"]').click();
     await assertOptionsSheetFocusLoop(page, quick);
+    await assertTypeSpecificOptionalFields(page, quick);
+    await quick.locator('[data-quick-category="餐饮"]').click();
     const trigger = quick.getByRole('button', { name: '更多选项' });
     await trigger.click();
     const sheet = page.getByRole('dialog', { name: '更多记账选项' });
-    await sheet.getByLabel('备注').fill(marker);
+    await sheet.getByLabel('付款账户（选填）').selectOption({ label: '现金备用金' });
+    await sheet.getByLabel('备注（选填）').fill(marker);
     await sheet.getByRole('button', { name: '完成' }).click();
     await sheet.waitFor({ state: 'hidden' });
 
@@ -289,21 +344,38 @@ async function createAndRemoveMobileTransaction(page: Page) {
       new URL(response.url()).pathname === '/management/ledger' &&
       response.request().postData()?.includes(marker) === true
     ));
-    await quick.getByRole('button', { name: '确认记账' }).click();
+    await quick.locator('[data-amount-complete="true"]').click();
     await createSettled;
     await quick.getByText(/已记 ¥32(?:\.00)? · 餐饮预算还剩/).waitFor({ state: 'visible' });
+    await quick.getByRole('button', { name: '撤销', exact: true }).waitFor({ state: 'visible' });
+    await quick.getByRole('button', { name: '再记一笔', exact: true }).waitFor({ state: 'visible' });
 
     await assertPersistedTransaction(page, marker, 'Initial persisted row');
+    const cashBalanceAfterCreate = await readAccountBalance(page.context(), '现金备用金');
+    assert.equal(cashBalanceAfterCreate, cashBalanceBefore - 32, 'expense did not deduct the source account');
     await page.screenshot({
       path: resolve(outputDir, '360x800-category-first-success.png'),
       fullPage: false,
     });
     console.log(`Transaction created and visible: ${marker}`);
 
+    await quick.getByRole('button', { name: '撤销', exact: true }).click();
+    await quick.getByText('已撤销上一笔记账', { exact: true }).waitFor({ state: 'visible' });
+    await waitForMarkerRowCount(page, marker, 0);
+    const cashBalanceAfterUndo = await readAccountBalance(page.context(), '现金备用金');
+    assert.equal(cashBalanceAfterUndo, cashBalanceBefore, 'undo did not restore the source account balance');
+    await page.screenshot({
+      path: resolve(outputDir, '360x800-undo-success.png'),
+      fullPage: false,
+    });
+    await quick.getByRole('button', { name: '再记一笔', exact: true }).click();
+    await expectHidden(quick.getByText('已撤销上一笔记账', { exact: true }), 'undo feedback after 再记一笔');
+
     await page.reload({ waitUntil: 'domcontentloaded' });
     await settle(page);
-    await assertPersistedTransaction(page, marker, 'Reloaded persisted row');
-    console.log(`Persistence verified after reload: ${marker}`);
+    await waitForTransactionsReady(page);
+    assert.equal(await markerRows(page, marker).count(), 0, 'undone transaction returned after reload');
+    console.log(`Real undo verified after reload: ${marker}`);
   } finally {
     await removeTransactionIfPresent(page, marker);
   }
@@ -335,9 +407,61 @@ async function screenshotQuickEntryViewport(
     await quick.getByRole('button', { name: '支出', exact: true }).getAttribute('aria-pressed'),
     'true',
   );
+  await quick.getByRole('button', { name: '说一句', exact: true }).waitFor({ state: 'visible' });
+  await quick.getByText('只需选择分类、输入金额；账户、日期和预算会自动处理。', { exact: true })
+    .waitFor({ state: 'visible' });
+  assert.equal(await quick.getByRole('group', { name: '交易类型' }).getByRole('button').count(), 3);
+  assert.equal(await quick.locator('[aria-label="金额键盘"] > button').count(), 16);
+  assert.equal(await quick.locator('[data-amount-complete="true"]').count(), 1);
+  await quick.locator('button[aria-label^="更多选项：今天，"]').waitFor({ state: 'visible' });
+  assert.equal(await quick.getByLabel('日期').count(), 0, `${label} date field leaked onto the main screen`);
+  assert.equal(await quick.getByLabel('付款账户（选填）').count(), 0, `${label} account field leaked onto the main screen`);
   await assertNoHorizontalOverflow(page);
   await page.screenshot({
     path: resolve(outputDir, `${label}-category-first.png`),
+    fullPage: false,
+  });
+  await context.close();
+}
+
+async function checkRecurringDiscoveryViewport(
+  browser: Browser,
+  storageState: Awaited<ReturnType<BrowserContext['storageState']>>,
+  browserDiagnostics: string[],
+) {
+  const context = await browser.newContext({
+    viewport: { width: 390, height: 844 },
+    isMobile: true,
+    hasTouch: true,
+    locale: 'zh-CN',
+    storageState,
+  });
+  const page = await context.newPage();
+  collectBrowserDiagnostics(page, '390x844-recurring-discovery', browserDiagnostics);
+
+  await page.goto(new URL('/me', baseUrl).toString(), { waitUntil: 'domcontentloaded' });
+  await settle(page);
+  assert.equal(new URL(page.url()).pathname, '/me');
+  assert.match(await page.title(), /家庭账本/);
+  assert.doesNotMatch(await page.locator('body').innerText(), /Runtime Error|Application error/);
+  const recurringLink = page.getByRole('link', { name: /周期交易.*管理房租、工资和定期转账的自动记账/ });
+  await recurringLink.waitFor({ state: 'visible' });
+  await assertNoHorizontalOverflow(page);
+  await page.screenshot({
+    path: resolve(outputDir, '390x844-me-recurring-entry.png'),
+    fullPage: false,
+  });
+
+  await recurringLink.click();
+  await page.waitForURL((url) => url.pathname === '/management/recurring');
+  assert.match(await page.title(), /家庭账本/);
+  assert.doesNotMatch(await page.locator('body').innerText(), /Runtime Error|Application error/);
+  await page.getByRole('heading', { name: '周期交易', exact: true }).waitFor({ state: 'visible' });
+  await page.locator('#recurring-form').waitFor({ state: 'visible' });
+  await page.getByRole('link', { name: '查看流水', exact: true }).waitFor({ state: 'visible' });
+  await assertNoHorizontalOverflow(page);
+  await page.screenshot({
+    path: resolve(outputDir, '390x844-recurring-standalone.png'),
     fullPage: false,
   });
   await context.close();
@@ -360,7 +484,7 @@ async function checkKeyboardPressureViewport(
   const quick = await openQuickEntry(page);
   await quick.locator('[data-amount-key="3"]').click();
   await quick.locator('[data-amount-key="2"]').click();
-  const submit = quick.getByRole('button', { name: '确认记账' });
+  const submit = quick.locator('[data-amount-complete="true"]');
   await submit.scrollIntoViewIfNeeded();
   await assertInsideViewport(page, submit, 'quick-entry confirm button');
   assert.equal(
@@ -406,14 +530,21 @@ async function checkDesktopViewport(
     fullPage: false,
   });
 
-  await page.getByRole('button', { name: '周期交易' }).click();
-  await page.waitForURL((url) => (
-    url.pathname === '/management/ledger' &&
-    !url.searchParams.has('focus') &&
-    !url.searchParams.has('needsSource')
-  ));
+  assert.equal(await page.getByRole('button', { name: '周期交易' }).count(), 0);
+  await page.getByRole('link', { name: /周期交易/ }).click();
+  await page.waitForURL((url) => url.pathname === '/management/recurring');
   await page.locator('#recurring-form').waitFor({ state: 'visible' });
-  console.log('Desktop query-gated tab verified: focus=create -> 周期交易 -> clean URL + recurring form');
+  await page.getByRole('heading', { name: '周期交易', exact: true }).waitFor({ state: 'visible' });
+  await page.screenshot({
+    path: resolve(outputDir, '1440x900-recurring-standalone.png'),
+    fullPage: false,
+  });
+
+  await page.goto(new URL('/management/ledger?tab=recurring', baseUrl).toString(), {
+    waitUntil: 'domcontentloaded',
+  });
+  await page.waitForURL((url) => url.pathname === '/management/recurring');
+  console.log('Desktop standalone route and legacy recurring deep-link redirect verified');
   await context.close();
 }
 
@@ -449,6 +580,7 @@ async function main() {
         height,
       );
     }
+    await checkRecurringDiscoveryViewport(browser, storageState, browserDiagnostics);
     await checkKeyboardPressureViewport(browser, storageState, browserDiagnostics);
     await checkDesktopViewport(browser, storageState, browserDiagnostics);
 
@@ -464,7 +596,7 @@ async function main() {
     await writePage.goto(new URL('/', baseUrl).toString(), { waitUntil: 'domcontentloaded' });
     await settle(writePage);
     await removeTransactionIfPresent(writePage, '手机极速记账-', false);
-    await assertQueryGatedQuickEntryFlow(writePage);
+    await assertIndependentRecurringAndQuickEntryFlow(writePage);
     await createAndRemoveMobileTransaction(writePage);
     await writeContext.close();
 

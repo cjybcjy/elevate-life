@@ -11,6 +11,10 @@ import { useAssets } from '@/hooks/useAssets';
 import { useTransactions } from '@/hooks/useTransactions';
 import { useToast } from '@/components/common/Toast';
 import { useSWRConfig } from 'swr';
+import {
+  buildSpecialAssetGroups,
+  parseSpecialAssetBalance,
+} from '@/lib/asset-special-groups';
 
 type AssetFocus = 'liquidity' | 'prices' | null;
 
@@ -262,22 +266,8 @@ export default function AssetManager() {
 
       {/* 专项账户总览 */}
       {(() => {
-        const specialMap: Record<string, { icon: string; label: string }> = {
-          provident_fund: { icon: '🏦', label: '公积金' },
-          pension: { icon: '🏛️', label: '养老保险' },
-          current_deposit: { icon: '💳', label: '银行活期' },
-        };
-        const specialAssets = assets.filter((a) => Boolean(a.category && specialMap[a.category]));
-        if (specialAssets.length === 0) return null;
-        const groups: Record<string, { icon: string; label: string; assets: AssetRow[]; total: number }> = {};
-        for (const a of specialAssets) {
-          const category = a.category || 'other';
-          const cfg = specialMap[category];
-          if (!cfg) continue;
-          if (!groups[category]) groups[category] = { ...cfg, assets: [], total: 0 };
-          groups[category].assets.push(a);
-          groups[category].total += parseAssetBalance(a.balance);
-        }
+        const groups = buildSpecialAssetGroups(assets);
+        if (Object.keys(groups).length === 0) return null;
         return (
           <div className="mb-6 rounded-xl bg-ledger-surface p-4">
             <h2 className="text-base font-bold mb-3">专项账户总览</h2>
@@ -285,13 +275,18 @@ export default function AssetManager() {
               {Object.entries(groups).map(([cat, g]) => (
                 <div key={cat} className="bg-ledger-bg rounded-lg p-3">
                   <div className="flex items-center justify-between mb-2">
-                    <span className="text-sm font-medium" style={{ color: 'var(--color-text-primary)' }}>{g.icon} {g.label}</span>
+                    <span className="min-w-0">
+                      <span className="text-sm font-medium" style={{ color: 'var(--color-text-primary)' }}>{g.icon} {g.label}</span>
+                      {cat === 'gold' && g.quantityTotal > 0 && (
+                        <span className="ml-2 text-xs text-ledger-muted">{g.quantityTotal.toFixed(2)}克</span>
+                      )}
+                    </span>
                     <AmountDisplay amount={g.total} className="text-sm" />
                   </div>
                   {g.assets.map((a) => (
                     <div key={a.id} className="flex justify-between text-xs text-ledger-muted py-0.5">
                       <span className="truncate flex-1">{a.name}</span>
-                      <AmountDisplay amount={parseAssetBalance(a.balance)} className="shrink-0" />
+                      <AmountDisplay amount={parseSpecialAssetBalance(a.balance)} className="shrink-0" />
                     </div>
                   ))}
                 </div>

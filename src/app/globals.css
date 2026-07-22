@@ -6,6 +6,8 @@
    ============================================================ */
 
 :root {
+  color-scheme: light;
+
   /* Grayscale */
   --color-gray-25: #FAFAFA;
   --color-gray-50: #F7F7F7;
@@ -108,66 +110,12 @@
   /* Chart */
   --color-chart-label: var(--color-text-primary);
   --color-chart-bg: var(--color-white);
+  --color-skeleton-base: var(--color-gray-100);
+  --color-skeleton-highlight: var(--color-gray-50);
 
   /* Transitions */
   --transition-fast: 150ms ease;
   --transition-normal: 200ms ease;
-}
-
-/* ========== Dark Theme ========== */
-[data-theme="dark"] {
-  --color-surface: var(--color-black);
-  --color-container: var(--color-gray-900);
-  --color-container-hover: var(--color-gray-800);
-  --color-container-inset: var(--color-gray-800);
-
-  --color-text-primary: var(--color-white);
-  --color-text-secondary: var(--color-gray-400);
-  --color-text-subdued: var(--color-gray-500);
-  --color-text-inverse: var(--color-gray-900);
-
-  --color-success-bg: rgba(22, 163, 74, 0.12);
-  --color-danger-bg: rgba(220, 38, 38, 0.12);
-  --color-warning-bg: rgba(217, 119, 6, 0.12);
-  --color-info-bg: rgba(37, 99, 235, 0.12);
-
-  --color-accent: var(--color-white);
-  --color-accent-hover: var(--color-gray-50);
-  --color-accent-bg: var(--color-gray-800);
-  --color-accent-border: var(--alpha-white-300);
-
-  --border-primary: var(--alpha-white-400);
-  --border-secondary: var(--alpha-white-300);
-  --border-tertiary: var(--alpha-white-200);
-  --border-subdued: var(--alpha-white-100);
-
-  --alpha-black-25: rgba(255, 255, 255, 0.03);
-  --alpha-black-50: rgba(255, 255, 255, 0.05);
-  --alpha-black-100: rgba(255, 255, 255, 0.08);
-  --alpha-black-200: rgba(255, 255, 255, 0.10);
-  --alpha-black-300: rgba(255, 255, 255, 0.15);
-  --alpha-black-400: rgba(255, 255, 255, 0.20);
-  --alpha-black-500: rgba(255, 255, 255, 0.30);
-
-  --shadow-border-xs: var(--shadow-xs), 0px 0px 0px 1px var(--alpha-white-50);
-  --shadow-border-sm: var(--shadow-sm), 0px 0px 0px 1px var(--alpha-white-50);
-  --shadow-border-md: var(--shadow-md), 0px 0px 0px 1px var(--alpha-white-50);
-
-  --color-sidebar-bg: var(--color-gray-900);
-  --color-sidebar-text: var(--color-gray-400);
-  --color-sidebar-active-bg: var(--alpha-white-100);
-  --color-sidebar-active-text: var(--color-white);
-  --color-sidebar-active-indicator: var(--color-white);
-  --color-sidebar-hover-bg: var(--alpha-white-50);
-  --color-sidebar-border: var(--alpha-white-100);
-
-  --color-table-header-bg: var(--color-gray-800);
-  --color-table-stripe: var(--color-gray-900);
-  --color-table-hover: var(--color-gray-800);
-  --color-table-border: var(--alpha-white-100);
-
-  --color-chart-label: var(--color-white);
-  --color-chart-bg: var(--color-gray-900);
 }
 
 /* ============================================================
@@ -231,6 +179,10 @@ body {
   display: none;
 }
 
+.financial-ai-chat {
+  width: 100%;
+}
+
 .bird-logo {
   display: inline-grid;
   place-items: center;
@@ -245,18 +197,6 @@ body {
   height: 100%;
   object-fit: contain;
   user-select: none;
-}
-
-.bird-logo__image--dark {
-  display: none;
-}
-
-[data-theme="dark"] .bird-logo__image--light {
-  display: none;
-}
-
-[data-theme="dark"] .bird-logo__image--dark {
-  display: block;
 }
 
 @media (max-width: 767px) {
@@ -340,7 +280,7 @@ body {
     bottom: calc(100vh - 100dvh);
     left: 0;
     display: grid;
-    grid-template-columns: repeat(6, minmax(0, 1fr));
+    grid-template-columns: repeat(5, minmax(0, 1fr));
     gap: 2px;
     padding: 8px 8px calc(8px + env(safe-area-inset-bottom));
     border-top: 1px solid var(--color-sidebar-border);
@@ -609,7 +549,7 @@ body {
    Skeleton
    ============================================================ */
 .skeleton {
-  background: linear-gradient(90deg, var(--color-gray-100) 25%, var(--color-gray-50) 50%, var(--color-gray-100) 75%);
+  background: linear-gradient(90deg, var(--color-skeleton-base) 25%, var(--color-skeleton-highlight) 50%, var(--color-skeleton-base) 75%);
   background-size: 200% 100%;
   animation: skeleton-shimmer 1.5s ease-in-out infinite;
   border-radius: var(--radius-sm);

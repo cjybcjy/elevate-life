@@ -75,7 +75,7 @@ export function buildQuickEntryBudgetKey(
   categoryId: string,
   occurredAt: string,
 ) {
-  return type !== 'TRANSFER' && categoryId && occurredAt
+  return type === 'EXPENSE' && categoryId && occurredAt
     ? `${type}:${categoryId}:${occurredAt}`
     : '';
 }
@@ -104,27 +104,6 @@ export function completeQuickEntryBudgetResolution(
 
 export function isQuickEntryBudgetResolved(key: string, resolvedKey: string) {
   return !key || key === resolvedKey;
-}
-
-export function resolveLedgerTabSelection(input: {
-  selectedTab: 'transactions' | 'recurring' | null;
-  storedTab: 'transactions' | 'recurring';
-  forceTransactions: boolean;
-}) {
-  if (input.forceTransactions) return 'transactions';
-  return input.selectedTab ?? input.storedTab;
-}
-
-export function resolveLedgerTabNavigation(input: {
-  tab: 'transactions' | 'recurring';
-  queryGated: boolean;
-}) {
-  return {
-    tab: input.tab,
-    replaceHref: input.tab === 'recurring' && input.queryGated
-      ? '/management/ledger'
-      : null,
-  };
 }
 
 export function persistLedgerTemplates(

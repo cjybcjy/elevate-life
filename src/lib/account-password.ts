@@ -19,6 +19,12 @@ type EncryptedLiabilityRecord = {
   monthlyPayment: string | null;
 };
 
+type EncryptedPossessionRecord = {
+  id: string;
+  purchasePrice: string;
+  soldPrice: string | null;
+};
+
 export function validatePasswordChangeInput(input: PasswordChangeInput) {
   const currentPassword = input.currentPassword.trim();
   const newPassword = input.newPassword.trim();
@@ -38,6 +44,7 @@ export function rotateUserEncryptedFields(input: {
   newDerivedKey: string;
   assets: EncryptedAssetRecord[];
   liabilities: EncryptedLiabilityRecord[];
+  possessions: EncryptedPossessionRecord[];
 }) {
   const { userId, oldDerivedKey, newDerivedKey } = input;
 
@@ -59,6 +66,21 @@ export function rotateUserEncryptedFields(input: {
       ),
       monthlyPayment: liability.monthlyPayment
         ? encryptValue(decryptValue(liability.monthlyPayment, oldDerivedKey, userId), newDerivedKey, userId)
+        : null,
+    })),
+    possessions: input.possessions.map((possession) => ({
+      id: possession.id,
+      purchasePrice: encryptValue(
+        decryptValue(possession.purchasePrice, oldDerivedKey, userId),
+        newDerivedKey,
+        userId,
+      ),
+      soldPrice: possession.soldPrice
+        ? encryptValue(
+            decryptValue(possession.soldPrice, oldDerivedKey, userId),
+            newDerivedKey,
+            userId,
+          )
         : null,
     })),
   };
