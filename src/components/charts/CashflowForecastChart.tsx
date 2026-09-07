@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import ReactECharts from 'echarts-for-react';
+import ReactECharts from '@/components/charts/EChart';
 import {
   buildProjectedAvailableCash,
   type GoalContributionEvent,
@@ -140,7 +140,7 @@ export default function CashflowForecastChart({
   });
 
   const option = {
-    animationDuration: 500,
+    animation: false,
     tooltip: {
       trigger: 'axis',
       confine: true,

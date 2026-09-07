@@ -2,7 +2,7 @@ import { fetchWithAntiCrawl } from '../anti-crawl';
 import { writeFileSync, readFileSync, existsSync } from 'fs';
 import { join } from 'path';
 
-interface ForexRates {
+export interface ForexRates {
   usdToCny: number;
   hkdToCny: number;
   jpyToCny: number;
@@ -18,14 +18,11 @@ interface CacheEntry {
   ts: number;
 }
 
-function loadCache(): ForexRates | null {
+function loadCacheEntry(): CacheEntry | null {
   try {
     if (existsSync(CACHE_FILE)) {
       const data = readFileSync(CACHE_FILE, 'utf-8');
-      const entry = JSON.parse(data) as CacheEntry;
-      // Discard if older than 1 hour
-      if (Date.now() - entry.ts > CACHE_TTL) return null;
-      return entry.rates;
+      return JSON.parse(data) as CacheEntry;
     }
   } catch {}
   return null;
@@ -37,10 +34,29 @@ function saveCache(rates: ForexRates): void {
   } catch {}
 }
 
-export async function fetchForexRates(): Promise<ForexRates> {
-  const cached = loadCache();
+export function getCachedForexRates(): {
+  rates: ForexRates;
+  stale: boolean;
+  source: 'cache' | 'fallback';
+} {
+  const entry = loadCacheEntry();
+  if (!entry) {
+    return { rates: FALLBACK, stale: true, source: 'fallback' };
+  }
 
-  try {
+  return {
+    rates: entry.rates,
+    stale: Date.now() - entry.ts > CACHE_TTL,
+    source: 'cache',
+  };
+}
+
+let refreshPromise: Promise<ForexRates> | null = null;
+
+export async function refreshForexRates(): Promise<ForexRates> {
+  if (refreshPromise) return refreshPromise;
+
+  refreshPromise = (async () => {
     const [usdRes, hkdRes, jpyRes] = await Promise.all([
       fetchWithAntiCrawl('https://hq.sinajs.cn/list=fx_susdcny', 'https://finance.sina.com.cn/'),
       fetchWithAntiCrawl('https://hq.sinajs.cn/list=fx_shkdcny', 'https://finance.sina.com.cn/'),
@@ -60,14 +76,32 @@ export async function fetchForexRates(): Promise<ForexRates> {
       jpyToCny: parseRate(jpyRes.text),
     };
 
-    // Only save if both rates are valid
-    if (rates.usdToCny > 0 && rates.hkdToCny > 0) {
-      saveCache(rates);
-      return rates;
+    if (rates.usdToCny <= 0 || rates.hkdToCny <= 0 || rates.jpyToCny <= 0) {
+      throw new Error('Invalid forex rates');
     }
-  } catch {
-    // API failed, fall through to cache/fallback
-  }
 
-  return cached || FALLBACK;
+    saveCache(rates);
+    return rates;
+  })();
+
+  try {
+    return await refreshPromise;
+  } finally {
+    refreshPromise = null;
+  }
+}
+
+/**
+ * Blocking refresh for explicit background jobs. Request-time rendering should
+ * use getCachedForexRates() and schedule refreshForexRates() with after().
+ */
+export async function fetchForexRates(): Promise<ForexRates> {
+  const cached = getCachedForexRates();
+  if (!cached.stale) return cached.rates;
+
+  try {
+    return await refreshForexRates();
+  } catch {
+    return cached.rates;
+  }
 }

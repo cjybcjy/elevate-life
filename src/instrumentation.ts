@@ -2,14 +2,14 @@
 export async function register() {
   if (process.env.NEXT_RUNTIME === 'nodejs') {
     // Defer dynamic imports so this only runs on the server
-    const { processDueRecurring } = await import('@/lib/actions/recurring');
+    const { processAllDueRecurring } = await import('@/lib/services/recurring-processor');
 
     // Process recurring rules every 60 seconds
     // Safe to call frequently — each rule advances nextDueDate after processing
     const INTERVAL_MS = 60_000;
     setInterval(async () => {
       try {
-        await processDueRecurring();
+        await processAllDueRecurring();
       } catch {
         // Silently ignore errors in background processing
       }

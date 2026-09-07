@@ -16,6 +16,7 @@ npm run release:check
 ## 必填变量
 
 - `APP_PUBLIC_BASE_URL`：真实 HTTPS 域名，只填 origin，例如 `https://app.your-domain.com`，不要带路径。
+- `AUTH_URL`：必须与 `APP_PUBLIC_BASE_URL` 使用同一个 HTTPS origin，供 Auth.js 固定可信主机。
 - `APP_SUPPORT_EMAIL`：真实支持邮箱，会用于商店后台、隐私政策和支持页。
 - `CAPACITOR_SERVER_URL`：必须等于 `APP_PUBLIC_BASE_URL`，供 Capacitor Android/iOS 壳加载线上 Next.js 服务。
 - `CAPACITOR_APP_ID`：稳定反向域名包名 / Bundle ID，例如 `com.company.elevatelife`。首次上架后不要轻易修改。
@@ -23,6 +24,43 @@ npm run release:check
 - `ANDROID_SHA256_CERT_FINGERPRINTS`：release 上传证书 / Play App Signing 证书的 SHA-256 指纹，多个用英文逗号分隔。
 - `TWA_MANIFEST_URL`：必须等于 `$APP_PUBLIC_BASE_URL/manifest.webmanifest`。
 - `STORE_SCREENSHOT_BASE_URL`：正式截图时建议等于 `APP_PUBLIC_BASE_URL`，确保截图来自审核环境。
+
+## Web 安全基线
+
+网页/PWA 分发不经过应用商城审核，因此首发建议保持私有或邀请注册，不要直接开放自由注册。应用在未配置 `REGISTRATION_MODE` 时会默认关闭注册；需要邀请注册时显式设置：
+
+```bash
+REGISTRATION_MODE=invite
+REGISTRATION_INVITE_CODE=<至少 16 位的随机值>
+```
+
+只有在验证码、邮件验证、账号风控、滥用告警和边缘限流都已接入后，才考虑设置 `REGISTRATION_MODE=open`。
+
+生产环境还必须设置两个相互独立的长随机密钥：
+
+```bash
+AUTH_SECRET=<至少 32 字节的随机值>
+CRON_SECRET=<至少 32 字符的随机值>
+AUTH_URL=https://app.your-domain.com
+```
+
+可分别用 `openssl rand -base64 48` 生成。Auth.js 同时兼容 `.env.example` 中的 `NEXTAUTH_SECRET`，但新部署优先使用 `AUTH_SECRET`。不要把真实密钥提交进 Git，也不要把 cron URL 连同 Bearer 密钥写入前端代码或公开日志。
+
+AI 代理接口只允许内置服务商的 HTTPS 域名。若确实需要兼容其他 OpenAI-compatible 服务，在服务端显式增加精确主机名，例如：
+
+```bash
+AI_ALLOWED_ENDPOINT_HOSTS=llm.example.com,api.vendor.example
+```
+
+不要加入 localhost、内网 IP、通配符域名或用户可控制的代理域名。
+
+部署新版本前先应用数据库迁移，限流依赖 `SecurityRateLimit` 表：
+
+```bash
+npx prisma migrate deploy
+```
+
+应用层限流是第二道防线。公网入口仍应放在可信反向代理/CDN 后，由代理覆盖而不是透传客户端伪造的 IP 头，并在边缘为登录、注册、AI 与 cron 路径设置请求频率和请求体大小限制。数据库应启用自动备份，应用和依赖更新应先在预发布环境完成测试。
 
 ## 必须可匿名访问的 URL
 

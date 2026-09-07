@@ -195,9 +195,10 @@ export function MobileNavigationView({
           const active = isMobileNavItemActive(pathname, item.id, focus);
           const primary = item.id === 'quick-entry';
           return (
-            <a
+            <Link
               key={item.id}
               href={item.href}
+              prefetch
               data-mobile-primary-nav={item.id}
               aria-current={active ? 'page' : undefined}
               className={active
@@ -214,7 +215,7 @@ export function MobileNavigationView({
                 <NavigationIcon name={item.icon} size={primary ? 22 : 19} />
               </span>
               <span className="mobile-bottom-nav__label">{item.label}</span>
-            </a>
+            </Link>
           );
         })}
       </nav>

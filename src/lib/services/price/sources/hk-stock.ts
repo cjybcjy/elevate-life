@@ -1,4 +1,7 @@
-import { fetchWithAntiCrawl } from '../anti-crawl';
+import {
+  fetchWithAntiCrawl,
+  type AntiCrawlFetchOptions,
+} from '../anti-crawl';
 
 interface PriceResult {
   code: string;
@@ -14,12 +17,19 @@ function padCode(code: string): string {
   return code.padStart(5, '0');
 }
 
-export async function fetchHkStockPrice(code: string): Promise<PriceResult> {
+export async function fetchHkStockPrice(
+  code: string,
+  options?: AntiCrawlFetchOptions,
+): Promise<PriceResult> {
   const paddedCode = padCode(code);
 
   // Tencent finance API
   const url = `https://qt.gtimg.cn/q=hk${paddedCode}`;
-  const { text } = await fetchWithAntiCrawl(url, 'https://gu.qq.com/');
+  const { text } = await fetchWithAntiCrawl(
+    url,
+    'https://gu.qq.com/',
+    options,
+  );
 
   // Response format: v_hk00700="..."
   const match = text.match(/"([^"]+)"/);

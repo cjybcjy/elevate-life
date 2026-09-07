@@ -1,4 +1,7 @@
-import { fetchWithAntiCrawl } from '../anti-crawl';
+import {
+  fetchWithAntiCrawl,
+  type AntiCrawlFetchOptions,
+} from '../anti-crawl';
 
 interface PriceResult {
   code: string;
@@ -9,12 +12,19 @@ interface PriceResult {
   source: string;
 }
 
-export async function fetchUsStockPrice(code: string): Promise<PriceResult> {
+export async function fetchUsStockPrice(
+  code: string,
+  options?: AntiCrawlFetchOptions,
+): Promise<PriceResult> {
   const upperCode = code.toUpperCase();
 
   // Sina finance US stock API
   const url = `https://hq.sinajs.cn/list=gb_${upperCode.toLowerCase()}`;
-  const { text } = await fetchWithAntiCrawl(url, 'https://finance.sina.com.cn/');
+  const { text } = await fetchWithAntiCrawl(
+    url,
+    'https://finance.sina.com.cn/',
+    options,
+  );
 
   const match = text.match(/"([^"]+)"/);
   if (!match || !match[1]) {

@@ -21,8 +21,7 @@ export default function LoginPage() {
       password,
       login: loginUser,
       onSuccess: () => {
-        router.push('/');
-        router.refresh();
+        router.replace('/');
       },
       setError,
       setLoading,

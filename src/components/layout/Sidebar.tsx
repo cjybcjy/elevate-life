@@ -8,11 +8,12 @@ import BirdLogo from '@/components/common/BirdLogo';
 import MobileNavigation from '@/components/layout/MobileNavigation';
 
 const navItems = [
-  { label: '仪表盘', href: '/', icon: '🏠' },
-  { label: '资产管理', href: '/management/assets', icon: '💰' },
-  { label: '负债管理', href: '/management/liabilities', icon: '📋' },
-  { label: '流水管理', href: '/management/ledger', icon: '📝' },
-  { label: '周期交易', href: '/management/recurring', icon: '🗓️' },
+  { label: '仪表盘', href: '/', icon: '🏠', eager: true },
+  { label: '资产管理', href: '/management/assets', icon: '💰', eager: true },
+  { label: '负债管理', href: '/management/liabilities', icon: '📋', eager: true },
+  { label: '还债还是定投', href: '/investment-cost', icon: '🧮' },
+  { label: '流水管理', href: '/management/ledger', icon: '📝', eager: true },
+  { label: '周期交易', href: '/management/recurring', icon: '🗓️', eager: true },
   { label: '预算管理', href: '/management/budget', icon: '📊' },
   { label: '目标管理', href: '/management/goals', icon: '🎯' },
   { label: '分类管理', href: '/management/categories', icon: '🏷️' },
@@ -75,7 +76,7 @@ export default function Sidebar() {
               <Link
                 key={item.href}
                 href={item.href}
-                prefetch={true}
+                prefetch={item.eager ? true : null}
                 style={{
                   display: 'flex',
                   alignItems: 'center',
@@ -95,6 +96,7 @@ export default function Sidebar() {
                   marginBottom: '2px',
                 }}
                 onMouseEnter={e => {
+                  router.prefetch(item.href);
                   if (!isActive) {
                     e.currentTarget.style.background = 'var(--color-sidebar-hover-bg)';
                     e.currentTarget.style.color = 'var(--color-text-primary)';
@@ -106,6 +108,7 @@ export default function Sidebar() {
                     e.currentTarget.style.color = 'var(--color-sidebar-text)';
                   }
                 }}
+                onFocus={() => router.prefetch(item.href)}
               >
                 <span style={{ fontSize: '16px' }}>{item.icon}</span>
                 {item.label}

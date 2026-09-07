@@ -3,7 +3,7 @@ import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
 const budgetManagerSource = readFileSync(
-  resolve(process.cwd(), 'src/app/management/budget/BudgetManager.tsx'),
+  resolve(process.cwd(), 'src/app/(dashboard)/management/budget/BudgetManager.tsx'),
   'utf8',
 );
 const budgetTrackerSource = readFileSync(

@@ -1,6 +1,6 @@
 'use client';
 
-import ReactECharts from 'echarts-for-react';
+import ReactECharts from '@/components/charts/EChart';
 import { getDebtChartColor, PAID_PROGRESS_COLOR } from '@/lib/debt-colors';
 
 const TRANSPARENT_SEGMENT_COLOR = 'rgba(0,0,0,0)';
@@ -247,6 +247,7 @@ export default function DebtFunnelChart({ data, size = 260 }: Props) {
   const labelColor = getCSSVar('--color-chart-label', '#212529');
 
   const option = {
+    animation: false,
     tooltip: {
       trigger: 'item' as const,
       formatter: (params: any) => {

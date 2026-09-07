@@ -153,3 +153,39 @@ test('buildFinanceAiChatRequest rejects incomplete manual API configuration', as
     /请先保存 API 配置/,
   );
 });
+
+test('finance AI input rejects insecure endpoints and oversized conversation data', async () => {
+  const { buildFinanceAiChatRequest } = await loadSubject();
+  assert.equal(typeof buildFinanceAiChatRequest, 'function');
+  const buildRequest = buildFinanceAiChatRequest as NonNullable<
+    FinanceAiModule['buildFinanceAiChatRequest']
+  >;
+
+  assert.throws(
+    () => buildRequest({
+      config: {
+        provider: 'custom',
+        endpoint: 'http://127.0.0.1:3000',
+        apiKey: 'sk-test',
+        model: 'test',
+      },
+      messages: [{ role: 'user', content: '你好' }],
+      snapshot,
+    }),
+    /HTTPS/,
+  );
+
+  assert.throws(
+    () => buildRequest({
+      config: {
+        provider: 'openai',
+        endpoint: 'https://api.openai.com/v1/chat/completions',
+        apiKey: 'sk-test',
+        model: 'gpt-4.1-mini',
+      },
+      messages: Array.from({ length: 9 }, () => ({ role: 'user' as const, content: '你好' })),
+      snapshot,
+    }),
+    /对话记录无效或过长/,
+  );
+});

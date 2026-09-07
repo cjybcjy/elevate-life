@@ -36,6 +36,9 @@ interface Props {
   transactions: AccountTransaction[];
 }
 
+// Stocks, provident funds, and gold already have their own dashboard or special-account summaries.
+const separatelyDisplayedCategories = new Set(['stock', 'provident_fund', 'gold_physical', 'gold_paper']);
+
 const categoryLabel: Record<string, string> = {
   real_estate: '房产',
   cash: '现金',
@@ -99,9 +102,13 @@ function transactionDirection(transaction: AccountTransaction, accountId: string
 }
 
 export default function AccountViewLayer({ assets, transactions }: Props) {
-  const [selectedAccountId, setSelectedAccountId] = useState<string | null>(assets[0]?.id ?? null);
+  const accountAssets = useMemo(
+    () => assets.filter((asset) => !separatelyDisplayedCategories.has(asset.category || 'other')),
+    [assets],
+  );
+  const [selectedAccountId, setSelectedAccountId] = useState<string | null>(accountAssets[0]?.id ?? null);
 
-  const selectedAccount = assets.find((asset) => asset.id === selectedAccountId) ?? assets[0] ?? null;
+  const selectedAccount = accountAssets.find((asset) => asset.id === selectedAccountId) ?? accountAssets[0] ?? null;
   const currentMonthKey = toMonthKey(new Date());
 
   const accountTransactions = useMemo(() => {
@@ -138,7 +145,7 @@ export default function AccountViewLayer({ assets, transactions }: Props) {
   const missingSourcePreview = missingSourceTransactions.slice(0, 3);
   const selectedCurrencyPrefix = prefix(selectedAccount?.priceCurrency || selectedAccount?.currency);
 
-  if (assets.length === 0) {
+  if (accountAssets.length === 0) {
     return (
       <section className="mb-6 rounded-xl bg-ledger-surface p-5">
         <div className="flex flex-wrap items-center justify-between gap-3">
@@ -196,7 +203,7 @@ export default function AccountViewLayer({ assets, transactions }: Props) {
 
       <div className="grid gap-4 lg:grid-cols-[minmax(260px,0.8fr)_minmax(0,1.2fr)]">
         <div className="space-y-2">
-          {assets.map((asset) => {
+          {accountAssets.map((asset) => {
             const selected = asset.id === selectedAccount?.id;
             const accountFlowCount = transactions.filter((transaction) => (
               transaction.fromAccountId === asset.id ||

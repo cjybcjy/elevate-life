@@ -54,18 +54,18 @@
     "@capacitor/android": "^7.6.6",
     "@capacitor/core": "^7.6.6",
     "@capacitor/ios": "^7.6.6",
-    "@prisma/adapter-pg": "^7.8.0",
-    "@prisma/client": "^7.8.0",
+    "@prisma/adapter-pg": "7.9.1",
+    "@prisma/client": "7.9.1",
     "bcrypt": "^6.0.0",
     "decimal.js": "^10.6.0",
     "echarts": "^6.1.0",
     "echarts-for-react": "^3.0.6",
     "lucide-react": "^1.24.0",
-    "next": "16.2.6",
-    "next-auth": "^5.0.0-beta.31",
+    "next": "16.2.12",
+    "next-auth": "5.0.0-beta.32",
     "node-cron": "^4.2.1",
     "pg": "^8.21.0",
-    "prisma": "^7.8.0",
+    "prisma": "7.9.1",
     "react": "19.2.4",
     "react-dom": "19.2.4",
     "swr": "^2.4.1",
@@ -81,10 +81,16 @@
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "eslint": "^9",
-    "eslint-config-next": "16.2.6",
+    "eslint-config-next": "16.2.12",
     "playwright": "^1.61.0",
     "tailwindcss": "^4",
     "tsx": "^4.22.3",
     "typescript": "^5"
+  },
+  "overrides": {
+    "next": {
+      "postcss": "8.5.25",
+      "sharp": "0.35.3"
+    }
   }
 }

@@ -57,6 +57,7 @@ export function isMobileNavItemActive(
     || (pathname.startsWith('/management/ledger') && !quickEntryFocused)
     || pathname.startsWith('/management/recurring')
     || pathname.startsWith('/management/liabilities')
+    || pathname.startsWith('/investment-cost')
     || pathname.startsWith('/management/goals')
     || pathname.startsWith('/management/categories')
     || pathname.startsWith('/account/password')

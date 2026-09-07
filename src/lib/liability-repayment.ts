@@ -28,6 +28,15 @@ export function getRepaymentSourceOptions(assets: RepaymentAsset[]) {
     .sort((left, right) => parseMoney(right.balance) - parseMoney(left.balance));
 }
 
+export function getDrawdownTargetOptions(assets: RepaymentAsset[]) {
+  return assets
+    .filter((asset) => (
+      Boolean(asset.category && REPAYMENT_SOURCE_CATEGORIES.has(asset.category))
+      && (asset.currency || 'CNY').toUpperCase() === 'CNY'
+    ))
+    .sort((left, right) => parseMoney(right.balance) - parseMoney(left.balance));
+}
+
 export function getRepaymentAssetBalance(asset: RepaymentAsset) {
   return parseMoney(asset.balance);
 }

@@ -1,6 +1,8 @@
 import Decimal from 'decimal.js';
+import { isLiabilityDrawdown } from './liability-transactions';
 
 export type TransactionEffectInput = {
+  type: string;
   amount: Decimal.Value;
   fromAccountId: string | null;
   toAccountId: string | null;
@@ -28,7 +30,8 @@ function collectEffectDeltas(
   const amount = new Decimal(effect.amount);
   addDelta(deltas.assetDeltas, effect.fromAccountId, amount.negated().mul(direction));
   addDelta(deltas.assetDeltas, effect.toAccountId, amount.mul(direction));
-  addDelta(deltas.liabilityDeltas, effect.liabilityId, amount.negated().mul(direction));
+  const liabilityDelta = isLiabilityDrawdown(effect.type) ? amount : amount.negated();
+  addDelta(deltas.liabilityDeltas, effect.liabilityId, liabilityDelta.mul(direction));
 }
 
 function toDeltaList(deltas: Map<string, Decimal>): TransactionEffectDelta[] {

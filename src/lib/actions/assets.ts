@@ -6,7 +6,13 @@ import { getUserKey } from '@/lib/key-cache';
 import { encryptValue, decryptValue } from '@/lib/crypto';
 import { revalidateTag } from 'next/cache';
 import Decimal from 'decimal.js';
-import { isMarketPriced, isStale, upsertMarketPrice, fetchSinglePrice } from '@/lib/services/price';
+import {
+  fetchSinglePrice,
+  isMarketPriced,
+  isStale,
+  refreshPricesForUser,
+  upsertMarketPrice,
+} from '@/lib/services/price';
 import { fetchGoldPrice } from '@/lib/services/price/sources/gold';
 
 function detectMarket(stockCode?: string): string | undefined {
@@ -395,19 +401,5 @@ export async function refreshMyPrices() {
   const userId = session?.user?.id;
   if (!userId) return { success: false, error: 'Unauthorized' };
 
-  const assets = await prisma.asset.findMany({
-    where: { userId },
-    select: { category: true, stockCode: true, market: true },
-  });
-
-  const { extractPriceItems, refreshPricesForItems } = await import('@/lib/services/price');
-  const items = await extractPriceItems(assets);
-
-  if (items.length === 0) {
-    return { success: true, message: '无需要刷新的资产' };
-  }
-
-  const result = await refreshPricesForItems(items);
-  revalidateTag(`user-${userId}`, 'default');
-  return result;
+  return refreshPricesForUser(userId, { interactive: true });
 }

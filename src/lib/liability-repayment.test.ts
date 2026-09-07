@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import {
+  getDrawdownTargetOptions,
   getRepaymentAssetBalance,
   getRepaymentSourceOptions,
   getRepaymentSuggestions,
@@ -17,6 +18,17 @@ test('repayment sources only include positive CNY cash-like accounts', () => {
 
   assert.deepEqual(sources.map((source) => source.id), ['bank', 'cash']);
   assert.equal(getRepaymentAssetBalance(sources[0]), 8000);
+});
+
+test('drawdown targets include empty CNY cash-like accounts', () => {
+  const targets = getDrawdownTargetOptions([
+    { id: 'cash', name: '现金', category: 'cash', balance: '0', currency: 'CNY' },
+    { id: 'bank', name: '银行卡', category: 'current_deposit', balance: '8000', currency: 'CNY' },
+    { id: 'usd', name: '美元账户', category: 'current_deposit', balance: '9000', currency: 'USD' },
+    { id: 'stock', name: '股票', category: 'stock', balance: '20000', currency: 'CNY' },
+  ]);
+
+  assert.deepEqual(targets.map((target) => target.id), ['bank', 'cash']);
 });
 
 test('repayment suggestions prioritize the configured monthly payment', () => {

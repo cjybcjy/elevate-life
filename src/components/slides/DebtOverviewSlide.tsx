@@ -32,11 +32,15 @@ export default function DebtOverviewSlide({ liabilities }: { liabilities: Liabil
           {funnelData.length > 0 ? <DebtFunnelChart data={funnelData} /> : <div className="h-[240px] flex items-center justify-center text-ledger-muted text-sm">暂无负债</div>}
         </div>
         <div className="flex-1 grid grid-cols-2 gap-2 min-w-0">
-          {liabilities.sort((a, b) => (parseFloat(b.currentBalance) || 0) - (parseFloat(a.currentBalance) || 0)).map((l) => {
+          {[...liabilities].sort((a, b) => (parseFloat(b.currentBalance) || 0) - (parseFloat(a.currentBalance) || 0)).map((l) => {
             const balance = parseFloat(l.currentBalance) || 0;
             const principal = parseFloat(l.principal) || 1;
+            const isRevolving = l.paymentMethod === 'revolving_credit';
             const remaining = calculateRemaining(l.startDate, l.termMonths);
-            const progress = ((principal - balance) / principal * 100).toFixed(1);
+            const progressValue = isRevolving
+              ? Math.max(0, Math.min(100, balance / principal * 100))
+              : Math.max(0, Math.min(100, (principal - balance) / principal * 100));
+            const progress = progressValue.toFixed(1);
             return (
               <div key={l.id} className="bg-ledger-surface rounded-lg p-2.5">
                 <div className="flex justify-between items-center mb-1">
@@ -44,8 +48,8 @@ export default function DebtOverviewSlide({ liabilities }: { liabilities: Liabil
                   <span className={`text-xs px-1.5 py-0.5 rounded ${l.interestRate > 0.06 ? 'bg-red-900/30 text-red-400' : l.interestRate > 0.05 ? 'bg-yellow-900/30 text-yellow-400' : 'bg-blue-900/30 text-blue-400'}`}>{(l.interestRate * 100).toFixed(2)}%</span>
                 </div>
                 <div className="flex justify-between text-xs text-ledger-muted">
-                  <span>剩余 <AmountDisplay amount={balance} className="text-white text-xs" /></span>
-                  <span>{remaining}期 · 已还{progress}%</span>
+                  <span>{isRevolving ? '已用' : '剩余'} <AmountDisplay amount={balance} className="text-white text-xs" /></span>
+                  <span>{remaining}期 · {isRevolving ? '额度已用' : '已还'}{progress}%</span>
                 </div>
                 <div className="w-full h-1.5 bg-ledger-bg rounded-full overflow-hidden mt-1.5"><div className="h-full bg-gradient-to-r from-blue-500 to-green-500 rounded-full" style={{ width: `${progress}%` }} /></div>
               </div>

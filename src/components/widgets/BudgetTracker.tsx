@@ -13,6 +13,10 @@ import {
   getLivingBudgetTransactions,
   type AnnualBudgetProgress,
 } from '@/lib/annual-budget';
+import {
+  MobileEditorBar,
+  useMobileEditorScroll,
+} from '@/components/common/MobileEditorBar';
 
 type BudgetProgress = AnnualBudgetProgress;
 
@@ -71,6 +75,7 @@ export default function BudgetTracker({
   const [editingBudgetId, setEditingBudgetId] = useState<string | null>(null);
   const [editBudgetAmount, setEditBudgetAmount] = useState('');
   const [error, setError] = useState('');
+  useMobileEditorScroll(editingTxId ? `budget-transaction-editor-${editingTxId}` : null);
   const focusedOverBudgetId = focus === 'over'
     ? progress.find((p) => p.isOverBudget)?.id ?? null
     : null;
@@ -185,7 +190,7 @@ export default function BudgetTracker({
                 自动归集 ¥{p.budgetAmount.toLocaleString('zh-CN', { maximumFractionDigits: 0 })}
               </span>
             ) : editingBudgetId === p.id ? (
-              <span className="inline-flex items-center gap-2">
+              <span className="grid w-full grid-cols-[minmax(0,1fr)_auto_auto] items-center gap-2 md:inline-flex md:w-auto">
                 <input
                   type="text"
                   inputMode="decimal"
@@ -195,15 +200,15 @@ export default function BudgetTracker({
                     if (e.key === 'Enter') await saveBudgetAmount(p.id);
                     if (e.key === 'Escape') setEditingBudgetId(null);
                   }}
-                  className="w-24 rounded-md border border-ledger-accent bg-white px-2 py-1 text-xs focus:outline-none"
+                  className="min-h-11 min-w-0 rounded-md border border-ledger-accent bg-white px-2 py-1 text-sm focus:outline-none md:min-h-0 md:w-24 md:text-xs"
                   style={{ color: 'var(--color-text-primary)' }}
                   aria-label={`${p.name}预算额度`}
                   autoFocus
                 />
-                <button type="button" onClick={() => saveBudgetAmount(p.id)} className="font-medium text-ledger-accent">
+                <button type="button" onClick={() => saveBudgetAmount(p.id)} className="min-h-11 rounded-lg bg-ledger-accent/15 px-3 font-medium text-ledger-accent md:min-h-0 md:bg-transparent md:px-0">
                   保存
                 </button>
-                <button type="button" onClick={() => setEditingBudgetId(null)} className="text-ledger-muted">
+                <button type="button" onClick={() => setEditingBudgetId(null)} className="min-h-11 rounded-lg bg-ledger-surface px-3 text-ledger-muted md:min-h-0 md:bg-transparent md:px-0">
                   取消
                 </button>
               </span>
@@ -280,13 +285,25 @@ export default function BudgetTracker({
             {budgetTxs.slice(0, 20).map(tx => (
               <div key={tx.id}>
                 {editingTxId === tx.id ? (
-                  <div className="flex flex-wrap items-end gap-2 rounded bg-ledger-surface/50 px-2 py-1.5">
+                  <div
+                    id={`budget-transaction-editor-${tx.id}`}
+                    className="grid scroll-mt-24 grid-cols-2 gap-3 rounded-lg border border-ledger-accent/30 bg-ledger-surface/50 p-3 md:flex md:flex-wrap md:items-end md:gap-2 md:border-0 md:px-2 md:py-1.5"
+                  >
+                    <div className="col-span-2 md:hidden">
+                      <MobileEditorBar
+                        title="编辑预算支出"
+                        description="保存后同步更新预算执行"
+                        onCancel={() => setEditingTxId(null)}
+                        onSave={() => void handleUpdateTx(tx.id)}
+                        saveDisabled={!editForm.amount.trim()}
+                      />
+                    </div>
                     <input
                       type="text"
                       inputMode="decimal"
                       value={editForm.amount}
                       onChange={e => setEditForm(f => ({ ...f, amount: e.target.value }))}
-                      className="w-20 rounded border bg-white px-2 py-0.5 text-xs focus:border-ledger-accent focus:outline-none"
+                      className="min-h-11 w-full min-w-0 rounded border bg-white px-2 py-2 text-sm focus:border-ledger-accent focus:outline-none md:min-h-0 md:w-20 md:py-0.5 md:text-xs"
                       style={{ color: 'var(--color-text-primary)' }}
                       aria-label="支出金额"
                     />
@@ -294,7 +311,7 @@ export default function BudgetTracker({
                       type="date"
                       value={editForm.occurredAt}
                       onChange={e => setEditForm(f => ({ ...f, occurredAt: e.target.value }))}
-                      className="w-32 rounded border bg-white px-2 py-0.5 text-xs focus:border-ledger-accent focus:outline-none"
+                      className="min-h-11 w-full min-w-0 rounded border bg-white px-2 py-2 text-sm focus:border-ledger-accent focus:outline-none md:min-h-0 md:w-32 md:py-0.5 md:text-xs"
                       style={{ color: 'var(--color-text-primary)' }}
                       aria-label="支出日期"
                     />
@@ -302,14 +319,14 @@ export default function BudgetTracker({
                       type="text"
                       value={editForm.description}
                       onChange={e => setEditForm(f => ({ ...f, description: e.target.value }))}
-                      className="w-28 rounded border bg-white px-2 py-0.5 text-xs focus:border-ledger-accent focus:outline-none"
+                      className="col-span-2 min-h-11 w-full min-w-0 rounded border bg-white px-2 py-2 text-sm focus:border-ledger-accent focus:outline-none md:col-span-1 md:min-h-0 md:w-28 md:py-0.5 md:text-xs"
                       style={{ color: 'var(--color-text-primary)' }}
                       aria-label="支出备注"
                     />
                     <select
                       value={editForm.fromAccountId}
                       onChange={e => setEditForm(f => ({ ...f, fromAccountId: e.target.value }))}
-                      className="w-32 rounded border bg-white px-2 py-0.5 text-xs focus:border-ledger-accent focus:outline-none"
+                      className="col-span-2 min-h-11 w-full min-w-0 rounded border bg-white px-2 py-2 text-sm focus:border-ledger-accent focus:outline-none md:col-span-1 md:min-h-0 md:w-32 md:py-0.5 md:text-xs"
                       style={{ color: 'var(--color-text-primary)' }}
                       aria-label="来源资金账户"
                     >
@@ -318,8 +335,8 @@ export default function BudgetTracker({
                         <option key={asset.id} value={asset.id}>{asset.name}</option>
                       ))}
                     </select>
-                    <button type="button" onClick={() => handleUpdateTx(tx.id)} className="text-xs text-green-400 hover:text-green-300">保存</button>
-                    <button type="button" onClick={() => setEditingTxId(null)} className="text-xs text-ledger-muted hover:text-white">取消</button>
+                    <button type="button" onClick={() => handleUpdateTx(tx.id)} className="hidden text-xs text-green-400 hover:text-green-300 md:inline">保存</button>
+                    <button type="button" onClick={() => setEditingTxId(null)} className="hidden text-xs text-ledger-muted hover:text-white md:inline">取消</button>
                   </div>
                 ) : (
                   <div className="grid grid-cols-[3.5rem_4.5rem_minmax(0,1fr)_auto] items-center gap-x-2 gap-y-1 rounded bg-ledger-surface/30 px-2 py-1 text-xs sm:grid-cols-[4rem_5rem_6rem_minmax(0,1fr)_auto]">
@@ -331,9 +348,9 @@ export default function BudgetTracker({
                       {tx.fromAsset?.name || '未指定账户'}
                     </span>
                     <span className="col-span-4 min-w-0 truncate text-ledger-muted sm:col-span-1">{tx.description || '--'}</span>
-                    <span className="col-start-4 row-start-1 inline-flex shrink-0 items-center gap-2 sm:col-start-5">
-                      <button type="button" onClick={() => startEdit(tx)} className="text-ledger-muted hover:text-white">编辑</button>
-                      <button type="button" onClick={() => handleDeleteTx(tx.id)} className="text-ledger-danger hover:underline">删除</button>
+                    <span className="col-start-4 row-start-1 inline-flex shrink-0 items-center gap-1 sm:col-start-5">
+                      <button type="button" onClick={() => startEdit(tx)} className="min-h-11 rounded-lg px-2 text-ledger-muted hover:text-white md:min-h-0 md:rounded-none md:px-0">编辑</button>
+                      <button type="button" onClick={() => handleDeleteTx(tx.id)} className="min-h-11 rounded-lg px-2 text-ledger-danger hover:underline md:min-h-0 md:rounded-none md:px-0">删除</button>
                     </span>
                   </div>
                 )}
@@ -404,7 +421,7 @@ export default function BudgetTracker({
           return (
             <div key={p.id}>
               <div
-                className="flex items-center justify-between text-sm mb-1 cursor-pointer hover:bg-ledger-bg/30 rounded px-1 -mx-1 py-0.5 transition-colors"
+                className="mb-1 flex flex-wrap items-center justify-between gap-2 rounded px-1 py-0.5 text-sm transition-colors hover:bg-ledger-bg/30 md:-mx-1 md:cursor-pointer"
                 onClick={() => setExpandedId(isExpanded ? '__none' : p.id)}
               >
                 <div className="flex items-center gap-2">
@@ -412,11 +429,11 @@ export default function BudgetTracker({
                   <span style={{ color: 'var(--color-text-primary)' }}>{p.name}</span>
                   <span className="text-xs text-ledger-muted">{p.categoryName}</span>
                 </div>
-                <div className="flex items-center gap-3 text-xs">
+                <div className="flex min-w-0 flex-wrap items-center justify-end gap-2 text-xs md:gap-3">
                   <AmountDisplay amount={p.spent} className="text-[var(--color-text-primary)]" />
                   <span className="text-ledger-muted">/</span>
                   {editingBudgetId === p.id ? (
-                    <span className="inline-flex items-center gap-1">
+                    <span className="inline-grid grid-cols-[minmax(0,1fr)_auto_auto] items-center gap-1" onClick={(event) => event.stopPropagation()}>
                       <input
                         type="text"
                         inputMode="decimal"
@@ -431,6 +448,7 @@ export default function BudgetTracker({
                           if (e.key === 'Escape') setEditingBudgetId(null);
                         }}
                         onBlur={async () => {
+                          if (!window.matchMedia('(min-width: 768px)').matches) return;
                           if (editBudgetAmount) {
                             await updateBudget(p.id, { amount: editBudgetAmount });
                             setEditingBudgetId(null);
@@ -439,15 +457,29 @@ export default function BudgetTracker({
                             setEditingBudgetId(null);
                           }
                         }}
-                        className="w-20 rounded bg-white border border-ledger-accent px-2 py-0.5 text-xs focus:outline-none"
+                        className="min-h-11 w-20 rounded border border-ledger-accent bg-white px-2 py-1 text-sm focus:outline-none md:min-h-0 md:py-0.5 md:text-xs"
                         style={{ color: 'var(--color-text-primary)' }}
                         autoFocus
                       />
+                      <button
+                        type="button"
+                        onClick={() => void saveBudgetAmount(p.id)}
+                        className="min-h-11 rounded-lg bg-ledger-accent/15 px-2 font-medium text-ledger-accent md:hidden"
+                      >
+                        保存
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setEditingBudgetId(null)}
+                        className="min-h-11 rounded-lg px-2 text-ledger-muted md:hidden"
+                      >
+                        取消
+                      </button>
                     </span>
                   ) : (
                     <span
-                      className="cursor-pointer hover:text-ledger-accent border-b border-dashed border-ledger-muted/30"
-                      onClick={() => { setEditingBudgetId(p.id); setEditBudgetAmount(p.budgetAmount.toString()); }}
+                      className="inline-flex min-h-11 cursor-pointer items-center border-b border-dashed border-ledger-muted/30 hover:text-ledger-accent md:min-h-0"
+                      onClick={(event) => { event.stopPropagation(); setEditingBudgetId(p.id); setEditBudgetAmount(p.budgetAmount.toString()); }}
                       title="点击修改预算金额"
                     >
                       <AmountDisplay amount={p.budgetAmount} />

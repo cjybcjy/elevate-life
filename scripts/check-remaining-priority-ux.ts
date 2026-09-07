@@ -7,7 +7,7 @@ const accountViewSource = readFileSync(
   'utf8',
 );
 const ledgerSource = readFileSync(
-  resolve(process.cwd(), 'src/app/management/ledger/LedgerManager.tsx'),
+  resolve(process.cwd(), 'src/app/(dashboard)/management/ledger/LedgerManager.tsx'),
   'utf8',
 );
 const dashboardSummarySource = readFileSync(
@@ -15,7 +15,7 @@ const dashboardSummarySource = readFileSync(
   'utf8',
 );
 const budgetManagerSource = readFileSync(
-  resolve(process.cwd(), 'src/app/management/budget/BudgetManager.tsx'),
+  resolve(process.cwd(), 'src/app/(dashboard)/management/budget/BudgetManager.tsx'),
   'utf8',
 );
 const budgetTrackerSource = readFileSync(
@@ -23,7 +23,7 @@ const budgetTrackerSource = readFileSync(
   'utf8',
 );
 const assetManagerSource = readFileSync(
-  resolve(process.cwd(), 'src/app/management/assets/AssetManager.tsx'),
+  resolve(process.cwd(), 'src/app/(dashboard)/management/assets/AssetManager.tsx'),
   'utf8',
 );
 

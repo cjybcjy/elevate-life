@@ -75,25 +75,3 @@ export async function deleteCategoryRule(id: string) {
     return { success: false, error: error.message };
   }
 }
-
-/**
- * Auto-categorize based on description matching user's category rules.
- * Returns categoryId if a match is found, null otherwise.
- */
-export async function autoCategorize(userId: string, description: string): Promise<string | null> {
-  if (!description) return null;
-
-  const rules = await prisma.categoryRule.findMany({
-    where: { userId },
-    orderBy: { priority: 'desc' },
-  });
-
-  const lower = description.toLowerCase();
-  for (const rule of rules) {
-    if (lower.includes(rule.keyword.toLowerCase())) {
-      return rule.categoryId;
-    }
-  }
-
-  return null;
-}

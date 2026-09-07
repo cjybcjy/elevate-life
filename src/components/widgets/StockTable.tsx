@@ -12,6 +12,13 @@ import {
   type FinanceAiConfig,
 } from '@/lib/finance-ai';
 import type { SerenityStockSnapshot } from '@/lib/serenity-stock-ai';
+import {
+  clearStoredNumber,
+  saveStoredNumber,
+  STOCK_IDLE_CASH_STORAGE_KEY,
+  STOCK_MANUAL_PRINCIPAL_STORAGE_KEY,
+  useStoredNumber,
+} from '@/hooks/useStoredNumber';
 
 const marketLabel: Record<string, string> = { cn: 'A股', hk: '港股', us: '美股' };
 const currencySymbol: Record<string, string> = { CNY: '¥', USD: '$', HKD: 'HK$', JPY: 'JP¥' };
@@ -146,19 +153,6 @@ interface ForexRates {
   jpyToCny?: number;
 }
 
-function readStoredNumber(key: string) {
-  if (typeof window === 'undefined') return null;
-
-  try {
-    const value = localStorage.getItem(key);
-    if (!value) return null;
-    const parsed = Number.parseFloat(value);
-    return Number.isFinite(parsed) ? parsed : null;
-  } catch {
-    return null;
-  }
-}
-
 function readStoredAiConfig(): FinanceAiConfig {
   if (typeof window === 'undefined') return DEFAULT_FINANCE_AI_CONFIG;
 
@@ -205,9 +199,9 @@ export default function StockTable({
     return s + toCny(cup * qty, st.priceCurrency);
   }, 0);
 
-  // Manual overrides from localStorage — init null to avoid hydration mismatch
-  const [manualCost, setManualCost] = useState<number | null>(() => readStoredNumber('stock-manual-principal'));
-  const [idleCash, setIdleCash] = useState<number | null>(() => readStoredNumber('stock-idle-cash'));
+  // useSyncExternalStore supplies a stable null server snapshot during hydration.
+  const manualCost = useStoredNumber(STOCK_MANUAL_PRINCIPAL_STORAGE_KEY);
+  const idleCash = useStoredNumber(STOCK_IDLE_CASH_STORAGE_KEY);
   const [aiConfig, setAiConfig] = useState<FinanceAiConfig>(() => readStoredAiConfig());
   const [aiOpen, setAiOpen] = useState(false);
   const [aiLoading, setAiLoading] = useState(false);
@@ -222,12 +216,10 @@ export default function StockTable({
   const aiProviderLabel = FINANCE_AI_PROVIDER_PRESETS[aiConfig.provider as keyof typeof FINANCE_AI_PROVIDER_PRESETS]?.label ?? '自定义模型';
 
   function saveManualCost(val: number) {
-    setManualCost(val);
-    try { localStorage.setItem('stock-manual-principal', val.toString()); } catch {}
+    saveStoredNumber(STOCK_MANUAL_PRINCIPAL_STORAGE_KEY, val);
   }
   function saveIdleCash(val: number) {
-    setIdleCash(val);
-    try { localStorage.setItem('stock-idle-cash', val.toString()); } catch {}
+    saveStoredNumber(STOCK_IDLE_CASH_STORAGE_KEY, val);
   }
 
   function buildSerenitySnapshot(): SerenityStockSnapshot {
@@ -375,7 +367,7 @@ export default function StockTable({
             本金 <EditablePrincipal totalCost={totalCost} onSave={saveManualCost} />
             {manualCost !== null && (
               <button
-                onClick={() => { setManualCost(null); try { localStorage.removeItem('stock-manual-principal'); } catch {} }}
+                onClick={() => clearStoredNumber(STOCK_MANUAL_PRINCIPAL_STORAGE_KEY)}
                 className="ml-1 text-xs text-ledger-muted/50 hover:text-[var(--color-text-primary)]"
                 title="恢复自动计算"
               >
@@ -390,7 +382,7 @@ export default function StockTable({
             闲置现金 <EditablePrincipal totalCost={idleCash ?? 0} onSave={saveIdleCash} />
             {idleCash !== null && (
               <button
-                onClick={() => { setIdleCash(null); try { localStorage.removeItem('stock-idle-cash'); } catch {} }}
+                onClick={() => clearStoredNumber(STOCK_IDLE_CASH_STORAGE_KEY)}
                 className="ml-1 text-xs text-ledger-muted/50 hover:text-[var(--color-text-primary)]"
                 title="清除"
               >

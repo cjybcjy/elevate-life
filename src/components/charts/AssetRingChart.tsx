@@ -1,6 +1,6 @@
 'use client';
 
-import ReactECharts from 'echarts-for-react';
+import ReactECharts from '@/components/charts/EChart';
 
 interface Props {
   data: { name: string; value: number; itemStyle?: { color: string } }[];
@@ -139,6 +139,7 @@ export default function AssetRingChart({ data, centerMetrics }: Props) {
   const borderColor = getCSSVar('--color-table-border', 'rgba(0,0,0,0.08)');
 
   const option = {
+    animation: false,
     tooltip: {
       trigger: 'item' as const,
       formatter: (params: { name: string; value: number; percent: number }) =>

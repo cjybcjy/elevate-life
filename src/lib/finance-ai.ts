@@ -43,6 +43,20 @@ export type FinanceAiChatInput = {
   snapshot: FinanceAiSnapshot;
 };
 
+export class FinanceAiInputError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'FinanceAiInputError';
+  }
+}
+
+export class FinanceAiProviderError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'FinanceAiProviderError';
+  }
+}
+
 export const FINANCE_AI_PROVIDER_PRESETS: Record<Exclude<FinanceAiProvider, 'custom'>, FinanceAiProviderPreset> = {
   openai: {
     label: 'GPT / OpenAI',
@@ -77,6 +91,126 @@ export const DEFAULT_FINANCE_AI_CONFIG: FinanceAiConfig = {
 
 export function hasCompleteFinanceAiConfig(config: FinanceAiConfig) {
   return Boolean(config.endpoint.trim() && config.apiKey.trim() && config.model.trim());
+}
+
+function asRecord(value: unknown, message = '请求参数无效') {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    throw new FinanceAiInputError(message);
+  }
+
+  return value as Record<string, unknown>;
+}
+
+function readString(
+  value: unknown,
+  label: string,
+  maxLength: number,
+  options: { allowEmpty?: boolean; nullable?: boolean } = {},
+) {
+  if (options.nullable && value === null) return null;
+  if (typeof value !== 'string') {
+    throw new FinanceAiInputError(`${label}格式无效`);
+  }
+
+  const normalized = value.trim();
+  if (!options.allowEmpty && !normalized) {
+    throw new FinanceAiInputError(`${label}不能为空`);
+  }
+  if (normalized.length > maxLength) {
+    throw new FinanceAiInputError(`${label}内容过长`);
+  }
+
+  return normalized;
+}
+
+function readFiniteNumber(value: unknown, label: string): number;
+function readFiniteNumber(value: unknown, label: string, nullable: true): number | null;
+function readFiniteNumber(value: unknown, label: string, nullable = false): number | null {
+  if (nullable && value === null) return null;
+  if (typeof value !== 'number' || !Number.isFinite(value) || Math.abs(value) > 1e15) {
+    throw new FinanceAiInputError(`${label}必须是有效数字`);
+  }
+
+  return value;
+}
+
+function readCount(value: unknown, label: string) {
+  const number = readFiniteNumber(value, label);
+  if (!Number.isInteger(number) || number < 0 || number > 1_000_000) {
+    throw new FinanceAiInputError(`${label}必须是有效计数`);
+  }
+
+  return number;
+}
+
+function readBoolean(value: unknown, label: string) {
+  if (typeof value !== 'boolean') {
+    throw new FinanceAiInputError(`${label}必须是布尔值`);
+  }
+
+  return value;
+}
+
+export function parseFinanceAiConfig(value: unknown): FinanceAiConfig {
+  const config = asRecord(value, 'API 配置无效');
+
+  return {
+    provider: readString(config.provider, '服务商', 32, { allowEmpty: true }) as string,
+    endpoint: readString(config.endpoint, 'API 地址', 2_048, { allowEmpty: true }) as string,
+    apiKey: readString(config.apiKey, 'API 密钥', 2_048, { allowEmpty: true }) as string,
+    model: readString(config.model, '模型名称', 128, { allowEmpty: true }) as string,
+  };
+}
+
+export function parseFinanceAiChatInput(value: unknown): FinanceAiChatInput {
+  const input = asRecord(value);
+  const rawMessages = input.messages;
+  const rawSnapshot = asRecord(input.snapshot, '财务摘要无效');
+
+  if (!Array.isArray(rawMessages) || rawMessages.length > 8) {
+    throw new FinanceAiInputError('对话记录无效或过长');
+  }
+
+  const messages = rawMessages.map((item): FinanceAiMessage => {
+    const message = asRecord(item, '对话消息无效');
+    if (message.role !== 'user' && message.role !== 'assistant') {
+      throw new FinanceAiInputError('对话角色无效');
+    }
+
+    return {
+      role: message.role,
+      content: readString(message.content, '对话内容', 4_000, { allowEmpty: true }) as string,
+    };
+  });
+
+  const goldAlertThreshold = rawSnapshot.goldAlertThreshold === undefined
+    ? undefined
+    : readFiniteNumber(rawSnapshot.goldAlertThreshold, '黄金低价提醒', true);
+
+  return {
+    config: parseFinanceAiConfig(input.config),
+    messages,
+    snapshot: {
+      currentDate: readString(rawSnapshot.currentDate, '当前日期', 32) as string,
+      netWorth: readFiniteNumber(rawSnapshot.netWorth, '净资产'),
+      totalAssets: readFiniteNumber(rawSnapshot.totalAssets, '总资产'),
+      totalLiabilities: readFiniteNumber(rawSnapshot.totalLiabilities, '总负债'),
+      surplusRate: readFiniteNumber(rawSnapshot.surplusRate, '净资产率'),
+      tier1Total: readFiniteNumber(rawSnapshot.tier1Total, '一级流动性'),
+      currentIncome: readFiniteNumber(rawSnapshot.currentIncome, '本月收入'),
+      currentExpense: readFiniteNumber(rawSnapshot.currentExpense, '本月支出'),
+      budgetRemaining: readFiniteNumber(rawSnapshot.budgetRemaining, '预算剩余'),
+      coverageMonths: readFiniteNumber(rawSnapshot.coverageMonths, '流动性覆盖月数', true),
+      overBudgetCount: readCount(rawSnapshot.overBudgetCount, '超支预算数'),
+      missingSourceCount: readCount(rawSnapshot.missingSourceCount, '缺少付款账户数'),
+      pricesStale: readBoolean(rawSnapshot.pricesStale, '价格刷新状态'),
+      goldUnitPrice: readFiniteNumber(rawSnapshot.goldUnitPrice, '黄金价格', true),
+      goldPriceCurrency: readString(rawSnapshot.goldPriceCurrency, '黄金价格币种', 16, {
+        nullable: true,
+      }) as string | null,
+      goldAlertThreshold,
+    },
+  };
 }
 
 function formatCny(value: number) {
@@ -130,26 +264,34 @@ function validateFinanceAiInput(input: FinanceAiChatInput) {
   const hasMessage = input.messages.some((message) => message.content.trim());
 
   if (!hasCompleteFinanceAiConfig(input.config)) {
-    throw new Error('请先保存 API 配置');
+    throw new FinanceAiInputError('请先保存 API 配置');
   }
 
   if (!hasMessage) {
-    throw new Error('请输入要问的问题');
+    throw new FinanceAiInputError('请输入要问的问题');
   }
 }
 
-function assertHttpUrl(url: string) {
-  const parsed = new URL(url);
-  if (parsed.protocol !== 'https:' && parsed.protocol !== 'http:') {
-    throw new Error('API 地址必须是 http 或 https');
+function assertHttpsUrl(url: string) {
+  let parsed: URL;
+
+  try {
+    parsed = new URL(url);
+  } catch {
+    throw new FinanceAiInputError('API 地址格式无效');
+  }
+
+  if (parsed.protocol !== 'https:') {
+    throw new FinanceAiInputError('AI API 地址必须使用 HTTPS');
   }
 }
 
-export function buildFinanceAiChatRequest(input: FinanceAiChatInput) {
+export function buildFinanceAiChatRequest(value: unknown) {
+  const input = parseFinanceAiChatInput(value);
   validateFinanceAiInput(input);
 
   const url = normalizeFinanceAiEndpoint(input.config.endpoint);
-  assertHttpUrl(url);
+  assertHttpsUrl(url);
 
   const messages = input.messages
     .map((message) => ({
@@ -176,6 +318,7 @@ export function buildFinanceAiChatRequest(input: FinanceAiChatInput) {
         temperature: 0.3,
         stream: false,
       }),
+      redirect: 'error' as const,
     },
   };
 }
@@ -185,9 +328,9 @@ function extractProviderError(data: unknown) {
     const error = (data as { error?: unknown }).error;
     if (error && typeof error === 'object' && 'message' in error) {
       const message = (error as { message?: unknown }).message;
-      if (typeof message === 'string') return message;
+      if (typeof message === 'string') return message.slice(0, 500);
     }
-    if (typeof error === 'string') return error;
+    if (typeof error === 'string') return error.slice(0, 500);
   }
 
   return null;
@@ -212,18 +355,28 @@ function extractAssistantContent(data: unknown) {
   return typeof outputText === 'string' ? outputText.trim() : '';
 }
 
-export async function sendFinanceAiChat(input: FinanceAiChatInput, fetcher: typeof fetch = fetch) {
+export async function sendFinanceAiChat(input: unknown, fetcher: typeof fetch = fetch) {
   const request = buildFinanceAiChatRequest(input);
-  const response = await fetcher(request.url, request.init);
+  let response: Response;
+
+  try {
+    response = await fetcher(request.url, {
+      ...request.init,
+      signal: AbortSignal.timeout(20_000),
+    });
+  } catch {
+    throw new FinanceAiProviderError('AI 服务暂时不可用，请稍后重试');
+  }
+
   const data = await response.json().catch(() => null);
 
   if (!response.ok) {
-    throw new Error(extractProviderError(data) ?? `模型请求失败：${response.status}`);
+    throw new FinanceAiProviderError(extractProviderError(data) ?? `模型请求失败：${response.status}`);
   }
 
   const content = extractAssistantContent(data);
   if (!content) {
-    throw new Error('模型没有返回可显示的回复');
+    throw new FinanceAiProviderError('模型没有返回可显示的回复');
   }
 
   return { content };

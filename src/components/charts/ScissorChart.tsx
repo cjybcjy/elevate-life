@@ -1,6 +1,6 @@
 'use client';
 
-import ReactECharts from 'echarts-for-react';
+import ReactECharts from '@/components/charts/EChart';
 
 interface Props {
   months: string[];
@@ -11,6 +11,7 @@ interface Props {
 
 export default function ScissorChart({ months, income, expense, survivalLine }: Props) {
   const option = {
+    animation: false,
     tooltip: { trigger: 'axis' },
     legend: { data: ['收入', '支出', '生存线'], textStyle: { color: '#94a3b8' } },
     xAxis: { type: 'category', data: months, axisLine: { lineStyle: { color: '#94a3b8' } } },

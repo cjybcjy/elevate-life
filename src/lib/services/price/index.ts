@@ -3,6 +3,7 @@ import { fetchGoldPrice } from './sources/gold';
 import { fetchCnStockPrice } from './sources/cn-stock';
 import { fetchHkStockPrice } from './sources/hk-stock';
 import { fetchUsStockPrice } from './sources/us-stock';
+import type { AntiCrawlFetchOptions } from './anti-crawl';
 
 export interface PriceResult {
   code: string;
@@ -16,6 +17,11 @@ export interface PriceResult {
 const MARKET_PRICED_CATEGORIES = ['gold_physical', 'gold_paper', 'stock', 'fund'];
 const DEFAULT_STALE_MS = 60 * 60 * 1000;
 const ACTIVE_CN_MARKET_STALE_MS = 5 * 60 * 1000;
+const PRICE_REFRESH_CONCURRENCY = 4;
+
+interface PriceRefreshOptions {
+  interactive?: boolean;
+}
 
 export function isMarketPriced(category: string): boolean {
   return MARKET_PRICED_CATEGORIES.includes(category);
@@ -52,16 +58,20 @@ export function isStale(updatedAt: Date, market?: string, now = new Date()): boo
   return now.getTime() - updatedAt.getTime() > staleMs;
 }
 
-export async function fetchSinglePrice(code: string, market: string): Promise<PriceResult> {
+export async function fetchSinglePrice(
+  code: string,
+  market: string,
+  options?: AntiCrawlFetchOptions,
+): Promise<PriceResult> {
   switch (market) {
     case 'commodity':
-      return fetchGoldPrice();
+      return fetchGoldPrice(options);
     case 'cn':
-      return fetchCnStockPrice(code);
+      return fetchCnStockPrice(code, options);
     case 'hk':
-      return fetchHkStockPrice(code);
+      return fetchHkStockPrice(code, options);
     case 'us':
-      return fetchUsStockPrice(code);
+      return fetchUsStockPrice(code, options);
     default:
       throw new Error(`Unknown market: ${market}`);
   }
@@ -87,8 +97,33 @@ export async function upsertMarketPrice(result: PriceResult): Promise<void> {
   });
 }
 
+export async function runWithConcurrency<T>(
+  items: readonly T[],
+  concurrency: number,
+  task: (item: T) => Promise<void>,
+): Promise<void> {
+  const workerCount = Math.min(
+    items.length,
+    Math.max(1, Math.floor(concurrency)),
+  );
+  let nextIndex = 0;
+
+  async function worker() {
+    while (nextIndex < items.length) {
+      const item = items[nextIndex];
+      nextIndex += 1;
+      await task(item);
+    }
+  }
+
+  await Promise.all(
+    Array.from({ length: workerCount }, () => worker()),
+  );
+}
+
 export async function refreshPricesForItems(
-  items: { code: string; market: string }[]
+  items: { code: string; market: string }[],
+  options: PriceRefreshOptions = {},
 ): Promise<{ success: boolean; errors: string[] }> {
   const errors: string[] = [];
 
@@ -101,15 +136,20 @@ export async function refreshPricesForItems(
     return true;
   });
 
-  // Fetch sequentially with anti-crawl delays (built into fetchWithAntiCrawl)
-  for (const item of unique) {
+  // Independent quote requests can overlap, but keep concurrency bounded so
+  // cron refreshes do not create an unbounded burst against quote providers.
+  const fetchOptions: AntiCrawlFetchOptions | undefined = options.interactive
+    ? { skipInitialDelay: true, attempts: 1, timeoutMs: 5000 }
+    : undefined;
+
+  await runWithConcurrency(unique, PRICE_REFRESH_CONCURRENCY, async (item) => {
     try {
-      const result = await fetchSinglePrice(item.code, item.market);
+      const result = await fetchSinglePrice(item.code, item.market, fetchOptions);
       await upsertMarketPrice(result);
     } catch (error: any) {
       errors.push(`${item.market}:${item.code} - ${error.message}`);
     }
-  }
+  });
 
   return { success: errors.length === 0, errors };
 }
@@ -132,4 +172,21 @@ export async function extractPriceItems(assets: AssetWithCodes[]) {
   }
 
   return items;
+}
+
+export async function refreshPricesForUser(
+  userId: string,
+  options: PriceRefreshOptions = {},
+) {
+  const assets = await prisma.asset.findMany({
+    where: { userId },
+    select: { category: true, stockCode: true, market: true },
+  });
+  const items = await extractPriceItems(assets);
+
+  if (items.length === 0) {
+    return { success: true, message: '无需要刷新的资产' };
+  }
+
+  return refreshPricesForItems(items, options);
 }

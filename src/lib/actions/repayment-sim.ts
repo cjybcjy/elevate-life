@@ -5,6 +5,7 @@ import { auth } from '@/lib/auth';
 import { getUserKey } from '@/lib/key-cache';
 import { decryptValue } from '@/lib/crypto';
 import Decimal from 'decimal.js';
+import { isRevolvingCredit } from '@/lib/liability-transactions';
 
 export interface RepaymentSimResult {
   scenario: 'reduce_term' | 'reduce_payment';
@@ -38,6 +39,9 @@ export async function simulateEarlyRepayment(
   });
 
   if (!liability) return { success: false, error: 'Liability not found' };
+  if (isRevolvingCredit(liability.paymentMethod)) {
+    return { success: false, error: '循环贷余额会随借还变化，不能使用固定还款计划模拟' };
+  }
 
   const currentBalance = new Decimal(decryptValue(liability.currentBalance, derivedKey, userId));
   const annualRate = liability.interestRate;

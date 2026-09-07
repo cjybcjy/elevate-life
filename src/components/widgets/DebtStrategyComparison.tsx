@@ -10,6 +10,7 @@ interface Liability {
   principal: string;
   termMonths: number;
   startDate: string | Date;
+  paymentMethod?: string | null;
 }
 
 interface DebtStrategyComparisonProps {
@@ -86,7 +87,7 @@ function simulatePayoff(
 export default function DebtStrategyComparison({ liabilities }: DebtStrategyComparisonProps) {
   if (liabilities.length < 2) return null;
 
-  const debts = liabilities.map(l => ({
+  const debts = liabilities.filter(l => l.paymentMethod !== 'revolving_credit').map(l => ({
     name: l.name,
     balance: parseFloat(l.currentBalance) || 0,
     rate: l.interestRate,

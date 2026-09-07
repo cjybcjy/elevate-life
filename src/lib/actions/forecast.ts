@@ -1,9 +1,14 @@
 'use server';
 
+import { after } from 'next/server';
+import Decimal from 'decimal.js';
 import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
-import Decimal from 'decimal.js';
-import { fetchForexRates } from '@/lib/services/price/sources/forex';
+import {
+  getCachedForexRates,
+  refreshForexRates,
+  type ForexRates,
+} from '@/lib/services/price/sources/forex';
 
 type CashflowMonth = {
   month: string;
@@ -13,17 +18,22 @@ type CashflowMonth = {
   cumulativeSurplus: string;
 };
 
-export async function simulateCashflow(data: {
+type CashflowInput = {
   monthlyIncome: string;
   monthlyExpense: string;
   months?: number;
   incomeAdjustment?: number;
   oneOffExpenses?: { month: number; amount: string }[];
-}) {
-  const session = await auth();
-  const userId = session?.user?.id;
-  if (!userId) return { success: false, error: 'Unauthorized' };
+};
 
+type AutoForecastData = {
+  monthlyIncome: string;
+  monthlyExpense: string;
+  activeMonths: number;
+  recurringExpenses: { amount: string; occurrences: number }[];
+};
+
+function buildCashflow(data: CashflowInput) {
   const months = data.months || 12;
   const incomeAdj = 1 + (data.incomeAdjustment || 0);
   const baseIncome = new Decimal(data.monthlyIncome).mul(incomeAdj);
@@ -39,7 +49,7 @@ export async function simulateCashflow(data: {
     const income = baseIncome;
     let expense = baseExpense;
 
-    const oneOff = (data.oneOffExpenses || []).find((e) => e.month === i + 1);
+    const oneOff = (data.oneOffExpenses || []).find((item) => item.month === i + 1);
     if (oneOff) expense = expense.plus(new Decimal(oneOff.amount));
 
     const surplus = income.minus(expense);
@@ -55,29 +65,38 @@ export async function simulateCashflow(data: {
   }
 
   const avgSurplusRate = baseIncome.gt(0)
-    ? result.reduce((sum, m) => sum.plus(new Decimal(m.projectedSurplus)), new Decimal(0)).div(months).div(baseIncome)
+    ? result.reduce((sum, month) => sum.plus(new Decimal(month.projectedSurplus)), new Decimal(0)).div(months).div(baseIncome)
     : new Decimal(0);
 
   let warningLevel: 'green' | 'yellow' | 'red' = 'green';
   if (avgSurplusRate.lt(0.1)) warningLevel = 'red';
   else if (avgSurplusRate.lt(0.2)) warningLevel = 'yellow';
 
-  return { success: true, data: { months: result, warningLevel } };
+  return { months: result, warningLevel };
 }
 
-/**
- * Auto-derive monthly income/expense from recent transaction history.
- */
-export async function getAutoForecast(_months: number = 12) {
-  const session = await auth();
-  const userId = session?.user?.id;
-  if (!userId) return { success: false, error: 'Unauthorized' };
+function scheduleForexRefreshIfNeeded(stale: boolean) {
+  if (!stale) return;
 
-  void _months;
-  const forexRatesPromise = fetchForexRates();
+  after(async () => {
+    try {
+      await refreshForexRates();
+    } catch {
+      // The current response already has cached/fallback rates. A later request
+      // can retry without turning an upstream quote failure into UI latency.
+    }
+  });
+}
+
+async function loadAutoForecast(userId: string): Promise<{
+  data: AutoForecastData;
+  forexRates: ForexRates;
+}> {
+  const forexSnapshot = getCachedForexRates();
+  scheduleForexRefreshIfNeeded(forexSnapshot.stale);
+
   const now = new Date();
   const threeMonthsAgo = new Date(now.getFullYear(), now.getMonth() - 3, 1);
-
   const recentTxs = await prisma.transaction.findMany({
     where: {
       userId,
@@ -89,12 +108,10 @@ export async function getAutoForecast(_months: number = 12) {
 
   let totalIncome = new Decimal(0);
   let totalExpense = new Decimal(0);
-
-  // Calculate monthly averages
   const monthSet = new Set<string>();
+
   for (const tx of recentTxs) {
-    const m = `${tx.occurredAt.getFullYear()}-${tx.occurredAt.getMonth()}`;
-    monthSet.add(m);
+    monthSet.add(`${tx.occurredAt.getFullYear()}-${tx.occurredAt.getMonth()}`);
     if (tx.type === 'INCOME') totalIncome = totalIncome.plus(tx.amount);
     else totalExpense = totalExpense.plus(tx.amount);
   }
@@ -102,41 +119,75 @@ export async function getAutoForecast(_months: number = 12) {
   const activeMonths = Math.max(monthSet.size, 1);
   const avgIncome = totalIncome.div(activeMonths);
   const avgExpense = totalExpense.div(activeMonths);
-
-  // Use averages if available, otherwise default to 20000/15000
   const monthlyIncome = avgIncome.gt(0) ? avgIncome.toFixed(2) : '20000';
   const monthlyExpense = avgExpense.gt(0) ? avgExpense.toFixed(2) : '15000';
 
-  // Detect recurring transactions (same amount, same category, multiple occurrences)
-  const descCounts = new Map<string, { count: number; amount: Decimal }>();
+  const recurringCounts = new Map<string, { count: number; amount: Decimal }>();
   for (const tx of recentTxs) {
-    if (tx.type === 'EXPENSE') {
-      const amt = tx.amount.toString();
-      const key = amt; // group by exact amount
-      const existing = descCounts.get(key);
-      if (existing) {
-        existing.count++;
-      } else {
-        descCounts.set(key, { count: 1, amount: tx.amount });
-      }
-    }
+    if (tx.type !== 'EXPENSE') continue;
+    const key = tx.amount.toString();
+    const existing = recurringCounts.get(key);
+    if (existing) existing.count += 1;
+    else recurringCounts.set(key, { count: 1, amount: tx.amount });
   }
 
-  const recurring = Array.from(descCounts.entries())
-    .filter(([, v]) => v.count >= 3) // appeared 3+ times in last 3 months
-    .map(([, v]) => ({ amount: v.amount.toFixed(2), occurrences: v.count }))
+  const recurringExpenses = Array.from(recurringCounts.values())
+    .filter((entry) => entry.count >= 3)
+    .map((entry) => ({ amount: entry.amount.toFixed(2), occurrences: entry.count }))
     .sort((a, b) => b.occurrences - a.occurrences)
     .slice(0, 5);
-  const forexRates = await forexRatesPromise;
 
   return {
-    success: true,
-    forexRates,
+    forexRates: forexSnapshot.rates,
     data: {
       monthlyIncome,
       monthlyExpense,
       activeMonths,
-      recurringExpenses: recurring,
+      recurringExpenses,
+    },
+  };
+}
+
+export async function simulateCashflow(data: CashflowInput) {
+  const session = await auth();
+  if (!session?.user?.id) return { success: false, error: 'Unauthorized' };
+
+  return { success: true, data: buildCashflow(data) };
+}
+
+/** Auto-derive monthly income/expense from recent transaction history. */
+export async function getAutoForecast(_months: number = 12) {
+  const session = await auth();
+  const userId = session?.user?.id;
+  if (!userId) return { success: false, error: 'Unauthorized' };
+
+  void _months;
+  const result = await loadAutoForecast(userId);
+  return { success: true, ...result };
+}
+
+/**
+ * Dashboard read model for forecast data. It authenticates once and calculates
+ * the projection in-process, avoiding the prior two-Server-Action waterfall.
+ */
+export async function getForecastSnapshot(months: number = 12) {
+  const session = await auth();
+  const userId = session?.user?.id;
+  if (!userId) return { success: false, error: 'Unauthorized' };
+
+  const autoForecast = await loadAutoForecast(userId);
+  const forecast = buildCashflow({
+    monthlyIncome: autoForecast.data.monthlyIncome,
+    monthlyExpense: autoForecast.data.monthlyExpense,
+    months,
+  });
+
+  return {
+    success: true,
+    data: {
+      autoForecast: autoForecast.data,
+      forecast,
+      forexRates: autoForecast.forexRates,
     },
   };
 }

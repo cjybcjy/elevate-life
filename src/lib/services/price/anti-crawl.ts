@@ -24,8 +24,20 @@ export interface FetchResult {
   status: number;
 }
 
-export async function fetchWithAntiCrawl(url: string, referer?: string): Promise<FetchResult> {
-  await sleep(randomDelay());
+export interface AntiCrawlFetchOptions {
+  skipInitialDelay?: boolean;
+  attempts?: number;
+  timeoutMs?: number;
+}
+
+export async function fetchWithAntiCrawl(
+  url: string,
+  referer?: string,
+  options: AntiCrawlFetchOptions = {},
+): Promise<FetchResult> {
+  if (!options.skipInitialDelay) {
+    await sleep(randomDelay());
+  }
 
   const headers: Record<string, string> = {
     'User-Agent': randomUserAgent(),
@@ -38,19 +50,24 @@ export async function fetchWithAntiCrawl(url: string, referer?: string): Promise
     headers['Referer'] = referer;
   }
 
-  for (let attempt = 0; attempt < 3; attempt++) {
+  const attempts = Math.max(1, Math.floor(options.attempts ?? 3));
+  const timeoutMs = Math.max(1, options.timeoutMs ?? 5000);
+
+  for (let attempt = 0; attempt < attempts; attempt++) {
     try {
       const controller = new AbortController();
-      const timeout = setTimeout(() => controller.abort(), 5000);
+      const timeout = setTimeout(() => controller.abort(), timeoutMs);
 
-      const response = await fetch(url, { headers, signal: controller.signal });
-      clearTimeout(timeout);
-
-      const text = await response.text();
-      return { ok: response.ok, text, status: response.status };
+      try {
+        const response = await fetch(url, { headers, signal: controller.signal });
+        const text = await response.text();
+        return { ok: response.ok, text, status: response.status };
+      } finally {
+        clearTimeout(timeout);
+      }
     } catch (error) {
-      if (attempt === 2) throw error;
-      const backoff = Math.pow(2, attempt) * 1000; // 2s, 4s, 8s
+      if (attempt === attempts - 1) throw error;
+      const backoff = Math.pow(2, attempt) * 1000; // 1s, 2s, ...
       await sleep(backoff);
     }
   }

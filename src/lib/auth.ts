@@ -5,6 +5,11 @@ import { prisma } from './prisma';
 import { authConfig } from './auth.config';
 import { generateDerivedKey } from './crypto';
 import { setUserKey, deleteUserKey } from './key-cache';
+import { validateLoginInput } from './security/credentials';
+import { consumeRateLimit } from './security/rate-limit';
+import { getClientIp } from './security/request';
+
+const DUMMY_PASSWORD_HASH = '$2b$12$37LdltctWbY3N1/rVAiLbOrFaV2evr/Iur9PAP6jUFb9bmaM7w18y';
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
   ...authConfig,
@@ -14,16 +19,37 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         username: { type: 'text' },
         password: { type: 'password' },
       },
-      authorize: async (credentials) => {
-        if (!credentials?.username || !credentials?.password) return null;
+      authorize: async (credentials, request) => {
+        const validated = validateLoginInput(credentials);
+        if (!validated.success) return null;
+
+        const { username, password } = validated.data;
+        const clientIp = getClientIp(request.headers);
+        const accountIdentifier = username.toLowerCase();
+        const [sourceRateLimit, accountRateLimit] = await Promise.all([
+          consumeRateLimit({
+            scope: 'login-source-account',
+            identifier: `${clientIp}:${accountIdentifier}`,
+            limit: 10,
+            windowMs: 15 * 60 * 1_000,
+          }),
+          consumeRateLimit({
+            scope: 'login-account',
+            identifier: accountIdentifier,
+            limit: 20,
+            windowMs: 15 * 60 * 1_000,
+          }),
+        ]);
+        if (!sourceRateLimit.allowed || !accountRateLimit.allowed) return null;
+
         const user = await prisma.user.findUnique({
-          where: { username: credentials.username as string },
+          where: { username },
         });
+        const valid = await bcrypt.compare(password, user?.passwordHash ?? DUMMY_PASSWORD_HASH);
         if (!user) return null;
-        const valid = await bcrypt.compare(credentials.password as string, user.passwordHash);
         if (!valid) return null;
 
-        const derivedKey = generateDerivedKey(credentials.password as string, user.id);
+        const derivedKey = generateDerivedKey(password, user.id);
         await setUserKey(user.id, derivedKey);
 
         return {

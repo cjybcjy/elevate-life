@@ -6,12 +6,17 @@ import { getUserKey } from '@/lib/key-cache';
 import { encryptValue, decryptValue } from '@/lib/crypto';
 import { revalidateTag } from 'next/cache';
 import Decimal from 'decimal.js';
-import { autoCategorize } from './category-rules';
+import { autoCategorizeForUser } from '@/lib/services/category-rule-matcher';
 import type { Prisma } from '@prisma/client';
 import { buildTransactionEffectDeltas } from '@/lib/transaction-effects';
 import { selectTransactionBudgetId } from '@/lib/transaction-budget';
+import {
+  isLiabilityDrawdown,
+  isRevolvingCredit,
+} from '@/lib/liability-transactions';
 
 type TransactionEffect = {
+  type: string;
   amount: Decimal;
   fromAccountId: string | null;
   toAccountId: string | null;
@@ -65,15 +70,24 @@ async function adjustLiabilityBalance(
   userId: string,
   derivedKey: string,
   delta: Decimal,
+  requireRevolving = false,
 ) {
   const [liability] = await tx.$queryRaw<
-    { id: string; currentBalance: string }[]
+    { id: string; currentBalance: string; principal: string; paymentMethod: string }[]
   >`
-    SELECT id, current_balance as "currentBalance" FROM "Liability"
+    SELECT id,
+      current_balance as "currentBalance",
+      principal,
+      payment_method as "paymentMethod"
+    FROM "Liability"
     WHERE id = ${liabilityId} AND user_id = ${userId}
     FOR UPDATE
   `;
   if (!liability) throw new Error('Liability not found');
+
+  if (requireRevolving && !isRevolvingCredit(liability.paymentMethod)) {
+    throw new Error('只有循环额度账户可以记录借入');
+  }
 
   const currentBalance = new Decimal(
     decryptValue(liability.currentBalance, derivedKey, userId),
@@ -81,6 +95,14 @@ async function adjustLiabilityBalance(
   const newBalance = currentBalance.plus(delta);
   if (newBalance.isNegative()) {
     throw new Error('还款金额不能超过剩余负债');
+  }
+  if (delta.isPositive() && isRevolvingCredit(liability.paymentMethod)) {
+    const creditLimit = new Decimal(
+      decryptValue(liability.principal, derivedKey, userId),
+    );
+    if (newBalance.gt(creditLimit)) {
+      throw new Error('借入金额超过循环贷可用额度');
+    }
   }
 
   await tx.liability.update({
@@ -238,11 +260,21 @@ export async function createTransaction(data: {
     if (!Number.isFinite(occurredAt.getTime())) {
       return { success: false, error: '日期格式不正确' };
     }
+    const isDrawdown = isLiabilityDrawdown(data.type);
+    if (isDrawdown && !data.liabilityId) {
+      return { success: false, error: '循环贷借入必须关联负债账户' };
+    }
+    if (isDrawdown && !data.toAccountId) {
+      return { success: false, error: '循环贷借入必须选择收款账户' };
+    }
+    if (isDrawdown && data.fromAccountId) {
+      return { success: false, error: '循环贷借入不能同时设置付款账户' };
+    }
 
     // Auto-categorize if no category provided but description is available
     let resolvedCategoryId = data.categoryId || undefined;
     if (!resolvedCategoryId && data.description) {
-      const autoCat = await autoCategorize(userId, data.description);
+      const autoCat = await autoCategorizeForUser(userId, data.description);
       if (autoCat) resolvedCategoryId = autoCat;
     }
 
@@ -332,34 +364,14 @@ export async function createTransaction(data: {
       }
 
       if (data.liabilityId) {
-        const [liability] = await tx.$queryRaw<
-          { id: string; currentBalance: string }[]
-        >`
-          SELECT id, current_balance as "currentBalance" FROM "Liability"
-          WHERE id = ${data.liabilityId} AND user_id = ${userId}
-          FOR UPDATE
-        `;
-        if (!liability) throw new Error('Liability not found');
-
-        const currentBalance = new Decimal(
-          decryptValue(liability.currentBalance, derivedKey, userId),
+        await adjustLiabilityBalance(
+          tx,
+          data.liabilityId,
+          userId,
+          derivedKey,
+          isDrawdown ? amount : amount.negated(),
+          isDrawdown,
         );
-        const newBalance = currentBalance.minus(amount);
-        if (newBalance.isNegative()) {
-          throw new Error('还款金额不能超过剩余负债');
-        }
-
-        await tx.liability.update({
-          where: { id: liability.id },
-          data: {
-            currentBalance: encryptValue(
-              newBalance.toFixed(4),
-              derivedKey,
-              userId,
-            ),
-            isEncrypted: true,
-          },
-        });
       }
 
       return tx.transaction.create({
@@ -422,7 +434,11 @@ export async function updateTransaction(
       const nextAmount = data.amount !== undefined
         ? new Decimal(data.amount)
         : existing.amount;
+      if (!nextAmount.isFinite() || !nextAmount.isPositive()) {
+        throw new Error('金额必须大于 0');
+      }
       const nextEffect: TransactionEffect = {
+        type: existing.type,
         amount: nextAmount,
         fromAccountId: data.fromAccountId !== undefined
           ? data.fromAccountId || null
@@ -434,6 +450,21 @@ export async function updateTransaction(
           ? data.liabilityId || null
           : existing.liabilityId,
       };
+      if (isLiabilityDrawdown(existing.type)) {
+        if (!nextEffect.liabilityId) {
+          throw new Error('循环贷借入必须关联负债账户');
+        }
+        if (!nextEffect.toAccountId || nextEffect.fromAccountId) {
+          throw new Error('循环贷借入必须且只能选择收款账户');
+        }
+        const drawdownLiability = await tx.liability.findFirst({
+          where: { id: nextEffect.liabilityId, userId },
+          select: { paymentMethod: true },
+        });
+        if (!drawdownLiability || !isRevolvingCredit(drawdownLiability.paymentMethod)) {
+          throw new Error('只有循环额度账户可以记录借入');
+        }
+      }
 
       const updateData: {
         amount?: Decimal;
@@ -463,6 +494,7 @@ export async function updateTransaction(
       if (effectsChanged) {
         const deltas = buildTransactionEffectDeltas(
           {
+            type: existing.type,
             amount: existing.amount,
             fromAccountId: existing.fromAccountId,
             toAccountId: existing.toAccountId,
@@ -589,31 +621,13 @@ export async function deleteTransaction(id: string) {
       }
 
       if (existing.liabilityId) {
-        const [liability] = await tx.$queryRaw<
-          { id: string; currentBalance: string }[]
-        >`
-          SELECT id, current_balance as "currentBalance" FROM "Liability"
-          WHERE id = ${existing.liabilityId} AND user_id = ${userId}
-          FOR UPDATE
-        `;
-        if (!liability) throw new Error('Liability not found');
-
-        const currentBalance = new Decimal(
-          decryptValue(liability.currentBalance, derivedKey, userId),
+        await adjustLiabilityBalance(
+          tx,
+          existing.liabilityId,
+          userId,
+          derivedKey,
+          isLiabilityDrawdown(existing.type) ? amount.negated() : amount,
         );
-        const newBalance = currentBalance.plus(amount);
-
-        await tx.liability.update({
-          where: { id: liability.id },
-          data: {
-            currentBalance: encryptValue(
-              newBalance.toFixed(4),
-              derivedKey,
-              userId,
-            ),
-            isEncrypted: true,
-          },
-        });
       }
 
       await tx.transaction.delete({

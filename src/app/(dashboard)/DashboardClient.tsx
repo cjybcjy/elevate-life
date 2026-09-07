@@ -1,23 +1,19 @@
 'use client';
 
-import { useState } from 'react';
 import Link from 'next/link';
+import dynamic from 'next/dynamic';
 import Decimal from 'decimal.js';
 import { ErrorBoundary } from '@/components/common/ErrorBoundary';
 import { AmountDisplay } from '@/components/common/AmountDisplay';
-import AssetRingChart from '@/components/charts/AssetRingChart';
-import DebtFunnelChart from '@/components/charts/DebtFunnelChart';
-import ScissorChart from '@/components/charts/ScissorChart';
-import CashflowForecastChart from '@/components/charts/CashflowForecastChart';
 import FamilySafetySummary from '@/components/widgets/FamilySafetySummary';
-import StockTable from '@/components/widgets/StockTable';
-import LiabilityCards from '@/components/widgets/LiabilityCards';
-import BudgetTracker from '@/components/widgets/BudgetTracker';
-import GoalTracker from '@/components/widgets/GoalTracker';
 import { ExpandableDetail, isCollapsibleCat } from '@/components/widgets/SpecialAccountsPanel';
 import { PriceRefresher } from '@/components/widgets/PriceRefresher';
 import { useDashboard } from '@/hooks/useDashboard';
 import { useBudgets } from '@/hooks/useBudgets';
+import {
+  STOCK_IDLE_CASH_STORAGE_KEY,
+  useStoredNumber,
+} from '@/hooks/useStoredNumber';
 import { getCategories } from '@/lib/actions/categories';
 import { getGoals } from '@/lib/actions/goals';
 import { getCurrentGoldPrice } from '@/lib/actions/gold';
@@ -32,6 +28,61 @@ import {
 } from '@/lib/goal-forecast';
 import useSWR from 'swr';
 
+function ChartSkeleton({ height, width = '100%' }: { height: number; width?: number | string }) {
+  return (
+    <div
+      className="skeleton"
+      role="status"
+      aria-label="图表加载中"
+      style={{ height, width, maxWidth: '100%' }}
+    />
+  );
+}
+
+function PanelSkeleton({ height }: { height: number }) {
+  return (
+    <div
+      className="skeleton"
+      role="status"
+      aria-label="内容加载中"
+      style={{ height, width: '100%' }}
+    />
+  );
+}
+
+const AssetRingChart = dynamic(() => import('@/components/charts/AssetRingChart'), {
+  ssr: false,
+  loading: () => <ChartSkeleton height={280} width={280} />,
+});
+const DebtFunnelChart = dynamic(() => import('@/components/charts/DebtFunnelChart'), {
+  ssr: false,
+  loading: () => <ChartSkeleton height={300} />,
+});
+const ScissorChart = dynamic(() => import('@/components/charts/ScissorChart'), {
+  ssr: false,
+  loading: () => <ChartSkeleton height={400} />,
+});
+const CashflowForecastChart = dynamic(() => import('@/components/charts/CashflowForecastChart'), {
+  ssr: false,
+  loading: () => <ChartSkeleton height={310} />,
+});
+const StockTable = dynamic(() => import('@/components/widgets/StockTable'), {
+  ssr: false,
+  loading: () => <PanelSkeleton height={160} />,
+});
+const LiabilityCards = dynamic(() => import('@/components/widgets/LiabilityCards'), {
+  ssr: false,
+  loading: () => <PanelSkeleton height={220} />,
+});
+const BudgetTracker = dynamic(() => import('@/components/widgets/BudgetTracker'), {
+  ssr: false,
+  loading: () => <PanelSkeleton height={240} />,
+});
+const GoalTracker = dynamic(() => import('@/components/widgets/GoalTracker'), {
+  ssr: false,
+  loading: () => <PanelSkeleton height={220} />,
+});
+
 const categoryConfig: Record<string, { icon: string; color: string; label: string }> = {
   real_estate: { icon: '🏠', color: '#3b82f6', label: '房产' },
   cash: { icon: '💰', color: '#10b981', label: '现金' },
@@ -45,18 +96,6 @@ const categoryConfig: Record<string, { icon: string; color: string; label: strin
   current_deposit: { icon: '💳', color: '#14b8a6', label: '银行活期' },
   other: { icon: '📦', color: '#94a3b8', label: '其他' },
 };
-
-function loadIdleCash() {
-  if (typeof window === 'undefined') return 0;
-
-  try {
-    const value = localStorage.getItem('stock-idle-cash');
-    const parsed = value ? Number.parseFloat(value) : 0;
-    return Number.isFinite(parsed) ? parsed : 0;
-  } catch {
-    return 0;
-  }
-}
 
 export default function DashboardClient({ currentDate }: { currentDate: string }) {
   const {
@@ -78,8 +117,8 @@ export default function DashboardClient({ currentDate }: { currentDate: string }
   const recurringRules = recurringRulesData ?? [];
   const { data: goldPriceData } = useSWR('gold-price', () => getCurrentGoldPrice().then(r => r.success ? r.data : null));
 
-  // Idle cash from localStorage (synced with StockTable)
-  const [idleCash] = useState(loadIdleCash);
+  // The server snapshot is null, so SSR and the first client render stay identical.
+  const idleCash = useStoredNumber(STOCK_IDLE_CASH_STORAGE_KEY) ?? 0;
 
   if (isLoading) {
     return (
@@ -143,12 +182,13 @@ export default function DashboardClient({ currentDate }: { currentDate: string }
 
   const funnelData = liabilities.map((l: any) => {
     const value = parseFloat(l.currentBalance) || 0;
-    const principal = parseFloat(l.principal) || value;
+    const isRevolving = l.paymentMethod === 'revolving_credit';
+    const principal = isRevolving ? value : (parseFloat(l.principal) || value);
 
     return {
       name: l.name,
       value,
-      paid: Math.max(0, principal - value),
+      paid: isRevolving ? 0 : Math.max(0, principal - value),
       principal,
       rate: l.interestRate * 100,
     };

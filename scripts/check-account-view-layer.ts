@@ -3,7 +3,7 @@ import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
 const assetManagerSource = readFileSync(
-  resolve(process.cwd(), 'src/app/management/assets/AssetManager.tsx'),
+  resolve(process.cwd(), 'src/app/(dashboard)/management/assets/AssetManager.tsx'),
   'utf8',
 );
 const accountViewSource = readFileSync(

@@ -5,35 +5,74 @@ import { auth, signIn as authSignIn, signOut as authSignOut } from '@/lib/auth';
 import { rotateUserEncryptedFields, validatePasswordChangeInput } from '@/lib/account-password';
 import { generateDerivedKey } from '@/lib/crypto';
 import { setUserKey } from '@/lib/key-cache';
+import {
+  validateLoginInput,
+  validateRegistrationInput,
+  validateRegistrationPolicy,
+} from '@/lib/security/credentials';
+import { consumeRateLimit } from '@/lib/security/rate-limit';
+import { getClientIp } from '@/lib/security/request';
 import bcrypt from 'bcrypt';
+import { headers } from 'next/headers';
 
-export async function registerUser(data: { username: string; password: string; displayName?: string }) {
+export async function registerUser(data: {
+  username: string;
+  password: string;
+  displayName?: string;
+  inviteCode?: string;
+}) {
   try {
+    const requestHeaders = await headers();
+    const clientIp = getClientIp(requestHeaders);
+    const rateLimit = await consumeRateLimit({
+      scope: 'register',
+      identifier: clientIp,
+      limit: 5,
+      windowMs: 60 * 60 * 1_000,
+    });
+    if (!rateLimit.allowed) {
+      return {
+        success: false,
+        error: `注册请求过于频繁，请在 ${rateLimit.retryAfterSeconds} 秒后重试。`,
+      };
+    }
+
+    const policy = validateRegistrationPolicy(data?.inviteCode);
+    if (!policy.success) return policy;
+
+    const validated = validateRegistrationInput(data ?? {});
+    if (!validated.success) return validated;
+
+    const { username, password, displayName } = validated.data;
     const existing = await prisma.user.findUnique({
-      where: { username: data.username },
+      where: { username },
     });
     if (existing) {
       return { success: false, error: 'Username already exists' };
     }
 
-    const passwordHash = await bcrypt.hash(data.password, 12);
+    const passwordHash = await bcrypt.hash(password, 12);
     const user = await prisma.user.create({
       data: {
-        username: data.username,
+        username,
         passwordHash,
-        displayName: data.displayName,
+        displayName,
       },
     });
 
     return { success: true, data: { id: user.id, username: user.username } };
-  } catch (error: any) {
-    return { success: false, error: error.message };
+  } catch (error) {
+    console.error('Failed to register user', error);
+    return { success: false, error: '注册失败，请稍后重试。' };
   }
 }
 
 export async function loginUser(username: string, password: string) {
+  const validated = validateLoginInput({ username, password });
+  if (!validated.success) return validated;
+
   try {
-    await authSignIn('credentials', { username, password, redirect: false });
+    await authSignIn('credentials', { ...validated.data, redirect: false });
     return { success: true };
   } catch {
     return { success: false, error: 'Invalid credentials' };

@@ -38,6 +38,7 @@ test('mobile active state marks page tabs', () => {
   assert.equal(isMobileNavItemActive('/management/budget/history', 'budget'), true);
   assert.equal(isMobileNavItemActive('/me', 'me'), true);
   assert.equal(isMobileNavItemActive('/possessions', 'me'), true);
+  assert.equal(isMobileNavItemActive('/investment-cost', 'me'), true);
   assert.equal(isMobileNavItemActive('/management/recurring', 'me'), true);
 });
 

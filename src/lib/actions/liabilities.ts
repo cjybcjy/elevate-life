@@ -6,6 +6,7 @@ import { getUserKey } from '@/lib/key-cache';
 import { encryptValue, decryptValue } from '@/lib/crypto';
 import { revalidateTag } from 'next/cache';
 import Decimal from 'decimal.js';
+import { isRevolvingCredit } from '@/lib/liability-transactions';
 
 function generateSchedule(
   principal: Decimal,
@@ -15,6 +16,8 @@ function generateSchedule(
   startDate: Date,
 ) {
   const schedule: any[] = [];
+
+  if (isRevolvingCredit(paymentMethod)) return schedule;
 
   if (paymentMethod === 'equal_interest') {
     const monthlyRate = annualRate.div(12);
@@ -109,8 +112,35 @@ export async function createLiability(data: {
   if (!derivedKey) return { success: false, error: '会话密钥已过期，请退出重新登录' };
 
   try {
-    const principalStr = new Decimal(data.principal).toFixed(4);
-    const balanceStr = new Decimal(data.currentBalance || data.principal).toFixed(4);
+    const principal = new Decimal(data.principal);
+    const balance = data.currentBalance?.trim()
+      ? new Decimal(data.currentBalance)
+      : isRevolvingCredit(data.paymentMethod)
+        ? new Decimal(0)
+        : principal;
+    const interestRate = new Decimal(data.interestRate);
+    if (!principal.isFinite() || !principal.isPositive()) {
+      return { success: false, error: isRevolvingCredit(data.paymentMethod) ? '授信额度必须大于 0' : '本金必须大于 0' };
+    }
+    if (!balance.isFinite() || balance.isNegative()) {
+      return { success: false, error: '当前余额不能小于 0' };
+    }
+    if (isRevolvingCredit(data.paymentMethod) && balance.gt(principal)) {
+      return { success: false, error: '已用额度不能超过授信额度' };
+    }
+    if (!interestRate.isFinite() || interestRate.isNegative()) {
+      return { success: false, error: '年利率不能小于 0' };
+    }
+    if (!Number.isInteger(data.termMonths) || data.termMonths <= 0) {
+      return { success: false, error: '期限必须是大于 0 的整数月' };
+    }
+    const startDate = new Date(data.startDate);
+    if (!Number.isFinite(startDate.getTime())) {
+      return { success: false, error: '开始日期格式不正确' };
+    }
+
+    const principalStr = principal.toFixed(4);
+    const balanceStr = balance.toFixed(4);
     const encryptedPrincipal = encryptValue(principalStr, derivedKey, userId);
     const encryptedBalance = encryptValue(balanceStr, derivedKey, userId);
     const encryptedMonthlyPayment = data.monthlyPayment
@@ -125,9 +155,9 @@ export async function createLiability(data: {
         currentBalance: encryptedBalance,
         monthlyPayment: encryptedMonthlyPayment,
         isEncrypted: true,
-        interestRate: new Decimal(data.interestRate),
+        interestRate,
         termMonths: data.termMonths,
-        startDate: new Date(data.startDate),
+        startDate,
         paymentMethod: data.paymentMethod,
         userId,
       },
@@ -135,10 +165,10 @@ export async function createLiability(data: {
 
     const schedule = generateSchedule(
       new Decimal(principalStr),
-      new Decimal(data.interestRate),
+      interestRate,
       data.termMonths,
       data.paymentMethod,
-      new Date(data.startDate),
+      startDate,
     );
 
     await prisma.debtMilestone.createMany({
@@ -162,7 +192,7 @@ export async function createLiability(data: {
         name: liability.name,
         category: liability.category,
         principal: data.principal,
-        currentBalance: data.currentBalance || data.principal,
+        currentBalance: balanceStr,
         interestRate: liability.interestRate.toNumber(),
         termMonths: liability.termMonths,
         startDate: liability.startDate,
@@ -200,6 +230,29 @@ export async function updateLiability(
   if (!derivedKey) return { success: false, error: '会话密钥已过期，请退出重新登录' };
 
   try {
+    const existing = await prisma.liability.findFirst({
+      where: { id, userId },
+      select: { principal: true, currentBalance: true, paymentMethod: true },
+    });
+    if (!existing) return { success: false, error: 'Liability not found' };
+
+    const nextPaymentMethod = data.paymentMethod ?? existing.paymentMethod;
+    const nextPrincipal = data.principal !== undefined
+      ? new Decimal(data.principal)
+      : new Decimal(decryptValue(existing.principal, derivedKey, userId));
+    const nextBalance = data.currentBalance !== undefined
+      ? new Decimal(data.currentBalance)
+      : new Decimal(decryptValue(existing.currentBalance, derivedKey, userId));
+    if (!nextPrincipal.isFinite() || !nextPrincipal.isPositive()) {
+      return { success: false, error: isRevolvingCredit(nextPaymentMethod) ? '授信额度必须大于 0' : '本金必须大于 0' };
+    }
+    if (!nextBalance.isFinite() || nextBalance.isNegative()) {
+      return { success: false, error: '当前余额不能小于 0' };
+    }
+    if (isRevolvingCredit(nextPaymentMethod) && nextBalance.gt(nextPrincipal)) {
+      return { success: false, error: '已用额度不能超过授信额度' };
+    }
+
     const updateData: any = {};
     if (data.name !== undefined) updateData.name = data.name;
     if (data.category !== undefined) updateData.category = data.category;
@@ -225,6 +278,10 @@ export async function updateLiability(
       where: { id, userId },
       data: updateData,
     });
+
+    if (isRevolvingCredit(nextPaymentMethod)) {
+      await prisma.debtMilestone.deleteMany({ where: { liabilityId: id } });
+    }
 
     revalidateTag(`user-${userId}`, 'default');
     return { success: true, data: { ...liability, interestRate: liability.interestRate.toNumber() } };

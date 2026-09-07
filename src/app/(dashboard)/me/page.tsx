@@ -7,6 +7,7 @@ import {
   BookOpenText,
   Boxes,
   CalendarClock,
+  Calculator,
   ChevronRight,
   CircleHelp,
   FileText,
@@ -109,6 +110,12 @@ export default async function MePage() {
   ];
 
   const financeItems: HubItem[] = [
+    {
+      label: '先还债还是先定投',
+      detail: '比较到合同到期日，算清投资打平门槛',
+      href: '/investment-cost',
+      icon: Calculator,
+    },
     {
       label: '负债管理',
       detail: '查看余额、还款计划和压力',

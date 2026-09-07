@@ -171,3 +171,37 @@ test('buildSerenityStockAnalysisRequest rejects missing provider configuration',
     /请先保存 API 配置/,
   );
 });
+
+test('stock analysis input rejects excessive holdings and non-finite values', async () => {
+  const { buildSerenityStockAnalysisRequest } = await loadSubject();
+  assert.equal(typeof buildSerenityStockAnalysisRequest, 'function');
+  const buildRequest = buildSerenityStockAnalysisRequest as NonNullable<
+    SerenityStockAiModule['buildSerenityStockAnalysisRequest']
+  >;
+
+  assert.throws(
+    () => buildRequest({
+      config: {
+        provider: 'openai',
+        endpoint: 'https://api.openai.com/v1/chat/completions',
+        apiKey: 'sk-test',
+        model: 'gpt-4.1-mini',
+      },
+      snapshot: { ...snapshot, holdings: Array.from({ length: 101 }, () => snapshot.holdings[0]) },
+    }),
+    /持仓数据无效或过长/,
+  );
+
+  assert.throws(
+    () => buildRequest({
+      config: {
+        provider: 'openai',
+        endpoint: 'https://api.openai.com/v1/chat/completions',
+        apiKey: 'sk-test',
+        model: 'gpt-4.1-mini',
+      },
+      snapshot: { ...snapshot, totalValueCny: Number.POSITIVE_INFINITY },
+    }),
+    /股票市值必须是有效数字/,
+  );
+});

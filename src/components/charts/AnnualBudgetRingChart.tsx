@@ -1,7 +1,7 @@
 'use client';
 
 import type { ReactNode } from 'react';
-import ReactECharts from 'echarts-for-react';
+import ReactECharts from '@/components/charts/EChart';
 import {
   USED_BUDGET_COLOR,
   type AnnualBudgetOverview,

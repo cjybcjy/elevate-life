@@ -1,4 +1,7 @@
-import { fetchWithAntiCrawl } from '../anti-crawl';
+import {
+  fetchWithAntiCrawl,
+  type AntiCrawlFetchOptions,
+} from '../anti-crawl';
 
 interface PriceResult {
   code: string;
@@ -9,11 +12,17 @@ interface PriceResult {
   source: string;
 }
 
-export async function fetchGoldPrice(): Promise<PriceResult> {
+export async function fetchGoldPrice(
+  options?: AntiCrawlFetchOptions,
+): Promise<PriceResult> {
   // Sina finance Shanghai Futures Exchange gold continuous contract
   // au9999 spot is no longer available; use nf_AU0 (黄金连续) instead
   const url = 'https://hq.sinajs.cn/list=nf_AU0';
-  const { text } = await fetchWithAntiCrawl(url, 'https://finance.sina.com.cn/');
+  const { text } = await fetchWithAntiCrawl(
+    url,
+    'https://finance.sina.com.cn/',
+    options,
+  );
 
   // Response format: var hq_str_nf_AU0="黄金连续,时间,昨结算,最高,最低,...,最新价,买价,卖价,..."
   // Fields are comma-separated, current price is at index 6
