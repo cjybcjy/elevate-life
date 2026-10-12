@@ -1,22 +1,25 @@
 'use client';
 
-import Link from 'next/link';
+import Link from '@/components/layout/NavigationLink';
 import { usePathname } from 'next/navigation';
 import { signOut } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import BirdLogo from '@/components/common/BirdLogo';
+import NavigationPending from '@/components/layout/NavigationPending';
 import MobileNavigation from '@/components/layout/MobileNavigation';
 
 const navItems = [
-  { label: '仪表盘', href: '/', icon: '🏠', eager: true },
-  { label: '资产管理', href: '/management/assets', icon: '💰', eager: true },
-  { label: '负债管理', href: '/management/liabilities', icon: '📋', eager: true },
+  { label: '仪表盘', href: '/', icon: '🏠' },
+  { label: '资产管理', href: '/management/assets', icon: '💰' },
+  { label: '负债管理', href: '/management/liabilities', icon: '📋' },
   { label: '还债还是定投', href: '/investment-cost', icon: '🧮' },
-  { label: '流水管理', href: '/management/ledger', icon: '📝', eager: true },
-  { label: '周期交易', href: '/management/recurring', icon: '🗓️', eager: true },
+  { label: '流水管理', href: '/management/ledger', icon: '📝' },
+  { label: '周期交易', href: '/management/recurring', icon: '🗓️' },
   { label: '预算管理', href: '/management/budget', icon: '📊' },
   { label: '目标管理', href: '/management/goals', icon: '🎯' },
   { label: '分类管理', href: '/management/categories', icon: '🏷️' },
+  { label: '我的物品', href: '/possessions', icon: '📦' },
+  { label: '我的', href: '/me', icon: '👤' },
 ];
 const passwordHref = '/account/password';
 
@@ -76,8 +79,10 @@ export default function Sidebar() {
               <Link
                 key={item.href}
                 href={item.href}
-                prefetch={item.eager ? true : null}
+                prefetch
+                aria-current={isActive ? 'page' : undefined}
                 style={{
+                  position: 'relative',
                   display: 'flex',
                   alignItems: 'center',
                   gap: '10px',
@@ -96,7 +101,6 @@ export default function Sidebar() {
                   marginBottom: '2px',
                 }}
                 onMouseEnter={e => {
-                  router.prefetch(item.href);
                   if (!isActive) {
                     e.currentTarget.style.background = 'var(--color-sidebar-hover-bg)';
                     e.currentTarget.style.color = 'var(--color-text-primary)';
@@ -108,10 +112,10 @@ export default function Sidebar() {
                     e.currentTarget.style.color = 'var(--color-sidebar-text)';
                   }
                 }}
-                onFocus={() => router.prefetch(item.href)}
               >
                 <span style={{ fontSize: '16px' }}>{item.icon}</span>
                 {item.label}
+                <NavigationPending />
               </Link>
             );
           })}

@@ -92,6 +92,7 @@ export default function LoginPage() {
         Don&apos;t have an account?{' '}
         <Link
           href="/register"
+          prefetch={false}
           className="font-medium text-ledger-accent hover:underline"
         >
           Register

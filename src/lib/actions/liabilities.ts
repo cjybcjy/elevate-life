@@ -3,7 +3,7 @@
 import { prisma } from '@/lib/prisma';
 import { auth } from '@/lib/auth';
 import { getUserKey } from '@/lib/key-cache';
-import { encryptValue, decryptValue } from '@/lib/crypto';
+import { encryptValue, decryptValue, createValueDecryptor } from '@/lib/crypto';
 import { revalidateTag } from 'next/cache';
 import Decimal from 'decimal.js';
 import { isRevolvingCredit } from '@/lib/liability-transactions';
@@ -73,18 +73,19 @@ export async function getLiabilities() {
     orderBy: { createdAt: 'desc' },
   });
 
+  const decrypt = createValueDecryptor(derivedKey, userId);
   const decrypted = liabilities.map((l) => ({
     id: l.id,
     userId: l.userId,
     name: l.name,
     category: l.category,
-    principal: decryptValue(l.principal, derivedKey, userId),
-    currentBalance: decryptValue(l.currentBalance, derivedKey, userId),
+    principal: decrypt(l.principal),
+    currentBalance: decrypt(l.currentBalance),
     interestRate: l.interestRate.toNumber(),
     termMonths: l.termMonths,
     startDate: l.startDate,
     paymentMethod: l.paymentMethod,
-    monthlyPayment: l.monthlyPayment ? decryptValue(l.monthlyPayment, derivedKey, userId) : null,
+    monthlyPayment: l.monthlyPayment ? decrypt(l.monthlyPayment) : null,
     isEncrypted: l.isEncrypted,
     createdAt: l.createdAt,
     updatedAt: l.updatedAt,

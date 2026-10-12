@@ -586,3 +586,14 @@ body {
    ============================================================ */
 .page-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; }
 .page-header h1 { font-size: 22px; font-weight: 700; color: var(--color-text-primary); margin: 0; }
+
+/* Feedback stays on the requested link until the route commits. */
+.mobile-bottom-nav__item { position: relative; }
+.navigation-pending {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: color-mix(in srgb, currentColor 10%, transparent);
+  box-shadow: inset 0 -3px 0 currentColor;
+  pointer-events: none;
+}

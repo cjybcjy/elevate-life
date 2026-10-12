@@ -1,11 +1,12 @@
 'use client';
 
+import { readData } from '@/lib/read-data';
+
 import { useState, useEffect, useCallback, useRef, useSyncExternalStore } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { createTransaction, deleteTransaction, updateTransactionReconciled, updateTransaction } from '@/lib/actions/ledger';
 import {
-  getRecurringRules,
   createRecurringRule,
   updateRecurringRule,
   toggleRecurringRule,
@@ -139,8 +140,6 @@ import { useAssets } from '@/hooks/useAssets';
 import { useToast } from '@/components/common/Toast';
 import { useSWRConfig } from 'swr';
 import useSWR from 'swr';
-import { getCategories } from '@/lib/actions/categories';
-import { getBudgetProgress, getBudgetsForCategory } from '@/lib/actions/budget';
 import { buildTransactionUpdateInput } from '@/lib/ledger-edit';
 import MobileQuickEntry, {
   type QuickEntrySubmitResult,
@@ -175,7 +174,7 @@ export default function LedgerManager({ view = 'transactions' }: { view?: Ledger
   const assets = assetData?.data ?? [];
   const { mutate } = useSWRConfig();
   const toast = useToast();
-  const { data: catData } = useSWR('categories', () => getCategories().then(r => r.success ? (r.data ?? []) : []));
+  const { data: catData } = useSWR('categories', () => readData('categories').then(r => r.success ? (r.data ?? []) : []));
   const categories = catData ?? [];
 
   const templates = useSyncExternalStore(subscribeTemplates, readTemplatesSnapshot, () => emptyTemplates);
@@ -192,7 +191,6 @@ export default function LedgerManager({ view = 'transactions' }: { view?: Ledger
   const [reconDays, setReconDays] = useState(3);
   const [reconCandidates, setReconCandidates] = useState<any[]>([]);
   const [editingTxId, setEditingTxId] = useState<string | null>(null);
-  const [budgetOptions, setBudgetOptions] = useState<any[]>([]);
   const [editTxForm, setEditTxForm] = useState({ amount: '', categoryId: '', budgetId: '', fromAccountId: '', description: '', occurredAt: '' });
   const [editingRecurringId, setEditingRecurringId] = useState<string | null>(null);
   const [editRecurringForm, setEditRecurringForm] = useState({
@@ -232,7 +230,7 @@ export default function LedgerManager({ view = 'transactions' }: { view?: Ledger
   const { data: recurringRules = [], mutate: mutateRecurringRules } = useSWR<RecurringRule[]>(
     activeTab === 'recurring' ? 'recurring-rules' : null,
     async () => {
-      const result = await getRecurringRules();
+      const result = await readData('recurring-rules');
       if (result.success) return result.data ?? [];
       if (result.error?.includes('会话密钥')) {
         window.location.href = '/login';
@@ -260,17 +258,24 @@ export default function LedgerManager({ view = 'transactions' }: { view?: Ledger
     return new Date(rule.nextDueDate).getTime() < new Date(nearest.nextDueDate).getTime() ? rule : nearest;
   }, null);
 
-  // Fetch budget options when category or date changes
-  useEffect(() => {
-    if (formValues.categoryId && formValues.occurredAt) {
-      import('@/lib/actions/budget').then(({ getBudgetsForCategory }) => {
-        getBudgetsForCategory(formValues.occurredAt, formValues.categoryId)
-          .then(res => { if (res.success) setBudgetOptions(res.data ?? []); });
-      });
-    }
-  }, [formValues.categoryId, formValues.occurredAt]);
-
-  const formBudgetOptions = formValues.categoryId && formValues.occurredAt ? budgetOptions : [];
+  // Separate query keys keep older responses and the other editor's options
+  // from replacing the currently selected category/date.
+  const { data: formBudgets } = useSWR(
+    formValues.categoryId && formValues.occurredAt
+      ? ['budgets-for-category', formValues.occurredAt, formValues.categoryId] as const
+      : null,
+    ([resource, date, categoryId]) => readData(resource, { date, categoryId }),
+    { keepPreviousData: false, revalidateIfStale: true },
+  );
+  const { data: editBudgets } = useSWR(
+    editingTxId && editTxForm.categoryId && editTxForm.occurredAt
+      ? ['budgets-for-category', editTxForm.occurredAt, editTxForm.categoryId] as const
+      : null,
+    ([resource, date, categoryId]) => readData(resource, { date, categoryId }),
+    { keepPreviousData: false, revalidateIfStale: true },
+  );
+  const formBudgetOptions = formBudgets?.success ? formBudgets.data ?? [] : [];
+  const editBudgetOptions = editBudgets?.success ? editBudgets.data ?? [] : [];
 
   const applyTemplate = useCallback((t: Template) => {
     setFormValues({
@@ -386,14 +391,16 @@ export default function LedgerManager({ view = 'transactions' }: { view?: Ledger
       return { success: false, error: resultError };
     }
 
-    await refreshLedgerCaches(mutate);
     const categoryName = categories.find((category: any) => category.id === values.categoryId)?.name
       ?? (values.type === 'TRANSFER' ? '转账' : '未分类');
     const resolvedBudgetId = result.budgetId || values.budgetId;
-    const budgetRemaining = await getQuickEntryBudgetRemainingSafely(
-      resolvedBudgetId,
-      () => getBudgetProgress(values.occurredAt),
-    );
+    const [, budgetRemaining] = await Promise.all([
+      refreshLedgerCaches(mutate),
+      getQuickEntryBudgetRemainingSafely(
+        resolvedBudgetId,
+        () => readData('budgets', { date: values.occurredAt }),
+      ),
+    ]);
     const feedback = buildQuickEntryFeedback({
       amount: values.amount,
       currency: values.currency,
@@ -420,7 +427,7 @@ export default function LedgerManager({ view = 'transactions' }: { view?: Ledger
   }
 
   const loadQuickEntryBudgets = useCallback(async (date: string, categoryId: string) => {
-    const result = await getBudgetsForCategory(date, categoryId);
+    const result = await readData('budgets-for-category', { date, categoryId });
     return result.success
       ? (result.data ?? []).map(({ id, name }) => ({ id, name }))
       : [];
@@ -593,14 +600,6 @@ export default function LedgerManager({ view = 'transactions' }: { view?: Ledger
       description: tx.description || '',
       occurredAt: new Date(tx.occurredAt).toISOString().split('T')[0],
     });
-    // Fetch budgets for the editing transaction
-    if (tx.categoryId) {
-      const txDate = new Date(tx.occurredAt).toISOString().slice(0, 10);
-      import('@/lib/actions/budget').then(({ getBudgetsForCategory }) => {
-        getBudgetsForCategory(txDate, tx.categoryId)
-          .then(res => { if (res.success) setBudgetOptions(res.data ?? []); });
-      });
-    }
   }
 
   async function handleUpdateRecurring() {
@@ -842,7 +841,7 @@ export default function LedgerManager({ view = 'transactions' }: { view?: Ledger
                 type="date"
                 required
                 value={formValues.occurredAt}
-                onChange={e => setFormValues(prev => ({ ...prev, occurredAt: e.target.value }))}
+                onChange={e => setFormValues(prev => ({ ...prev, occurredAt: e.target.value, budgetId: '' }))}
                 className="rounded-md bg-ledger-bg border border-ledger-bg px-3 py-2 text-sm focus:outline-none focus:border-ledger-accent w-full min-h-11 md:w-auto"
               />
             </div>
@@ -1096,7 +1095,7 @@ export default function LedgerManager({ view = 'transactions' }: { view?: Ledger
                         </label>
                         <label className="block min-w-0">
                           <span className="mb-1 block text-xs text-ledger-muted">日期</span>
-                          <input type="date" value={editTxForm.occurredAt} onChange={(event) => setEditTxForm((previous) => ({ ...previous, occurredAt: event.target.value }))} className={mobileEditorControlClass} />
+                          <input type="date" value={editTxForm.occurredAt} onChange={(event) => setEditTxForm((previous) => ({ ...previous, occurredAt: event.target.value, budgetId: '' }))} className={mobileEditorControlClass} />
                         </label>
                         <label className="block min-w-0">
                           <span className="mb-1 block text-xs text-ledger-muted">分类</span>
@@ -1107,7 +1106,7 @@ export default function LedgerManager({ view = 'transactions' }: { view?: Ledger
                         <label className="block min-w-0">
                           <span className="mb-1 block text-xs text-ledger-muted">预算</span>
                           <select value={editTxForm.budgetId} onChange={(event) => setEditTxForm((previous) => ({ ...previous, budgetId: event.target.value }))} className={mobileEditorControlClass}>
-                            <option value="">不关联</option>{budgetOptions.map((budget: any) => <option key={budget.id} value={budget.id}>{budget.name}</option>)}
+                            <option value="">不关联</option>{editBudgetOptions.map((budget: any) => <option key={budget.id} value={budget.id}>{budget.name}</option>)}
                           </select>
                         </label>
                         <label className="col-span-2 block min-w-0">
@@ -1221,7 +1220,7 @@ export default function LedgerManager({ view = 'transactions' }: { view?: Ledger
                                 ))}
                               </select>
                             </div>
-                            {budgetOptions.length > 0 && (
+                            {editBudgetOptions.length > 0 && (
                               <div>
                                 <label className="block text-xs text-ledger-muted mb-1">预算</label>
                                 <select
@@ -1230,7 +1229,7 @@ export default function LedgerManager({ view = 'transactions' }: { view?: Ledger
                                   className="rounded-md bg-ledger-surface border border-ledger-bg px-2 py-1.5 text-xs focus:outline-none focus:border-ledger-accent"
                                 >
                                   <option value="">--</option>
-                                  {budgetOptions.map((b: any) => (
+                                  {editBudgetOptions.map((b: any) => (
                                     <option key={b.id} value={b.id}>{b.name}</option>
                                   ))}
                                 </select>
@@ -1254,7 +1253,7 @@ export default function LedgerManager({ view = 'transactions' }: { view?: Ledger
                               <input
                                 type="date"
                                 value={editTxForm.occurredAt}
-                                onChange={e => setEditTxForm(p => ({ ...p, occurredAt: e.target.value }))}
+                                onChange={e => setEditTxForm(p => ({ ...p, occurredAt: e.target.value, budgetId: '' }))}
                                 className="rounded-md bg-ledger-surface border border-ledger-bg px-2 py-1.5 text-xs focus:outline-none focus:border-ledger-accent"
                               />
                             </div>

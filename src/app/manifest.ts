@@ -45,8 +45,8 @@ export default function manifest(): MetadataRoute.Manifest {
       {
         name: '记一笔流水',
         short_name: '记账',
-        description: '快速进入流水管理。',
-        url: '/management/ledger',
+        description: '直接打开记账表单。',
+        url: '/management/ledger?focus=create',
         icons: [{ src: '/icon-192.png', sizes: '192x192', type: 'image/png' }],
       },
       {

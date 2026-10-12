@@ -3,7 +3,7 @@
 import Decimal from 'decimal.js';
 import { revalidatePath } from 'next/cache';
 import { auth } from '@/lib/auth';
-import { decryptValue, encryptValue } from '@/lib/crypto';
+import { createValueDecryptor, encryptValue } from '@/lib/crypto';
 import { getUserKey } from '@/lib/key-cache';
 import {
   normalizePossessionStatus,
@@ -50,15 +50,16 @@ export async function getPossessions() {
   });
 
   try {
+    const decrypt = createValueDecryptor(access.derivedKey, access.userId);
     const data: PossessionRecord[] = rows.map((row) => ({
       id: row.id,
       name: row.name,
       category: row.category,
-      purchasePrice: Number(decryptValue(row.purchasePrice, access.derivedKey, access.userId)),
+      purchasePrice: Number(decrypt(row.purchasePrice)),
       purchaseDate: row.purchaseDate.toISOString(),
       status: normalizePossessionStatus(row.status),
       soldPrice: row.soldPrice
-        ? Number(decryptValue(row.soldPrice, access.derivedKey, access.userId))
+        ? Number(decrypt(row.soldPrice))
         : null,
       soldDate: row.soldDate?.toISOString() ?? null,
       createdAt: row.createdAt.toISOString(),

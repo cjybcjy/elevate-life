@@ -37,7 +37,10 @@ assert(
 const requiredScripts = {
   'mobile:check': 'npx tsx scripts/check-mobile-wrapper-readiness.ts',
   'mobile:identity:check': 'npx tsx scripts/check-native-package-identity-readiness.ts',
-  'mobile:sync': 'npm run mobile:check && npx cap sync && npm run mobile:identity:check',
+  'mobile:sync': 'npm run mobile:check && npx tsx scripts/sync-mobile.ts && npm run mobile:identity:check',
+  'mobile:sync:check': 'npx tsx scripts/check-mobile-sync.ts',
+  'mobile:sync:local': 'npm run mobile:check && npx tsx scripts/sync-mobile-local.ts && npm run mobile:identity:check',
+  'mobile:sync:local:check': 'npx tsx scripts/sync-mobile-local.ts --check',
   'mobile:add:android': 'npx cap add android',
   'mobile:add:ios': 'npx cap add ios',
   'mobile:open:android': 'npx cap open android',
@@ -51,11 +54,13 @@ for (const [name, command] of Object.entries(requiredScripts)) {
 const configSource = read('capacitor.config.ts');
 assert(
   configSource.includes('CapacitorConfig') &&
-    configSource.includes('CAPACITOR_SERVER_URL') &&
+    configSource.includes('getMobileServerUrl(env)') &&
+    configSource.includes('getLocalMobileServerUrl') &&
     configSource.includes('CAPACITOR_APP_ID') &&
     configSource.includes("appName: 'Elevate Life'") &&
     configSource.includes("webDir: 'mobile-web'") &&
-    configSource.includes('cleartext: false') &&
+    configSource.includes("env.CAPACITOR_SYNC_MODE === 'local'") &&
+    configSource.includes('cleartext: local') &&
     configSource.includes("backgroundColor: '#F7F7F7'"),
   'Capacitor config should support env-driven HTTPS server URL, package id, fallback webDir, and store-safe defaults.',
 );

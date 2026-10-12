@@ -1,7 +1,7 @@
 export const dynamic = 'force-dynamic';
 
 import type { ComponentType } from 'react';
-import Link from 'next/link';
+import Link from '@/components/layout/NavigationLink';
 import { redirect } from 'next/navigation';
 import {
   BookOpenText,
@@ -45,6 +45,7 @@ function HubGroup({ title, items }: { title: string; items: HubItem[] }) {
             <Link
               key={item.href}
               href={item.href}
+              prefetch
               className={`flex min-h-16 items-center gap-3 px-4 py-3 text-[var(--color-text-primary)] no-underline active:bg-[var(--color-container-inset)] ${
                 index > 0 ? 'border-t border-[var(--border-tertiary)]' : ''
               }`}

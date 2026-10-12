@@ -1,7 +1,7 @@
 'use client';
 
 import { Suspense, useEffect, useRef, useState, type ReactNode } from 'react';
-import Link from 'next/link';
+import Link from '@/components/layout/NavigationLink';
 import { usePathname, useSearchParams } from 'next/navigation';
 import {
   CalendarClock,
@@ -19,6 +19,7 @@ import {
   type LucideIcon,
 } from 'lucide-react';
 import BirdLogo from '@/components/common/BirdLogo';
+import NavigationPending from '@/components/layout/NavigationPending';
 import {
   MOBILE_MORE_NAV_ITEMS,
   MOBILE_PRIMARY_NAV_ITEMS,
@@ -161,11 +162,13 @@ export function MobileNavigationView({
                 <Link
                   key={item.href}
                   href={item.href}
+                  prefetch
                   onClick={onMenuClose}
-                  className="flex min-h-11 items-center gap-2 rounded-lg border border-[var(--border-tertiary)] px-3 py-2 text-sm text-[var(--color-text-primary)] no-underline"
+                  className="relative flex min-h-11 items-center gap-2 rounded-lg border border-[var(--border-tertiary)] px-3 py-2 text-sm text-[var(--color-text-primary)] no-underline"
                 >
                   <NavigationIcon name={item.icon} size={18} />
                   <span>{item.label}</span>
+                  <NavigationPending />
                 </Link>
               ))}
             </div>
@@ -215,6 +218,7 @@ export function MobileNavigationView({
                 <NavigationIcon name={item.icon} size={primary ? 22 : 19} />
               </span>
               <span className="mobile-bottom-nav__label">{item.label}</span>
+              <NavigationPending />
             </Link>
           );
         })}
@@ -249,6 +253,12 @@ export default function MobileNavigation({ onLogout }: { onLogout: () => void | 
     onMenuClose: () => setMenuOpen(false),
     onLogout,
   };
+
+  // Only the ledger distinguishes the quick-entry query from its normal view.
+  // Other pages can render their navigation directly in the first HTML.
+  if (pathname !== '/management/ledger') {
+    return <MobileNavigationView {...navigationProps} focus={null} />;
+  }
 
   return (
     <MobileNavigationSearchBoundary {...navigationProps}>

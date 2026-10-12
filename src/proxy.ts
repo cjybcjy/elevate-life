@@ -1,4 +1,5 @@
 import NextAuth from 'next-auth';
+import { NextResponse } from 'next/server';
 import { authConfig } from '@/lib/auth.config';
 
 const { auth } = NextAuth(authConfig);
@@ -35,6 +36,14 @@ export const proxy = auth(req => {
   if (isAuth && isAuthRoute) {
     return Response.redirect(new URL('/', req.url));
   }
+
+  // Only full document requests need an initial data snapshot. Client route
+  // changes keep the shared SWR cache and read missing data independently.
+  const requestHeaders = new Headers(req.headers);
+  const isDocument = req.headers.get('sec-fetch-dest') === 'document'
+    || req.headers.get('accept')?.includes('text/html');
+  requestHeaders.set('x-elevate-initial-path', !isApiRoute && isDocument ? pathname : '');
+  return NextResponse.next({ request: { headers: requestHeaders } });
 });
 
 export const config = {

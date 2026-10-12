@@ -3,7 +3,7 @@
 import { prisma } from '@/lib/prisma';
 import { auth } from '@/lib/auth';
 import { getUserKey } from '@/lib/key-cache';
-import { encryptValue, decryptValue } from '@/lib/crypto';
+import { encryptValue, createValueDecryptor } from '@/lib/crypto';
 import { revalidateTag } from 'next/cache';
 import Decimal from 'decimal.js';
 import {
@@ -77,10 +77,11 @@ export async function getAssets() {
     }
   }
 
+  const decrypt = createValueDecryptor(derivedKey, userId);
   const decrypted = assets.map((a) => {
     try {
-      const balance = decryptValue(a.balance, derivedKey, userId);
-      const costPrice = a.costPrice ? decryptValue(a.costPrice, derivedKey, userId) : null;
+      const balance = decrypt(a.balance);
+      const costPrice = a.costPrice ? decrypt(a.costPrice) : null;
 
       // Compute market value for market-priced assets
       let currentUnitPrice: number | null = null;

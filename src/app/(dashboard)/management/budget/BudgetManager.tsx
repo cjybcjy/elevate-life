@@ -1,11 +1,12 @@
 'use client';
 
+import { readData } from '@/lib/read-data';
+
 import { useState, type Dispatch, type SetStateAction } from 'react';
+import dynamic from 'next/dynamic';
 import { useSearchParams } from 'next/navigation';
-import { createBudget, updateBudget, deleteBudget, getBudgets } from '@/lib/actions/budget';
+import { createBudget, updateBudget, deleteBudget } from '@/lib/actions/budget';
 import { createTransaction } from '@/lib/actions/ledger';
-import { getCategories } from '@/lib/actions/categories';
-import BudgetTracker from '@/components/widgets/BudgetTracker';
 import { useBudgets } from '@/hooks/useBudgets';
 import { useTransactions } from '@/hooks/useTransactions';
 import { useAssets } from '@/hooks/useAssets';
@@ -16,6 +17,14 @@ import {
   MobileEditorBar,
   useMobileEditorScroll,
 } from '@/components/common/MobileEditorBar';
+
+const BudgetTracker = dynamic(() => import('@/components/widgets/BudgetTracker'), {
+  loading: () => (
+    <div role="status" className="rounded-xl bg-ledger-surface px-4 py-6 text-sm text-ledger-muted">
+      正在准备预算执行…
+    </div>
+  ),
+});
 
 interface Budget {
   id: string;
@@ -266,17 +275,39 @@ export default function BudgetManager({ currentDate }: { currentDate: string }) 
     focusParam === 'over' || focusParam === 'create' || focusParam === 'review'
       ? focusParam
       : null;
-  const { data: budgetData } = useBudgets(currentDate);
+  const { data: budgetData, error: progressError } = useBudgets(currentDate);
   const progress = budgetData?.data ?? [];
-  const { data: budgetsData } = useSWR('budgets-list', () => getBudgets().then(r => r.success ? (r.data ?? []) : []));
+  const { data: budgetsData, error: budgetsError } = useSWR('budgets-list', async () => {
+    const result = await readData('budgets-list');
+    if (!result.success) throw new Error(result.error || '预算读取失败');
+    return result.data ?? [];
+  });
   const budgets: Budget[] = budgetsData ?? [];
-  const { data: catData } = useSWR('categories', () => getCategories().then(r => r.success ? (r.data ?? []) : []));
+  const { data: catData, error: categoriesError } = useSWR('categories', async () => {
+    const result = await readData('categories');
+    if (!result.success) throw new Error(result.error || '分类读取失败');
+    return result.data ?? [];
+  });
   const categories = catData ?? [];
-  const { data: assetData } = useAssets();
+  const { data: assetData, error: assetsError } = useAssets();
   const assets: Asset[] = assetData?.data ?? [];
-  const { data: txData } = useTransactions();
+  const { data: txData, error: transactionsError } = useTransactions();
   const transactions = txData?.data ?? [];
   const { mutate } = useSWRConfig();
+  const failedReads = [
+    { error: progressError, label: '预算执行', key: `budgets:${currentDate}` },
+    { error: budgetsError, label: '预算列表', key: 'budgets-list' },
+    { error: categoriesError, label: '分类', key: 'categories' },
+    { error: assetsError, label: '资金账户', key: 'assets' },
+    { error: transactionsError, label: '支出记录', key: 'transactions' },
+  ].filter((read) => read.error);
+  const progressPending = budgetData === undefined
+    || (progress.length > 0 && (assetData === undefined || txData === undefined));
+  const progressUnavailable = progressError
+    || (progress.length > 0 && (assetsError || transactionsError));
+  const budgetListStatus = budgetsData === undefined
+    ? (budgetsError ? '预算列表暂时无法加载，请重试' : '正在加载预算…')
+    : '暂无预算';
 
   const [error, setError] = useState('');
   const [successMsg, setSuccessMsg] = useState('');
@@ -296,6 +327,24 @@ export default function BudgetManager({ currentDate }: { currentDate: string }) 
   const totalRemaining = getEffectiveBudgetRemaining(progress);
 
   const budgetFocusCopy = (() => {
+    if (budgetFocus === 'create') {
+      return {
+        title: '先建立本月预算',
+        detail: '给本月可支出金额设一个上限；之后首页才能判断预算是否安全。',
+        cta: '填写预算',
+        href: '#budget-form',
+      };
+    }
+
+    if (budgetData === undefined) {
+      return {
+        title: budgetFocus === 'over' ? '先处理超支预算' : '检查本月预算执行',
+        detail: progressError ? '预算执行暂时无法加载，请重试。' : '正在读取预算执行情况，可以先填写新预算。',
+        cta: '填写预算',
+        href: '#budget-form',
+      };
+    }
+
     if (budgetFocus === 'over') {
       return {
         title: '先处理超支预算',
@@ -304,15 +353,6 @@ export default function BudgetManager({ currentDate }: { currentDate: string }) 
           : '当前没有超支预算，可以继续检查本月预算执行。',
         cta: '查看预算执行',
         href: '#budget-progress',
-      };
-    }
-
-    if (budgetFocus === 'create') {
-      return {
-        title: '先建立本月预算',
-        detail: '给本月可支出金额设一个上限；之后首页才能判断预算是否安全。',
-        cta: '填写预算',
-        href: '#budget-form',
       };
     }
 
@@ -424,6 +464,19 @@ export default function BudgetManager({ currentDate }: { currentDate: string }) 
         <span className="text-sm text-ledger-muted">{currentDate}</span>
       </div>
 
+      {failedReads.length > 0 && (
+        <div role="alert" className="mb-4 flex flex-wrap items-center justify-between gap-2 rounded-lg bg-red-500/10 px-4 py-3 text-sm text-ledger-danger">
+          <span>{failedReads.map((read) => read.label).join('、')}暂时无法加载。</span>
+          <button
+            type="button"
+            onClick={() => void Promise.allSettled(failedReads.map((read) => mutate(read.key)))}
+            className="font-medium underline"
+          >
+            重试加载
+          </button>
+        </div>
+      )}
+
       {error && (
         <div className="mb-4 flex items-center justify-between rounded-lg bg-red-500/10 px-4 py-3 text-sm text-ledger-danger">
           <span>{error}</span>
@@ -458,7 +511,13 @@ export default function BudgetManager({ currentDate }: { currentDate: string }) 
 
       {/* Budget Progress */}
       <div id="budget-progress" className="mb-6">
-        <BudgetTracker progress={progress} transactions={transactions} assets={assets} focus={budgetFocus} />
+        {progressPending ? (
+          <div role="status" className="rounded-xl bg-ledger-surface px-4 py-6 text-sm text-ledger-muted">
+            {progressUnavailable ? '预算执行明细暂时无法加载，请重试' : '正在加载预算执行…'}
+          </div>
+        ) : progress.length > 0 ? (
+          <BudgetTracker progress={progress} transactions={transactions} assets={assets} focus={budgetFocus} />
+        ) : null}
       </div>
 
       {/* Create Form */}
@@ -483,6 +542,9 @@ export default function BudgetManager({ currentDate }: { currentDate: string }) 
             className="rounded-md bg-ledger-bg border border-ledger-bg px-3 py-2 text-sm focus:outline-none focus:border-ledger-accent"
           >
             <option value="">总预算</option>
+            {catData === undefined && (
+              <option disabled>{categoriesError ? '分类暂时无法加载' : '正在加载分类…'}</option>
+            )}
             {categories.map((c: Category) => (
               <option key={c.id} value={c.id}>{c.name}</option>
             ))}
@@ -535,8 +597,8 @@ export default function BudgetManager({ currentDate }: { currentDate: string }) 
       {/* Mobile budget cards */}
       <section className="grid gap-3 md:hidden" aria-label="预算列表">
         {budgets.length === 0 ? (
-          <div className="rounded-xl bg-ledger-surface px-4 py-8 text-center text-sm text-ledger-muted">
-            暂无预算
+          <div role="status" className="rounded-xl bg-ledger-surface px-4 py-8 text-center text-sm text-ledger-muted">
+            {budgetListStatus}
           </div>
         ) : null}
 
@@ -574,7 +636,8 @@ export default function BudgetManager({ currentDate }: { currentDate: string }) 
                   aria-expanded={expenseOpen}
                   aria-controls={`mobile-${budget.id}-expense-editor`}
                   onClick={() => toggleExpenseEditor(budget.id)}
-                  className="min-h-11 rounded-lg bg-ledger-accent/15 px-2 text-sm font-medium text-ledger-accent"
+                  disabled={assetData === undefined}
+                  className="min-h-11 rounded-lg bg-ledger-accent/15 px-2 text-sm font-medium text-ledger-accent disabled:opacity-50"
                 >
                   {expenseOpen ? '取消' : '记录支出'}
                 </button>
@@ -640,7 +703,7 @@ export default function BudgetManager({ currentDate }: { currentDate: string }) 
             {budgets.length === 0 && (
               <tr>
                 <td colSpan={5} className="px-4 py-8 text-center text-ledger-muted">
-                  暂无预算
+                  <span role="status">{budgetListStatus}</span>
                 </td>
               </tr>
             )}
@@ -662,7 +725,8 @@ export default function BudgetManager({ currentDate }: { currentDate: string }) 
                         aria-expanded={expenseRowId === budget.id}
                         aria-controls={`desktop-${budget.id}-expense-editor`}
                         onClick={() => toggleExpenseEditor(budget.id)}
-                        className="text-xs px-2 py-0.5 rounded bg-ledger-accent/20 text-ledger-accent hover:bg-ledger-accent/30"
+                        disabled={assetData === undefined}
+                        className="text-xs px-2 py-0.5 rounded bg-ledger-accent/20 text-ledger-accent hover:bg-ledger-accent/30 disabled:opacity-50"
                       >
                         {expenseRowId === budget.id ? '取消' : '记录支出'}
                       </button>

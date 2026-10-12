@@ -3,7 +3,7 @@
 import { prisma } from '@/lib/prisma';
 import { auth } from '@/lib/auth';
 import { getUserKey } from '@/lib/key-cache';
-import { encryptValue, decryptValue } from '@/lib/crypto';
+import { encryptValue, decryptValue, createValueDecryptor } from '@/lib/crypto';
 import { revalidateTag } from 'next/cache';
 import Decimal from 'decimal.js';
 import { autoCategorizeForUser } from '@/lib/services/category-rule-matcher';
@@ -134,6 +134,7 @@ export async function getTransactions() {
     orderBy: { occurredAt: 'desc' },
   });
 
+  const decrypt = createValueDecryptor(derivedKey, userId);
   const decrypted = transactions.map((t) => ({
     id: t.id,
     userId: t.userId,
@@ -172,12 +173,12 @@ export async function getTransactions() {
           id: t.fromAsset.id,
           name: t.fromAsset.name,
           category: t.fromAsset.category,
-          balance: decryptValue(t.fromAsset.balance, derivedKey, userId),
+          balance: decrypt(t.fromAsset.balance),
           currency: t.fromAsset.currency,
           liquidityTier: t.fromAsset.liquidityTier,
           isEncrypted: t.fromAsset.isEncrypted,
           costPrice: t.fromAsset.costPrice
-            ? decryptValue(t.fromAsset.costPrice, derivedKey, userId)
+            ? decrypt(t.fromAsset.costPrice)
             : null,
           quantity: t.fromAsset.quantity ? Number(t.fromAsset.quantity) : null,
           stockCode: t.fromAsset.stockCode,
@@ -192,12 +193,12 @@ export async function getTransactions() {
           id: t.toAsset.id,
           name: t.toAsset.name,
           category: t.toAsset.category,
-          balance: decryptValue(t.toAsset.balance, derivedKey, userId),
+          balance: decrypt(t.toAsset.balance),
           currency: t.toAsset.currency,
           liquidityTier: t.toAsset.liquidityTier,
           isEncrypted: t.toAsset.isEncrypted,
           costPrice: t.toAsset.costPrice
-            ? decryptValue(t.toAsset.costPrice, derivedKey, userId)
+            ? decrypt(t.toAsset.costPrice)
             : null,
           quantity: t.toAsset.quantity ? Number(t.toAsset.quantity) : null,
           stockCode: t.toAsset.stockCode,
@@ -212,14 +213,14 @@ export async function getTransactions() {
           id: t.liability.id,
           name: t.liability.name,
           category: t.liability.category,
-          principal: decryptValue(t.liability.principal, derivedKey, userId),
-          currentBalance: decryptValue(t.liability.currentBalance, derivedKey, userId),
+          principal: decrypt(t.liability.principal),
+          currentBalance: decrypt(t.liability.currentBalance),
           interestRate: t.liability.interestRate.toNumber(),
           termMonths: t.liability.termMonths,
           startDate: t.liability.startDate,
           paymentMethod: t.liability.paymentMethod,
           monthlyPayment: t.liability.monthlyPayment
-            ? decryptValue(t.liability.monthlyPayment, derivedKey, userId)
+            ? decrypt(t.liability.monthlyPayment)
             : null,
           isEncrypted: t.liability.isEncrypted,
           createdAt: t.liability.createdAt,

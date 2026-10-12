@@ -1,29 +1,41 @@
 import type { CapacitorConfig } from '@capacitor/cli';
+import { loadEnvConfig } from '@next/env';
+import { getLocalMobileServerUrl, getMobileServerUrl } from './scripts/mobile-sync-config';
 
-const serverUrl = process.env.CAPACITOR_SERVER_URL?.replace(/\/+$/, '');
-const appId = process.env.CAPACITOR_APP_ID || 'com.elevatelife.app';
+loadEnvConfig(process.cwd());
 
-const config: CapacitorConfig = {
-  appId,
-  appName: 'Elevate Life',
-  webDir: 'mobile-web',
-  backgroundColor: '#F7F7F7',
-  ...(serverUrl
-    ? {
-        server: {
-          url: serverUrl,
-          cleartext: false,
-        },
-      }
-    : {}),
-  android: {
-    path: 'android',
+export function buildCapacitorConfig(env: NodeJS.ProcessEnv = process.env): CapacitorConfig {
+  const local = env.CAPACITOR_SYNC_MODE === 'local';
+  if (local && env.CAPACITOR_LOCAL_PLATFORM !== 'android' && env.CAPACITOR_LOCAL_PLATFORM !== 'ios') {
+    throw new Error('Local native configuration requires an explicit Android or iOS platform. Use mobile:sync:local.');
+  }
+  const serverUrl = local
+    ? getLocalMobileServerUrl(env, env.CAPACITOR_LOCAL_PLATFORM as 'android' | 'ios')
+    : getMobileServerUrl(env);
+  const appId = env.CAPACITOR_APP_ID || 'com.elevatelife.app';
+
+  return {
+    appId,
+    appName: 'Elevate Life',
+    webDir: 'mobile-web',
     backgroundColor: '#F7F7F7',
-  },
-  ios: {
-    path: 'ios',
-    backgroundColor: '#F7F7F7',
-  },
-};
+    ...(serverUrl
+      ? {
+          server: {
+            url: serverUrl,
+            cleartext: local,
+          },
+        }
+      : {}),
+    android: {
+      path: 'android',
+      backgroundColor: '#F7F7F7',
+    },
+    ios: {
+      path: 'ios',
+      backgroundColor: '#F7F7F7',
+    },
+  };
+}
 
-export default config;
+export default buildCapacitorConfig();

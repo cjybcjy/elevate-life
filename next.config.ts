@@ -1,6 +1,10 @@
 import type { NextConfig } from "next";
 
 const isDevelopment = process.env.NODE_ENV === "development";
+const localMobileUrl = process.env.CAPACITOR_LOCAL_SERVER_URL?.trim();
+const localMobileHost = localMobileUrl
+  ? new URL(localMobileUrl.includes("://") ? localMobileUrl : `http://${localMobileUrl}`).hostname
+  : undefined;
 const contentSecurityPolicy = [
   "default-src 'self'",
   `script-src 'self' 'unsafe-inline'${isDevelopment ? " 'unsafe-eval'" : ""}`,
@@ -20,11 +24,21 @@ const contentSecurityPolicy = [
 const nextConfig: NextConfig = {
   // View Transitions are enabled via CSS ::view-transition-old/new in globals.css
   poweredByHeader: false,
+  // Login and financial form arguments must not appear in local dev logs.
+  logging: { serverFunctions: false },
+  allowedDevOrigins: ["127.0.0.1", "10.0.2.2", ...(localMobileHost ? [localMobileHost] : [])],
   experimental: {
     proxyClientMaxBodySize: "128kb",
     serverActions: {
       bodySizeLimit: "128kb",
     },
+  },
+  async redirects() {
+    return [{
+      source: "/manifest.json",
+      destination: "/manifest.webmanifest",
+      permanent: true,
+    }];
   },
   async headers() {
     const securityHeaders = [
@@ -42,7 +56,13 @@ const nextConfig: NextConfig = {
         : []),
     ];
 
-    return [{ source: "/:path*", headers: securityHeaders }];
+    return [
+      { source: "/:path*", headers: securityHeaders },
+      {
+        source: "/sw.js",
+        headers: [{ key: "Cache-Control", value: "no-cache, no-store, must-revalidate" }],
+      },
+    ];
   },
 };
 

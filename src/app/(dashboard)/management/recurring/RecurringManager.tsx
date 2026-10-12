@@ -1,14 +1,14 @@
 'use client';
 
+import { readData } from '@/lib/read-data';
+
 import Link from 'next/link';
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
 import useSWR, { useSWRConfig } from 'swr';
 import { useAssets } from '@/hooks/useAssets';
-import { getCategories } from '@/lib/actions/categories';
 import {
   createRecurringRule,
   deleteRecurringRule,
-  getRecurringRules,
   processMyDueRecurring,
   toggleRecurringRule,
   updateRecurringRule,
@@ -105,7 +105,7 @@ export default function RecurringManager() {
   const { data: categories = emptyOptions } = useSWR<OptionItem[]>(
     'categories',
     async () => {
-      const result = await getCategories();
+      const result = await readData('categories');
       if (!result.success) throw new Error(result.error || '获取分类失败');
       return result.data ?? [];
     },
@@ -116,7 +116,7 @@ export default function RecurringManager() {
   } = useSWR<RecurringRule[]>(
     'recurring-rules',
     async () => {
-      const result = await getRecurringRules();
+      const result = await readData('recurring-rules');
       if (result.success) return result.data ?? [];
       if (result.error?.includes('会话密钥')) {
         window.location.href = '/login';

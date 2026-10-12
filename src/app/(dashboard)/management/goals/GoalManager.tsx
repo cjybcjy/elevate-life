@@ -1,10 +1,12 @@
 'use client';
 
+import { readData } from '@/lib/read-data';
+
 import { useState } from 'react';
 import useSWR from 'swr';
 import { useSWRConfig } from 'swr';
 import { AmountDisplay } from '@/components/common/AmountDisplay';
-import { createGoal, deleteGoal, getGoals, updateGoal } from '@/lib/actions/goals';
+import { createGoal, deleteGoal, updateGoal } from '@/lib/actions/goals';
 import { useAssets } from '@/hooks/useAssets';
 import {
   MobileEditorBar,
@@ -51,7 +53,7 @@ function goalProgress(goal: Goal) {
 export default function GoalManager() {
   const { mutate } = useSWRConfig();
   const { data: goalData } = useSWR('goals', async () => {
-    const result = await getGoals();
+    const result = await readData('goals');
     if (!result.success) throw new Error(result.error || '获取储蓄目标失败');
     return result.data ?? [];
   });

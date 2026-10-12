@@ -20,7 +20,21 @@ export function encryptValue(plaintext: string, password: string, userId: string
 
 export function decryptValue(ciphertext: string, password: string, userId: string): string {
   if (!ciphertext.startsWith('enc:')) return ciphertext;
-  const key = getKey(password, userId);
+  return decryptWithKey(ciphertext, getKey(password, userId));
+}
+
+// A read batch shares one derived key. Keep it local to that batch, and avoid
+// the expensive derivation entirely for empty or legacy plaintext records.
+export function createValueDecryptor(password: string, userId: string): (ciphertext: string) => string {
+  let key: Buffer | undefined;
+  return (ciphertext) => {
+    if (!ciphertext.startsWith('enc:')) return ciphertext;
+    key ??= getKey(password, userId);
+    return decryptWithKey(ciphertext, key);
+  };
+}
+
+function decryptWithKey(ciphertext: string, key: Buffer): string {
   const combined = Buffer.from(ciphertext.slice(4), 'base64');
   const iv = combined.subarray(0, IV_LENGTH);
   const authTag = combined.subarray(IV_LENGTH, IV_LENGTH + AUTH_TAG_LENGTH);

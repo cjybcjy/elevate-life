@@ -52,7 +52,7 @@ assert(
 
 const capacitorConfigSource = read('capacitor.config.ts');
 assert(
-  capacitorConfigSource.includes(`process.env.CAPACITOR_APP_ID || '${DEFAULT_APP_ID}'`),
+  capacitorConfigSource.includes(`env.CAPACITOR_APP_ID || '${DEFAULT_APP_ID}'`),
   `Capacitor config default appId should be ${DEFAULT_APP_ID}.`,
 );
 

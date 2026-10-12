@@ -1,4 +1,4 @@
-const SHELL_CACHE = 'elevate-life-shell-v1';
+const SHELL_CACHE = 'elevate-life-shell-v2';
 const SHELL_ASSETS = [
   '/offline.html',
   '/icon-192.png',
@@ -7,9 +7,10 @@ const SHELL_ASSETS = [
 
 self.addEventListener('install', (event) => {
   event.waitUntil(
-    caches.open(SHELL_CACHE).then((cache) => cache.addAll(SHELL_ASSETS)),
+    caches.open(SHELL_CACHE)
+      .then((cache) => cache.addAll(SHELL_ASSETS))
+      .then(() => self.skipWaiting()),
   );
-  self.skipWaiting();
 });
 
 self.addEventListener('activate', (event) => {
@@ -18,9 +19,8 @@ self.addEventListener('activate', (event) => {
       names
         .filter((name) => name.startsWith('elevate-life-') && name !== SHELL_CACHE)
         .map((name) => caches.delete(name)),
-    )),
+    )).then(() => self.clients.claim()),
   );
-  self.clients.claim();
 });
 
 self.addEventListener('fetch', (event) => {

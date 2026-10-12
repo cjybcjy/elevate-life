@@ -2,15 +2,24 @@ import { useAssets } from './useAssets';
 import { useLiabilities } from './useLiabilities';
 import { useTransactions } from './useTransactions';
 import { useForecast } from './useForecast';
+import { readData } from '@/lib/read-data';
+import useSWR from 'swr';
 
 export function useDashboard() {
   const assets = useAssets();
   const liabilities = useLiabilities();
   const transactions = useTransactions();
   const forecast = useForecast();
+  const forex = useSWR('forex-rates', async () => {
+    const result = await readData('forex-rates');
+    if (!result.success || !result.data) {
+      throw new Error(result.error || 'Failed to fetch exchange rates');
+    }
+    return result.data;
+  });
 
   const isLoading =
-    assets.isLoading || liabilities.isLoading || transactions.isLoading || forecast.isLoading;
+    assets.isLoading || liabilities.isLoading || transactions.isLoading || forex.isLoading;
 
   return {
     assets: assets.data?.data ?? [],
@@ -20,9 +29,12 @@ export function useDashboard() {
     autoForecast: forecast.data?.autoForecast ?? {
       monthlyIncome: '20000', monthlyExpense: '15000', activeMonths: 0, recurringExpenses: [],
     },
-    forexRates: forecast.data?.forexRates ?? { usdToCny: 7.2, hkdToCny: 0.92, jpyToCny: 0.048 },
+    forexRates: forex.data,
+    forecastIsLoading: forecast.data === undefined && !forecast.error,
+    forecastError: forecast.data === undefined ? forecast.error : undefined,
     pricesStale: assets.data?.pricesStale ?? false,
     isLoading,
-    error: assets.error || liabilities.error || transactions.error || forecast.error,
+    error: (!assets.data && assets.error) || (!liabilities.data && liabilities.error)
+      || (!transactions.data && transactions.error) || (!forex.data && forex.error),
   };
 }
